@@ -189,10 +189,15 @@ const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, his
           <div className="flex flex-col items-center text-center mb-5">
             {/* Avatar */}
             <div
-              className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-full border-2 border-cyber-yellow shadow-[0_0_20px_rgba(252,238,10,0.3)]"
+              className="mb-3 w-20 h-20 rounded-full border-2 border-cyber-yellow shadow-[0_0_20px_rgba(252,238,10,0.3)] overflow-hidden"
               style={{ background: 'linear-gradient(135deg, rgba(252,238,10,0.1), rgba(252,238,10,0.02))' }}
             >
-              {currentWinner.player.avatar}
+              <img
+                src={currentWinner.player.avatar}
+                alt={currentWinner.player.name}
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
             </div>
 
             {/* Name */}
@@ -254,7 +259,7 @@ const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, his
                       key={i}
                       className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.03] border border-white/5"
                     >
-                      <span className="text-xl">{w.player.avatar}</span>
+                      <img src={w.player.avatar} alt={w.player.name} className="w-8 h-8 rounded-full object-cover border border-cyber-yellow/30" referrerPolicy="no-referrer" />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-bold text-white truncate">{w.player.name}</div>
                         <div className="text-[10px] font-mono text-gray-500">{w.weekLabel}</div>

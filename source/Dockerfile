@@ -16,6 +16,7 @@ COPY .env* ./
 COPY components ./components
 COPY services ./services
 COPY utils ./utils
+COPY public ./public
 RUN npm run build
 
 # Production stage: only runtime deps + built output

@@ -202,9 +202,7 @@ const PlayerCard: React.FC<{
       }`}
     >
       <div className="relative">
-        <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-lg flex-shrink-0">
-          {player.avatar}
-        </div>
+        <img src={player.avatar} alt={player.name} className="w-8 h-8 rounded-full bg-white/10 object-cover flex-shrink-0" referrerPolicy="no-referrer" />
         {selected && (
           <div className="absolute -top-1 -right-1 w-4 h-4 bg-cyber-cyan rounded-full flex items-center justify-center">
             <Check size={10} className="text-black" />
@@ -240,12 +238,12 @@ const ScoreInput: React.FC<{
     <div className="bg-black/80 border border-cyber-cyan/30 rounded-lg p-3 space-y-3 animate-fadeIn">
       <div className="grid grid-cols-3 gap-2 items-center text-center">
         <div className="text-xs text-white font-medium">
-          <span className="text-lg">{p1?.avatar}</span>
+          {p1?.avatar && <img src={p1.avatar} alt={p1.name} className="w-8 h-8 rounded-full object-cover mx-auto" referrerPolicy="no-referrer" />}
           <div className="truncate mt-0.5">{p1?.name}</div>
         </div>
         <div className="text-gray-600 text-xs font-display">VS</div>
         <div className="text-xs text-white font-medium">
-          <span className="text-lg">{p2?.avatar}</span>
+          {p2?.avatar && <img src={p2.avatar} alt={p2.name} className="w-8 h-8 rounded-full object-cover mx-auto" referrerPolicy="no-referrer" />}
           <div className="truncate mt-0.5">{p2?.name}</div>
         </div>
       </div>
@@ -355,7 +353,7 @@ const SingleEliminationView: React.FC<{
                     >
                       {p1 ? (
                         <>
-                          <span className="text-sm">{p1.avatar}</span>
+                          <img src={p1.avatar} alt={p1.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" />
                           <span className="text-xs text-white font-medium truncate flex-1">
                             {p1.name}
                           </span>
@@ -382,7 +380,7 @@ const SingleEliminationView: React.FC<{
                     >
                       {p2 ? (
                         <>
-                          <span className="text-sm">{p2.avatar}</span>
+                          <img src={p2.avatar} alt={p2.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" />
                           <span className="text-xs text-white font-medium truncate flex-1">
                             {p2.name}
                           </span>
@@ -411,7 +409,7 @@ const SingleEliminationView: React.FC<{
           <div className="flex flex-col items-center justify-center gap-2 min-w-[140px]">
             <Crown size={32} className="text-cyber-yellow" />
             <div className="text-center">
-              <div className="text-2xl">{getPlayer(players, tournament.winnerId)?.avatar}</div>
+              {getPlayer(players, tournament.winnerId)?.avatar && <img src={getPlayer(players, tournament.winnerId)!.avatar} alt="Champion" className="w-12 h-12 rounded-full object-cover border-2 border-cyber-yellow mx-auto" referrerPolicy="no-referrer" />}
               <div className="text-white font-display font-bold text-sm mt-1">
                 {getPlayer(players, tournament.winnerId)?.name}
               </div>
@@ -507,7 +505,7 @@ const RoundRobinView: React.FC<{
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <span>{p?.avatar}</span>
+                        {p?.avatar && <img src={p.avatar} alt={p.name} className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />}
                         <span className="text-white font-medium">{p?.name}</span>
                       </div>
                     </td>
@@ -572,7 +570,7 @@ const RoundRobinView: React.FC<{
                       } ${hasResult ? 'opacity-90' : ''}`}
                     >
                       <div className={`flex items-center gap-1.5 flex-1 min-w-0 ${hasResult && mu.winnerId === mu.player1Id ? 'text-white' : 'text-gray-400'}`}>
-                        <span className="text-sm">{p1?.avatar}</span>
+                        {p1?.avatar && <img src={p1.avatar} alt={p1.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" />}
                         <span className="text-xs font-medium truncate">{p1?.name}</span>
                       </div>
                       {hasResult ? (
@@ -588,7 +586,7 @@ const RoundRobinView: React.FC<{
                       )}
                       <div className={`flex items-center gap-1.5 flex-1 min-w-0 justify-end ${hasResult && mu.winnerId === mu.player2Id ? 'text-white' : 'text-gray-400'}`}>
                         <span className="text-xs font-medium truncate">{p2?.name}</span>
-                        <span className="text-sm">{p2?.avatar}</span>
+                        {p2?.avatar && <img src={p2.avatar} alt={p2.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" />}
                       </div>
                     </div>
                   );
@@ -933,8 +931,8 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                 <div className="text-[10px] text-gray-600 font-mono mt-0.5">
                   {t.playerIds.length} players
                   {winner && (
-                    <span className="ml-2 text-cyber-yellow">
-                      🏆 {winner.avatar} {winner.name}
+                    <span className="ml-2 text-cyber-yellow inline-flex items-center gap-1">
+                      🏆 <img src={winner.avatar} alt={winner.name} className="w-4 h-4 rounded-full object-cover inline" referrerPolicy="no-referrer" /> {winner.name}
                     </span>
                   )}
                 </div>

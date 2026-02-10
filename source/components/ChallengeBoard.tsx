@@ -64,10 +64,14 @@ const WagerBadge: React.FC<{ wager: number; size?: 'sm' | 'md' }> = ({ wager, si
 
 const PlayerAvatar: React.FC<{ player: Player | undefined; size?: number }> = ({ player, size = 32 }) => (
   <div
-    className="flex items-center justify-center rounded-full bg-white/10 border border-white/10 text-lg flex-shrink-0"
-    style={{ width: size, height: size, fontSize: size * 0.5 }}
+    className="rounded-full bg-white/10 border border-white/10 flex-shrink-0 overflow-hidden"
+    style={{ width: size, height: size }}
   >
-    {player?.avatar || '?'}
+    {player?.avatar ? (
+      <img src={player.avatar} alt={player.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+    ) : (
+      <div className="w-full h-full flex items-center justify-center text-gray-500" style={{ fontSize: size * 0.4 }}>?</div>
+    )}
   </div>
 );
 
@@ -167,7 +171,7 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
             <option value="">Select a player...</option>
             {opponents.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.avatar} {p.name} — ELO {p.eloSingles}
+                {p.name} — ELO {p.eloSingles}
               </option>
             ))}
           </select>
@@ -221,7 +225,7 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
             <Zap size={14} className="inline text-cyber-pink mr-1" />
             You challenge{' '}
             <span className="text-white font-bold">
-              {selectedOpponentPlayer?.avatar} {selectedOpponentPlayer?.name}
+              {selectedOpponentPlayer?.name}
             </span>
             {wager > 0 ? (
               <>

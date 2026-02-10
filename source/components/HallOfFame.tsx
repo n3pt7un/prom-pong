@@ -301,9 +301,12 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history }) =>
                       <span className="text-lg w-8 text-center shrink-0">{rankLabel(h.rank)}</span>
 
                       {/* Avatar */}
-                      <span className={`text-xl ${isFirst ? 'drop-shadow-[0_0_6px_rgba(252,238,10,0.4)]' : ''}`}>
-                        {h.player.avatar}
-                      </span>
+                      <img
+                        src={h.player.avatar}
+                        alt={h.player.name}
+                        className={`w-8 h-8 rounded-full object-cover border ${isFirst ? 'border-cyber-yellow shadow-[0_0_6px_rgba(252,238,10,0.4)]' : 'border-white/20'}`}
+                        referrerPolicy="no-referrer"
+                      />
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
