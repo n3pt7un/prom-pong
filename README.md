@@ -11,6 +11,7 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 - [Project Structure](#project-structure)
 - [Quick Start (Local Development)](#quick-start-local-development)
 - [Firebase Setup](#firebase-setup)
+- [Supabase Setup](#supabase-setup)
 - [Environment Variables](#environment-variables)
 - [Deployment (Google Cloud Run)](#deployment-google-cloud-run)
 - [Architecture](#architecture)
@@ -23,6 +24,7 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 - [Pending Match Confirmation](#pending-match-confirmation)
 - [Authentication & Authorization](#authentication--authorization)
 - [Data Model](#data-model)
+- [Database Migration](#database-migration)
 - [Achievements](#achievements)
 - [Development Guide](#development-guide)
 - [Troubleshooting](#troubleshooting)
@@ -86,7 +88,7 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 | Backend | Express 4, Node 22 |
 | Auth | Firebase Authentication (Google Sign-In) |
 | Auth (Server) | Firebase Admin SDK (JWT verification) |
-| Data Store | Local `db.json` (dev) / Google Cloud Storage (prod) |
+| Database | **Supabase PostgreSQL** (new) or Local `db.json` / GCS (legacy) |
 | Deployment | Google Cloud Run via Dockerfile |
 | Container | Multi-stage Docker build (Node 22 + Node 22-slim) |
 
@@ -116,6 +118,8 @@ test-pong/
 │   ├── .env.example           # Template for environment variables
 │   ├── .gcloudignore          # Files to exclude from Cloud Build
 │   ├── db.json                # Local database (dev only, gitignored)
+│   ├── lib/
+│   │   └── supabase.ts        # Supabase client configuration
 │   ├── components/
 │   │   ├── Layout.tsx         # Nav bar, tabs, background effects
 │   │   ├── Leaderboard.tsx    # Rankings table with ELO info panel
@@ -151,6 +155,11 @@ test-pong/
 │       ├── rivalryUtils.ts    # Head-to-head analysis
 │       ├── predictionUtils.ts # Win probability calculations
 │       └── offlineQueue.ts    # Offline request queueing
+├── scripts/
+│   └── migrate-to-supabase.ts # Database migration script
+└── supabase/
+    └── migrations/
+        └── 001_initial_schema.sql  # Supabase database schema
 ```
 
 ---
@@ -243,6 +252,55 @@ No service account key file is required.
 
 ---
 
+## Supabase Setup
+
+### 1. Create a Supabase Project
+
+1. Go to [Supabase](https://supabase.com/) and sign up/login
+2. Click "New Project"
+3. Choose your organization, give it a name, and select a region close to your users
+4. Wait for the project to be created (this takes a few minutes)
+
+### 2. Get Your API Credentials
+
+1. Go to **Project Settings** > **API**
+2. Copy the following values:
+   - **URL**: Your project URL (e.g., `https://xxx.supabase.co`)
+   - **service_role key**: The secret key (NOT the anon/public key)
+
+### 3. Run the Database Schema
+
+1. Go to the **SQL Editor** in your Supabase dashboard
+2. Click "New query"
+3. Copy the contents of `supabase/migrations/001_initial_schema.sql`
+4. Paste and run the SQL
+
+Alternatively, use psql:
+```bash
+psql -h db.xxx.supabase.co -p 5432 -d postgres -U postgres -f supabase/migrations/001_initial_schema.sql
+```
+
+### 4. Configure Environment Variables
+
+Add to your `.env` file:
+```
+USE_SUPABASE=true
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key
+```
+
+### Free Tier Limits
+
+Supabase free tier includes:
+- **500MB** database storage
+- **50,000** monthly active users
+- **2GB** bandwidth
+- **500MB** file storage (if using Supabase Storage)
+
+For a ping pong league with 50-250 users, this is more than sufficient.
+
+---
+
 ## Environment Variables
 
 Create a `.env` file in the `source/` directory:
@@ -259,12 +317,24 @@ Create a `.env` file in the `source/` directory:
 
 The `VITE_` prefix makes these available to the frontend at build time via Vite's `import.meta.env`.
 
+**Database Configuration** (choose one):
+
+| Variable | Required | Description |
+|---|---|---|
+| `USE_SUPABASE` | No | Set to `true` to use Supabase PostgreSQL (recommended for production) |
+| `SUPABASE_URL` | If USE_SUPABASE=true | Your Supabase project URL (e.g., `https://xxx.supabase.co`) |
+| `SUPABASE_SERVICE_KEY` | If USE_SUPABASE=true | Supabase service role key (NOT the anon key) |
+| `GCS_BUCKET` | No | Google Cloud Storage bucket for legacy JSON mode or file storage |
+
 **Production-only** (set via `--set-env-vars` on Cloud Run):
 
 | Variable | Description |
 |---|---|
-| `GCS_BUCKET` | Google Cloud Storage bucket name for persistent `db.json` |
+| `GCS_BUCKET` | Google Cloud Storage bucket name for persistent `db.json` (legacy mode) |
 | `ADMIN_EMAILS` | Same as above, set on Cloud Run service |
+| `USE_SUPABASE` | Set to `true` to enable Supabase mode |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_KEY` | Supabase service role key |
 
 ---
 
@@ -278,7 +348,39 @@ The `VITE_` prefix makes these available to the frontend at build time via Vite'
 - **Cloud Run API** enabled
 - A **GCS bucket** for data persistence
 
-### 1. Create a GCS bucket (if you don't have one)
+### 1. Choose Your Database
+
+#### Option A: Supabase PostgreSQL (Recommended for production)
+
+The app now supports Supabase PostgreSQL as the primary database. This provides better reliability, concurrent access, and easier backups compared to JSON file storage.
+
+**Free tier limits (perfect for 50-250 users):**
+- 500MB database storage
+- 50,000 monthly active users
+- 2GB egress
+- Unlimited API requests
+
+**Setup:**
+
+1. Create a free Supabase project at https://supabase.com
+2. Go to Project Settings > API and copy your `URL` and `service_role` key
+3. Run the database migration:
+   ```bash
+   cd supabase/migrations
+   psql -h YOUR_PROJECT_URL -p 5432 -d postgres -U postgres -f 001_initial_schema.sql
+   ```
+   Or use the Supabase SQL Editor to run the contents of `001_initial_schema.sql`
+4. Migrate your existing data (optional):
+   ```bash
+   cd source
+   export SUPABASE_URL=https://your-project.supabase.co
+   export SUPABASE_SERVICE_KEY=your-service-key
+   npx tsx ../scripts/migrate-to-supabase.ts
+   ```
+
+#### Option B: Google Cloud Storage (Legacy JSON mode)
+
+Create a GCS bucket for JSON file persistence:
 
 ```bash
 gcloud storage buckets create gs://YOUR-BUCKET-NAME \
@@ -291,6 +393,17 @@ gcloud storage buckets create gs://YOUR-BUCKET-NAME \
 ```bash
 cd source
 
+# For Supabase (recommended):
+gcloud run deploy cyber-pong-arcade-league \
+  --source=. \
+  --region=europe-west1 \
+  --project=YOUR-PROJECT-ID \
+  --allow-unauthenticated \
+  --set-env-vars="USE_SUPABASE=true,SUPABASE_URL=https://your-project.supabase.co,SUPABASE_SERVICE_KEY=your-key,ADMIN_EMAILS=your-email@gmail.com" \
+  --memory=512Mi --cpu=1 \
+  --min-instances=0 --max-instances=3
+
+# For GCS/JSON legacy mode:
 gcloud run deploy cyber-pong-arcade-league \
   --source=. \
   --region=europe-west1 \
@@ -383,9 +496,9 @@ gcloud storage cp gs://YOUR-BUCKET-NAME/db.json ./backup.json
 │  ├─ Tournament bracket generation                            │
 │  ├─ Season management                                        │
 │  ├─ Challenge/wager system                                   │
-│  ├─ Pending match confirmation                               │
-│  └─ Data persistence ──┬─── Local: db.json (dev)            │
-│                        └─── Cloud: GCS bucket (prod)         │
+│  └─ Data persistence ──┬─── Supabase PostgreSQL (recommended)│
+│                        ├─── Cloud: GCS bucket (legacy)       │
+│                        └─── Local: db.json (dev/legacy)      │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -875,6 +988,55 @@ interface Tournament {
   "reactions": []
 }
 ```
+
+---
+
+## Database Migration
+
+### Migrating from JSON to Supabase
+
+If you have existing data in a JSON file (local or GCS) and want to migrate to Supabase:
+
+1. **Set up your Supabase project** (see Deployment section)
+
+2. **Run the migration script**:
+   ```bash
+   cd source
+   
+   # Set environment variables
+   export SUPABASE_URL=https://your-project.supabase.co
+   export SUPABASE_SERVICE_KEY=your-service-role-key
+   
+   # Optional: specify a different db.json path
+   export DB_FILE_PATH=/path/to/your/db.json
+   
+   # Run the migration
+   npx tsx ../scripts/migrate-to-supabase.ts
+   ```
+
+3. **Verify the migration**:
+   - Check the Supabase Table Editor to see imported data
+   - Run the app locally with `USE_SUPABASE=true` to test
+
+4. **Switch over**:
+   - Update your Cloud Run deployment with Supabase env vars
+   - The app will automatically use Supabase when `USE_SUPABASE=true`
+
+### Migration Script Features
+
+The migration script (`scripts/migrate-to-supabase.ts`):
+- Clears existing Supabase data before migration
+- Transforms JSON structure to relational format (e.g., match winners/losers into junction table)
+- Preserves all data: players, matches, history, rackets, admins, pending matches, seasons, challenges, tournaments, reactions
+- Reports errors and summary statistics
+- Idempotent - can be run multiple times safely
+
+### Rolling Back
+
+To revert to JSON file mode:
+1. Remove or set `USE_SUPABASE=false`
+2. The app will fall back to GCS_BUCKET or local filesystem
+3. Your JSON file data remains unchanged
 
 ---
 
