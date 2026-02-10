@@ -1,4 +1,4 @@
-import { Player, Match, EloHistoryEntry, GameType, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament, MatchReaction } from '../types';
+import { Player, Match, EloHistoryEntry, GameType, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament } from '../types';
 import { getIdToken } from './authService';
 
 export interface LeagueState {
@@ -10,7 +10,6 @@ export interface LeagueState {
   seasons: Season[];
   challenges: Challenge[];
   tournaments: Tournament[];
-  reactions: MatchReaction[];
 }
 
 export interface Backup {
@@ -275,18 +274,6 @@ export const submitTournamentResult = async (tournamentId: string, matchupId: st
 
 export const deleteTournament = async (tournamentId: string) => {
   return apiRequest(`${API_URL}/tournaments/${tournamentId}`, { method: 'DELETE' });
-};
-
-// --- Match Reactions ---
-export const addMatchReaction = async (matchId: string, type: 'emoji' | 'comment', content: string) => {
-  return apiRequest(`${API_URL}/matches/${matchId}/reactions`, {
-    method: 'POST',
-    body: JSON.stringify({ type, content })
-  });
-};
-
-export const removeMatchReaction = async (matchId: string, reactionId: string) => {
-  return apiRequest(`${API_URL}/matches/${matchId}/reactions/${reactionId}`, { method: 'DELETE' });
 };
 
 // --- Player of the Week ---

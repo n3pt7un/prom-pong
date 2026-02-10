@@ -152,16 +152,6 @@ export interface Tournament {
   winnerId?: string;
 }
 
-// --- Match Reactions ---
-export interface MatchReaction {
-  id: string;
-  matchId: string;
-  userId: string;
-  type: 'emoji' | 'comment';
-  content: string;
-  createdAt: string;
-}
-
 // --- Weekly Challenges ---
 export interface WeeklyChallenge {
   id: string;

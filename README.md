@@ -1,6 +1,6 @@
 # Cyber-Pong Arcade League
 
-A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, custom racket forging, matchmaking, and Google Sign-In authentication. Built with React + Express, deployed on Google Cloud Run (free tier).
+A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, custom racket forging, matchmaking, tournaments, seasons, challenges, and Google Sign-In authentication. Built with React + Express, deployed on Google Cloud Run (free tier).
 
 ---
 
@@ -17,6 +17,10 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 - [API Reference](#api-reference)
 - [ELO System](#elo-system)
 - [Racket System](#racket-system)
+- [Seasons System](#seasons-system)
+- [Tournaments](#tournaments)
+- [Challenges](#challenges)
+- [Pending Match Confirmation](#pending-match-confirmation)
 - [Authentication & Authorization](#authentication--authorization)
 - [Data Model](#data-model)
 - [Achievements](#achievements)
@@ -27,6 +31,7 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 
 ## Features
 
+### Core Features
 - **ELO-based Rankings** -- Separate singles and doubles ELO ratings with K-factor 32
 - **Google Sign-In** -- Firebase Authentication with role-based access (admin / regular)
 - **Player Profiles** -- Custom username, avatar (upload or preset), bio, achievements, performance charts
@@ -35,11 +40,40 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 - **Match Logging** -- Log 1v1 or 2v2 matches with score validation and undo support
 - **Smart Matchmaking** -- Suggests balanced pairings based on ELO proximity (singles and doubles)
 - **Racket Armory** -- Forge custom rackets with 6 stats (Speed, Spin, Power, Control, Defense, Chaos), icons, and colors. Edit existing rackets. 30-point stat budget system.
-- **Admin Controls** -- Season reset, factory reset, data export/import, player deletion, user promotion/demotion, rename any player
 - **No-Racket Prompt** -- Users without a racket see a prompt to forge or equip one
+
+### Competition Features
+- **Tournaments** -- Create and run single-elimination or round-robin tournaments with automatic bracket generation
+- **Seasons** -- Multi-season support with start/end dates, standings archiving, and champion tracking
+- **Challenges** -- Players can challenge each other with ELO wagers (up to 50 points). Bonus points transfer when challenge is completed.
+- **Weekly Challenges** -- Dynamic challenges that reset periodically (win streaks, matches played, ELO gain targets)
+- **Player of the Week** -- Automatically highlights top performing player based on recent activity
+- **Hall of Fame** -- Historical records and all-time achievements display
+
+### Match Management
+- **Pending Match Confirmation** -- Matches logged by one player require confirmation from opponents before ELO changes apply. Auto-confirms after 24 hours.
+- **Match Disputes** -- Players can dispute incorrect match entries for admin review
+- **Match Editing** -- Admins can edit match details with automatic ELO recalculation
+- **Match Reactions** -- Add emoji reactions to matches for social engagement
+- **Undo Support** -- Undo recently logged matches with full ELO reversal
+
+### Admin Features
+- **Admin Controls** -- Season reset, factory reset, data export/import, player deletion, user promotion/demotion, rename any player
+- **User Management** -- Promote/demote users to admin, view all registered users
+- **Force Confirm Matches** -- Admins can force-confirm disputed or pending matches
+- **Tournament Management** -- Create and delete tournaments, monitor progress
+
+### Social & Engagement
 - **Achievements** -- First Blood, On Fire, Unstoppable, Veteran, Century, Elo Climber, Master, Comeback Kid
+- **Account Claiming** -- Link Google account to existing player profiles
+- **Advanced Stats** -- Deep statistics including head-to-head records, rivalry tracking, form analysis
 - **Responsive UI** -- Fully responsive cyberpunk design with glass morphism, neon effects, and mobile-first navigation
+
+### Technical Features
 - **Free Tier Deployment** -- Runs entirely on Google Cloud Run free tier
+- **Offline Detection** -- Visual indicator when connection to server is lost
+- **Toast Notifications** -- Success/error feedback with action buttons (e.g., Undo)
+- **Auto-refresh** -- Data automatically refreshes every 5 seconds
 
 ---
 
@@ -62,44 +96,61 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 
 ```
 test-pong/
-└── source/                     # All application code
-    ├── Dockerfile              # Multi-stage Docker build
-    ├── package.json            # Dependencies and scripts
-    ├── server.js               # Express backend (API + static serving)
-    ├── vite.config.ts          # Vite config with API proxy
-    ├── tsconfig.json           # TypeScript config
-    ├── index.html              # HTML entry + Tailwind config + CSS
-    ├── index.tsx               # React entry point
-    ├── App.tsx                 # Root component, routing, state management
-    ├── types.ts                # TypeScript interfaces
-    ├── constants.ts            # Ranks, avatars, racket presets, stat budget
-    ├── achievements.ts         # Achievement definitions and evaluation
-    ├── firebaseConfig.ts       # Firebase web SDK initialization
-    ├── .env                    # Environment variables (not committed)
-    ├── .env.example            # Template for environment variables
-    ├── .gcloudignore           # Files to exclude from Cloud Build
-    ├── db.json                 # Local database (dev only, gitignored)
-    ├── components/
-    │   ├── Layout.tsx          # Nav bar, tabs, background effects
-    │   ├── Leaderboard.tsx     # Rankings table with ELO info panel
-    │   ├── PlayersHub.tsx      # Unified player grid + profile + compare
-    │   ├── PlayerProfile.tsx   # Detailed player stats, chart, achievements
-    │   ├── MatchLogger.tsx     # Match submission form
-    │   ├── MatchMaker.tsx      # Smart matchmaking suggestions
-    │   ├── RacketManager.tsx   # Racket creation, editing, info guide
-    │   ├── CreatePlayerForm.tsx# New player modal
-    │   ├── LoginScreen.tsx     # Google Sign-In screen
-    │   ├── ProfileSetup.tsx    # First-login profile creation
-    │   ├── RecentMatches.tsx   # Match history feed
-    │   ├── RankBadge.tsx       # Rank tier badge component
-    │   ├── Settings.tsx        # Admin tools, profile editing
-    │   └── StatsDashboard.tsx  # (Legacy, replaced by PlayersHub)
-    ├── services/
-    │   ├── authService.ts      # Firebase auth operations
-    │   ├── storageService.ts   # API client (all REST calls)
-    │   └── eloService.ts       # Client-side ELO utilities
-    └── utils/
-        └── imageUtils.ts       # Client-side image resizing for avatars
+├── README.md                   # This file
+├── source/                     # All application code
+│   ├── README.md              # AI Studio proxy info (legacy)
+│   ├── USER_GUIDE.md          # Deployment guide
+│   ├── Dockerfile             # Multi-stage Docker build
+│   ├── package.json           # Dependencies and scripts
+│   ├── server.js              # Express backend (API + static serving)
+│   ├── vite.config.ts         # Vite config with API proxy
+│   ├── tsconfig.json          # TypeScript config
+│   ├── index.html             # HTML entry + Tailwind config + CSS
+│   ├── index.tsx              # React entry point
+│   ├── App.tsx                # Root component, routing, state management
+│   ├── types.ts               # TypeScript interfaces
+│   ├── constants.ts           # Ranks, avatars, racket presets, stat budget
+│   ├── achievements.ts        # Achievement definitions and evaluation
+│   ├── firebaseConfig.ts      # Firebase web SDK initialization
+│   ├── .env                   # Environment variables (not committed)
+│   ├── .env.example           # Template for environment variables
+│   ├── .gcloudignore          # Files to exclude from Cloud Build
+│   ├── db.json                # Local database (dev only, gitignored)
+│   ├── components/
+│   │   ├── Layout.tsx         # Nav bar, tabs, background effects
+│   │   ├── Leaderboard.tsx    # Rankings table with ELO info panel
+│   │   ├── PlayersHub.tsx     # Unified player grid + profile + compare
+│   │   ├── PlayerProfile.tsx  # Detailed player stats, chart, achievements
+│   │   ├── MatchLogger.tsx    # Match submission form
+│   │   ├── MatchMaker.tsx     # Smart matchmaking suggestions
+│   │   ├── MatchReactions.tsx # Emoji reactions on matches
+│   │   ├── RacketManager.tsx  # Racket creation, editing, info guide
+│   │   ├── CreatePlayerForm.tsx # New player modal
+│   │   ├── LoginScreen.tsx    # Google Sign-In screen
+│   │   ├── ProfileSetup.tsx   # First-login profile creation
+│   │   ├── RecentMatches.tsx  # Match history feed
+│   │   ├── PendingMatches.tsx # Match confirmation UI
+│   │   ├── RankBadge.tsx      # Rank tier badge component
+│   │   ├── Settings.tsx       # Admin tools, profile editing
+│   │   ├── StatsDashboard.tsx # (Legacy, replaced by PlayersHub)
+│   │   ├── AdvancedStats.tsx  # Deep statistics and analysis
+│   │   ├── ChallengeBoard.tsx # Player challenges interface
+│   │   ├── HallOfFame.tsx     # Historical records display
+│   │   ├── PlayerOfTheWeek.tsx # Weekly highlight component
+│   │   ├── WeeklyChallenges.tsx # Dynamic challenges UI
+│   │   ├── TournamentBracket.tsx # Tournament management
+│   │   ├── SeasonManager.tsx  # Season administration
+│   │   └── StatsDashboard.tsx # (Legacy)
+│   ├── services/
+│   │   ├── authService.ts     # Firebase auth operations
+│   │   ├── storageService.ts  # API client (all REST calls)
+│   │   └── eloService.ts      # Client-side ELO utilities
+│   └── utils/
+│       ├── imageUtils.ts      # Client-side image resizing for avatars
+│       ├── statsUtils.ts      # Statistics calculations
+│       ├── rivalryUtils.ts    # Head-to-head analysis
+│       ├── predictionUtils.ts # Win probability calculations
+│       └── offlineQueue.ts    # Offline request queueing
 ```
 
 ---
@@ -258,11 +309,24 @@ This command:
 
 **Note**: The `.env` file is included in the Docker build context (via `COPY .env* ./` in the Dockerfile) so that Vite can read `VITE_*` variables during `npm run build`.
 
-### 3. Add Cloud Run URL to Firebase
+### 3. Grant Permissions
+
+The Cloud Run service needs permission to read/write to your bucket.
+
+1. Get the **Service Account** email from the deploy output (or find it in Cloud Console > Cloud Run > Details). It looks like: `[number]-compute@developer.gserviceaccount.com`.
+2. Grant the **Storage Object Admin** role:
+
+```bash
+gcloud storage buckets add-iam-policy-binding gs://YOUR-BUCKET-NAME \
+  --member="serviceAccount:YOUR_SERVICE_ACCOUNT_EMAIL" \
+  --role="roles/storage.objectAdmin"
+```
+
+### 4. Add Cloud Run URL to Firebase
 
 After deployment, copy the service URL and add it to Firebase Authentication > Settings > Authorized domains.
 
-### 4. Free Tier Limits
+### 5. Free Tier Limits
 
 Cloud Run free tier includes:
 - 2 million requests/month
@@ -271,7 +335,7 @@ Cloud Run free tier includes:
 
 With `min-instances=0`, the service scales to zero when idle (no charges).
 
-### 5. Verify the deployment
+### 6. Verify the deployment
 
 ```bash
 # Check running services
@@ -283,9 +347,17 @@ gcloud run services logs read cyber-pong-arcade-league \
   --project=YOUR-PROJECT-ID
 ```
 
-### 6. Redeploying
+### 7. Redeploying
 
 Simply re-run the `gcloud run deploy` command. Cloud Build will rebuild and deploy a new revision.
+
+### 8. Backups
+
+Since your database is just a JSON file in a storage bucket, you can download a backup anytime:
+
+```bash
+gcloud storage cp gs://YOUR-BUCKET-NAME/db.json ./backup.json
+```
 
 ---
 
@@ -308,6 +380,10 @@ Simply re-run the `gcloud run deploy` command. Cloud Build will rebuild and depl
 │  ├─ authMiddleware (Firebase Admin SDK, verifies JWT)        │
 │  ├─ adminMiddleware (checks UID against admins list)         │
 │  ├─ ELO calculation engine                                   │
+│  ├─ Tournament bracket generation                            │
+│  ├─ Season management                                        │
+│  ├─ Challenge/wager system                                   │
+│  ├─ Pending match confirmation                               │
 │  └─ Data persistence ──┬─── Local: db.json (dev)            │
 │                        └─── Cloud: GCS bucket (prod)         │
 └──────────────────────────────────────────────────────────────┘
@@ -338,7 +414,7 @@ All endpoints require authentication (`Authorization: Bearer <firebase-id-token>
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | `/api/state` | User | Get all players, matches, history, rackets |
+| GET | `/api/state` | User | Get all players, matches, history, rackets, pending matches, seasons, challenges, tournaments |
 
 ### User Profile
 
@@ -347,6 +423,7 @@ All endpoints require authentication (`Authorization: Bearer <firebase-id-token>
 | GET | `/api/me` | User | Get current user profile and linked player |
 | POST | `/api/me/setup` | User | First-time profile creation (name, avatar, bio) |
 | PUT | `/api/me/profile` | User | Update own profile (name, avatar, bio) |
+| POST | `/api/me/claim` | User | Claim an unlinked player account |
 
 ### Players
 
@@ -369,7 +446,41 @@ All endpoints require authentication (`Authorization: Bearer <firebase-id-token>
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | POST | `/api/matches` | User | Log a match (triggers ELO calculation) |
+| PUT | `/api/matches/:id` | Admin | Edit a match (recalculates ELO) |
 | DELETE | `/api/matches/:id` | Admin | Delete and reverse ELO changes |
+
+### Pending Match Confirmation
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/pending-matches` | User | Create a pending match |
+| PUT | `/api/pending-matches/:id/confirm` | User | Confirm a pending match |
+| PUT | `/api/pending-matches/:id/dispute` | User | Dispute a pending match |
+| PUT | `/api/pending-matches/:id/force-confirm` | Admin | Force confirm a pending/disputed match |
+| DELETE | `/api/pending-matches/:id` | Admin | Reject and delete a pending match |
+
+### Seasons
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/seasons/start` | Admin | Start a new season |
+| POST | `/api/seasons/end` | Admin | End the active season |
+
+### Challenges
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/challenges` | User | Send a challenge to another player |
+| PUT | `/api/challenges/:id/respond` | User | Accept or decline a challenge |
+| PUT | `/api/challenges/:id/complete` | User | Complete a challenge (link to match) |
+
+### Tournaments
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/tournaments` | User | Create a new tournament |
+| PUT | `/api/tournaments/:id/results` | User | Submit tournament match result |
+| DELETE | `/api/tournaments/:id` | Admin | Delete a tournament |
 
 ### Admin
 
@@ -471,14 +582,141 @@ Any authenticated user can edit any racket's name, icon, color, and stats. The s
 
 ---
 
+## Seasons System
+
+The seasons system allows you to organize play into distinct time periods with tracked standings.
+
+### Season Lifecycle
+
+1. **Start Season** -- Admin creates a new season with a name. The season is marked as "active".
+2. **Play Matches** -- All matches during the season count toward that season's stats.
+3. **End Season** -- Admin ends the active season:
+   - Final standings are calculated and archived
+   - A champion is determined (highest ELO)
+   - Total match count is recorded
+   - Season is marked as "completed"
+
+### Season Data
+
+Each season tracks:
+- Season name and number
+- Start and end dates
+- Final standings (rank, ELO, wins, losses for each player)
+- Champion (player with highest ELO at season end)
+- Total match count
+
+### Historical Access
+
+Completed seasons are viewable in the Season Manager, allowing players to see:
+- Who won previous seasons
+- Final rankings
+- Historical performance
+
+---
+
+## Tournaments
+
+Create structured competitions with automatic bracket generation.
+
+### Tournament Formats
+
+1. **Single Elimination** -- Players compete in bracket format. Losers are eliminated. Winner advances.
+2. **Round Robin** -- Each player plays every other player. Player with most wins is champion.
+
+### Tournament Lifecycle
+
+1. **Creation** -- Admin creates tournament with:
+   - Name
+   - Format (single_elimination or round_robin)
+   - Game type (singles or doubles)
+   - Player list
+
+2. **Registration** -- Tournament starts in "registration" status
+
+3. **In Progress** -- Players submit results for their matchups
+   - Winners report scores
+   - System advances winners in single elimination
+   - System tracks wins in round robin
+
+4. **Completed** -- When all matchups have results:
+   - Winner is determined
+   - Tournament marked complete
+
+### Bracket Generation
+
+- **Single Elimination**: Byes are automatically assigned if player count isn't a power of 2
+- **Round Robin**: Generates all unique pairings
+
+---
+
+## Challenges
+
+The challenges system allows players to compete head-to-head with ELO wagers.
+
+### How Challenges Work
+
+1. **Send Challenge** -- A player challenges another with:
+   - Optional message
+   - Wager amount (0-50 ELO points)
+
+2. **Respond** -- Challenged player can:
+   - Accept (challenge becomes active)
+   - Decline (challenge expires)
+
+3. **Play Match** -- When the challenged match is logged:
+   - Winner receives bonus ELO equal to the wager
+   - Loser loses the wagered amount (in addition to normal ELO change)
+   - Challenge marked as completed
+
+### Challenge States
+
+- **pending** -- Awaiting response from challenged player
+- **accepted** -- Challenge accepted, awaiting match
+- **declined** -- Challenge was declined
+- **completed** -- Match was played and wager applied
+- **expired** -- Challenge timed out (7 days)
+
+---
+
+## Pending Match Confirmation
+
+To prevent incorrect match entries from affecting ELO, matches require confirmation.
+
+### How It Works
+
+1. **Log Match** -- A player logs a match result
+2. **Pending Status** -- Match enters "pending" state
+   - ELO is NOT yet applied
+   - Involved players see it in their Pending Matches section
+   - 24-hour countdown begins
+
+3. **Confirmation** -- Other involved players must confirm:
+   - Click "Confirm" to approve the result
+   - Click "Dispute" if the result is incorrect
+
+4. **Auto-Confirm** -- If all players confirm OR 24 hours pass:
+   - ELO is applied
+   - Match moves to confirmed history
+
+5. **Dispute Resolution** -- If disputed:
+   - Admin reviews and can force-confirm or reject
+
+### Confirmation States
+
+- **pending** -- Awaiting confirmations
+- **confirmed** -- All confirmed, ELO applied
+- **disputed** -- Under admin review
+
+---
+
 ## Authentication & Authorization
 
 ### Roles
 
 | Role | Can Do |
 |---|---|
-| **User** | Log matches, create/edit rackets, manage own profile, view all data |
-| **Admin** | All user actions + delete players/matches/rackets, reset data, promote/demote users, rename any player |
+| **User** | Log matches, create/edit rackets, manage own profile, view all data, confirm/dispute matches, send/respond to challenges, join tournaments |
+| **Admin** | All user actions + delete players/matches/rackets, reset data, promote/demote users, rename any player, force-confirm matches, manage seasons, create/delete tournaments |
 
 ### Admin Designation
 
@@ -494,6 +732,12 @@ Admins are designated in two ways:
 3. JWT is attached to every API request as `Authorization: Bearer <token>`
 4. Server verifies the JWT using Firebase Admin SDK (`admin.auth().verifyIdToken()`)
 5. Server extracts `uid`, `email`, `name`, `picture` from the decoded token
+
+### Account Claiming
+
+If a player profile exists without a linked Google account (legacy or created by admin), users can claim it during profile setup. This allows:
+- Migrating from non-authenticated to authenticated system
+- Admins creating profiles for players who haven't signed up yet
 
 ---
 
@@ -530,6 +774,25 @@ interface Match {
   scoreLoser: number;
   timestamp: string;       // ISO timestamp
   eloChange: number;       // Points transferred
+  loggedBy?: string;       // Firebase UID of the user who logged the match
+}
+```
+
+### PendingMatch
+
+```typescript
+interface PendingMatch {
+  id: string;
+  type: 'singles' | 'doubles';
+  winners: string[];
+  losers: string[];
+  scoreWinner: number;
+  scoreLoser: number;
+  loggedBy: string;
+  status: 'pending' | 'confirmed' | 'disputed';
+  confirmations: string[]; // UIDs who confirmed
+  createdAt: string;
+  expiresAt: string;       // Auto-confirm deadline (24h)
 }
 ```
 
@@ -546,6 +809,55 @@ interface Racket {
 }
 ```
 
+### Season
+
+```typescript
+interface Season {
+  id: string;
+  name: string;
+  number: number;
+  status: 'active' | 'completed';
+  startedAt: string;
+  endedAt?: string;
+  finalStandings: SeasonStanding[];
+  matchCount: number;
+  championId?: string;
+}
+```
+
+### Challenge
+
+```typescript
+interface Challenge {
+  id: string;
+  challengerId: string;
+  challengedId: string;
+  status: 'pending' | 'accepted' | 'declined' | 'completed' | 'expired';
+  wager: number;           // Bonus ELO points at stake (0-50)
+  matchId?: string;        // Linked match when completed
+  createdAt: string;
+  message?: string;
+}
+```
+
+### Tournament
+
+```typescript
+interface Tournament {
+  id: string;
+  name: string;
+  format: 'single_elimination' | 'round_robin';
+  status: 'registration' | 'in_progress' | 'completed';
+  gameType: 'singles' | 'doubles';
+  playerIds: string[];
+  rounds: TournamentRound[];
+  createdBy: string;
+  createdAt: string;
+  completedAt?: string;
+  winnerId?: string;
+}
+```
+
 ### Database Shape (`db.json`)
 
 ```json
@@ -555,7 +867,12 @@ interface Racket {
   "history": [],
   "rackets": [],
   "backups": [],
-  "admins": []
+  "admins": [],
+  "pendingMatches": [],
+  "seasons": [],
+  "challenges": [],
+  "tournaments": [],
+  "reactions": []
 }
 ```
 
@@ -586,6 +903,7 @@ Achievements are evaluated client-side based on player data and match history.
 |---|---|---|
 | `npm run dev` | `concurrently "vite" "node server.js"` | Start dev server + backend |
 | `npm run build` | `vite build` | Build frontend to `dist/` |
+| `npm run preview` | `vite preview` | Preview production build |
 | `npm start` | `node server.js` | Start production server |
 
 ### Dev Server Architecture
@@ -664,6 +982,12 @@ Cloud Run with `min-instances=0` has cold starts (~2-5s). Set `min-instances=1` 
 - Check `.gcloudignore` isn't excluding necessary files
 - Ensure `package-lock.json` is committed (Docker uses `npm install`, not `npm ci`)
 - Check Cloud Build logs: `gcloud builds list --project=YOUR-PROJECT-ID`
+
+### Pending matches not confirming
+
+- Pending matches auto-confirm after 24 hours
+- Ensure server is running (the check happens on `/api/state` requests)
+- Check that `createdAt` and `expiresAt` are valid ISO timestamps
 
 ---
 

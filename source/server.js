@@ -75,7 +75,6 @@ let db = {
   seasons: [],
   challenges: [],
   tournaments: [],
-  reactions: [],
 };
 
 const seedData = () => {
@@ -96,7 +95,6 @@ const seedData = () => {
   db.seasons = [];
   db.challenges = [];
   db.tournaments = [];
-  db.reactions = [];
 };
 
 // --- PERSISTENCE ---
@@ -114,7 +112,6 @@ const loadDB = async () => {
         if (!Array.isArray(db.seasons)) db.seasons = [];
         if (!Array.isArray(db.challenges)) db.challenges = [];
         if (!Array.isArray(db.tournaments)) db.tournaments = [];
-        if (!Array.isArray(db.reactions)) db.reactions = [];
         console.log("✅ Database loaded from Cloud Storage");
       } else {
         seedData();
@@ -128,7 +125,6 @@ const loadDB = async () => {
         if (!Array.isArray(db.seasons)) db.seasons = [];
         if (!Array.isArray(db.challenges)) db.challenges = [];
         if (!Array.isArray(db.tournaments)) db.tournaments = [];
-        if (!Array.isArray(db.reactions)) db.reactions = [];
         if (db.players.length === 0) seedData();
         console.log("✅ Database loaded from local disk");
       } else {
@@ -246,7 +242,6 @@ app.get('/api/state', authMiddleware, (req, res) => {
     seasons: db.seasons,
     challenges: db.challenges,
     tournaments: db.tournaments,
-    reactions: db.reactions,
   });
 });
 
@@ -1256,49 +1251,6 @@ app.put('/api/tournaments/:id/players', authMiddleware, adminMiddleware, async (
 
 app.delete('/api/tournaments/:id', authMiddleware, adminMiddleware, async (req, res) => {
   db.tournaments = db.tournaments.filter(t => t.id !== req.params.id);
-  await saveDB();
-  res.json({ success: true });
-});
-
-// --- Match Reactions ---
-app.post('/api/matches/:id/reactions', authMiddleware, async (req, res) => {
-  const match = db.matches.find(m => m.id === req.params.id);
-  if (!match) return res.status(404).json({ error: 'Match not found' });
-
-  const { type, content } = req.body;
-  if (!type || !content) return res.status(400).json({ error: 'type and content are required' });
-  if (type === 'comment' && content.length > 200) return res.status(400).json({ error: 'Comment too long (200 char max)' });
-
-  // For emoji reactions, toggle (remove if exists, add if not)
-  if (type === 'emoji') {
-    const existing = db.reactions.findIndex(r => r.matchId === req.params.id && r.userId === req.user.uid && r.type === 'emoji' && r.content === content);
-    if (existing !== -1) {
-      db.reactions.splice(existing, 1);
-      await saveDB();
-      return res.json({ removed: true });
-    }
-  }
-
-  const reaction = {
-    id: Date.now().toString(),
-    matchId: req.params.id,
-    userId: req.user.uid,
-    type,
-    content: content.substring(0, 200),
-    createdAt: new Date().toISOString(),
-  };
-  db.reactions.push(reaction);
-  await saveDB();
-  res.json(reaction);
-});
-
-app.delete('/api/matches/:id/reactions/:reactionId', authMiddleware, async (req, res) => {
-  const reaction = db.reactions.find(r => r.id === req.params.reactionId && r.matchId === req.params.id);
-  if (!reaction) return res.status(404).json({ error: 'Reaction not found' });
-  if (reaction.userId !== req.user.uid && !db.admins.includes(req.user.uid)) {
-    return res.status(403).json({ error: 'Can only remove your own reactions' });
-  }
-  db.reactions = db.reactions.filter(r => r.id !== req.params.reactionId);
   await saveDB();
   res.json({ success: true });
 });

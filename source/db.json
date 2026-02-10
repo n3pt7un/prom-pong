@@ -4,29 +4,61 @@
       "id": "1",
       "name": "Neo",
       "avatar": "https://picsum.photos/id/64/200/200",
-      "eloSingles": 1450,
+      "eloSingles": 1463,
       "eloDoubles": 1200,
-      "wins": 15,
+      "wins": 16,
       "losses": 2,
-      "streak": 5,
+      "streak": 6,
       "joinedAt": "2026-02-09T11:20:57.129Z",
-      "mainRacketId": "r1"
+      "mainRacketId": "r1",
+      "uid": "3ZnROijD2GXet3IrTP8kuIgeFsE3"
     },
     {
       "id": "2",
       "name": "Trinity",
       "avatar": "https://picsum.photos/id/65/200/200",
-      "eloSingles": 1380,
+      "eloSingles": 1367,
       "eloDoubles": 1250,
       "wins": 12,
-      "losses": 5,
-      "streak": 2,
+      "losses": 6,
+      "streak": -1,
       "joinedAt": "2026-02-09T11:20:57.131Z",
       "mainRacketId": "r2"
     }
   ],
-  "matches": [],
-  "history": [],
+  "matches": [
+    {
+      "id": "1770752460866",
+      "type": "singles",
+      "winners": [
+        "1"
+      ],
+      "losers": [
+        "2"
+      ],
+      "scoreWinner": 21,
+      "scoreLoser": 2,
+      "timestamp": "2026-02-10T19:41:00.865Z",
+      "eloChange": 13,
+      "loggedBy": "3ZnROijD2GXet3IrTP8kuIgeFsE3"
+    }
+  ],
+  "history": [
+    {
+      "playerId": "1",
+      "matchId": "2026-02-10T19:41:00.865Z",
+      "newElo": 1463,
+      "timestamp": "2026-02-10T19:41:00.865Z",
+      "gameType": "singles"
+    },
+    {
+      "playerId": "2",
+      "matchId": "2026-02-10T19:41:00.865Z",
+      "newElo": 1367,
+      "timestamp": "2026-02-10T19:41:00.865Z",
+      "gameType": "singles"
+    }
+  ],
   "rackets": [
     {
       "id": "r1",
@@ -72,5 +104,10 @@
     }
   ],
   "backups": [],
-  "admins": []
+  "admins": [],
+  "pendingMatches": [],
+  "seasons": [],
+  "challenges": [],
+  "tournaments": [],
+  "reactions": []
 }

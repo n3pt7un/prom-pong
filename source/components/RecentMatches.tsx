@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Match, Player } from '../types';
 import { Trash2, ChevronDown, Pencil, Check, X, ArrowLeftRight } from 'lucide-react';
-import MatchReactions from './MatchReactions';
 
 const timeAgo = (dateStr: string) => {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -223,7 +222,6 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
                   )}
                 </div>
               </div>
-              <MatchReactions matchId={match.id} currentUserId={currentUserUid} />
             </div>
           );
         })}
