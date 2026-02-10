@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Player, GameType } from '../types';
 import { Sparkles, Swords, ChevronDown, ChevronUp } from 'lucide-react';
+import { predictWinProbability, predictDoublesWinProbability, formatProbability } from '../utils/predictionUtils';
 
 interface MatchMakerProps {
   players: Player[];
@@ -137,6 +138,15 @@ const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch }) => {
                 const balancePercent = Math.max(0, 100 - s.gap);
                 const balanceColor = s.gap < 30 ? 'text-green-400' : s.gap < 80 ? 'text-yellow-400' : 'text-orange-400';
 
+                // Calculate win probabilities
+                const winProbTeam1 = type === 'singles'
+                  ? predictWinProbability(s.avgElo1, s.avgElo2)
+                  : predictDoublesWinProbability(
+                      s.team1.map(id => playerMap.get(id)?.eloDoubles ?? 1200),
+                      s.team2.map(id => playerMap.get(id)?.eloDoubles ?? 1200)
+                    );
+                const winProbTeam2 = 1 - winProbTeam1;
+
                 return (
                   <div
                     key={i}
@@ -149,6 +159,13 @@ const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch }) => {
                       <span className="text-[10px] font-mono text-gray-500">
                         Δ{Math.round(s.gap)} ELO
                       </span>
+                    </div>
+
+                    {/* Win Prediction */}
+                    <div className="flex items-center justify-center gap-1.5 mb-2 text-[10px] font-mono">
+                      <span className="text-cyber-cyan">{formatProbability(winProbTeam1)}</span>
+                      <span className="text-gray-600">|</span>
+                      <span className="text-cyber-pink">{formatProbability(winProbTeam2)}</span>
                     </div>
 
                     <div className="flex items-center gap-2">

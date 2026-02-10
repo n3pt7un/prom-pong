@@ -10,14 +10,28 @@ import MatchMaker from './components/MatchMaker';
 import PlayersHub from './components/PlayersHub';
 import LoginScreen from './components/LoginScreen';
 import ProfileSetup from './components/ProfileSetup';
+import PlayerOfTheWeek from './components/PlayerOfTheWeek';
+import WeeklyChallenges from './components/WeeklyChallenges';
+import PendingMatches from './components/PendingMatches';
+import HallOfFame from './components/HallOfFame';
+import AdvancedStats from './components/AdvancedStats';
+import ChallengeBoard from './components/ChallengeBoard';
+import TournamentBracket from './components/TournamentBracket';
+import SeasonManager from './components/SeasonManager';
 import {
   getLeagueData, recordMatch, createPlayer, createRacket, updateRacket, updatePlayer,
   deletePlayer, deleteRacket, resetLeagueData, deleteMatch,
-  exportLeagueData, importLeagueData, getMe, setupProfile, updateMyProfile
+  exportLeagueData, importLeagueData, getMe, setupProfile, updateMyProfile, claimPlayer,
+  editMatch,
+  confirmPendingMatch, disputePendingMatch, forceConfirmPendingMatch, rejectPendingMatch,
+  startSeason, endSeason,
+  createChallenge, respondToChallenge, completeChallenge, cancelChallenge,
+  createTournament, submitTournamentResult, deleteTournament,
+  createPendingMatch,
 } from './services/storageService';
 import { onAuthStateChanged, signOut } from './services/authService';
 import { LeagueState } from './services/storageService';
-import { Player, Match, GameType, EloHistoryEntry, Racket, RacketStats, AppUser } from './types';
+import { Player, Match, GameType, EloHistoryEntry, Racket, RacketStats, AppUser, PendingMatch as PendingMatchType, Season, Challenge, Tournament } from './types';
 import { WifiOff, CheckCircle, AlertCircle, X, Undo2, Loader2 } from 'lucide-react';
 
 // --- Toast System ---
@@ -39,9 +53,14 @@ function App() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [history, setHistory] = useState<EloHistoryEntry[]>([]);
   const [rackets, setRackets] = useState<Racket[]>([]);
+  const [pendingMatches, setPendingMatches] = useState<PendingMatchType[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [unclaimedPlayers, setUnclaimedPlayers] = useState<Player[]>([]);
 
   const isAdmin = currentUser?.isAdmin || false;
 
@@ -102,6 +121,9 @@ function App() {
       try {
         const me = await getMe();
         setCurrentUser(me);
+        if ((me as any).unclaimedPlayers) {
+          setUnclaimedPlayers((me as any).unclaimedPlayers);
+        }
       } catch (err) {
         console.error('Failed to fetch user profile:', err);
       }
@@ -118,6 +140,10 @@ function App() {
       setMatches(data.matches);
       setHistory(data.history);
       setRackets(data.rackets);
+      setPendingMatches(data.pendingMatches || []);
+      setSeasons(data.seasons || []);
+      setChallenges(data.challenges || []);
+      setTournaments(data.tournaments || []);
       setIsConnected(true);
     } catch (err) {
       console.error("Connection lost:", err);
@@ -139,10 +165,19 @@ function App() {
     setMatches([]);
     setHistory([]);
     setRackets([]);
+    setPendingMatches([]);
+    setSeasons([]);
+    setChallenges([]);
+    setTournaments([]);
   };
 
   const handleProfileSetup = async (name: string, avatar: string, bio: string) => {
     const result = await setupProfile(name, avatar, bio);
+    setCurrentUser(result);
+  };
+
+  const handleClaimPlayer = async (playerId: string) => {
+    const result = await claimPlayer(playerId);
     setCurrentUser(result);
   };
 
@@ -183,6 +218,16 @@ function App() {
       showToast('Match deleted & ELO reversed', 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to delete match', 'error');
+    }
+  };
+
+  const handleEditMatch = async (matchId: string, data: { winners: string[]; losers: string[]; scoreWinner: number; scoreLoser: number }) => {
+    try {
+      await editMatch(matchId, data);
+      refreshData();
+      showToast('Match updated & ELO recalculated', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to edit match', 'error');
     }
   };
 
@@ -297,6 +342,120 @@ function App() {
     }
   };
 
+  // --- Pending Match Handlers ---
+  const handleConfirmPending = async (matchId: string) => {
+    try {
+      await confirmPendingMatch(matchId);
+      refreshData();
+      showToast('Match confirmed!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to confirm', 'error');
+    }
+  };
+
+  const handleDisputePending = async (matchId: string) => {
+    try {
+      await disputePendingMatch(matchId);
+      refreshData();
+      showToast('Match disputed — admin will review', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to dispute', 'error');
+    }
+  };
+
+  const handleForceConfirmPending = async (matchId: string) => {
+    try {
+      await forceConfirmPendingMatch(matchId);
+      refreshData();
+      showToast('Match force-confirmed', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to force confirm', 'error');
+    }
+  };
+
+  const handleRejectPending = async (matchId: string) => {
+    try {
+      await rejectPendingMatch(matchId);
+      refreshData();
+      showToast('Pending match rejected', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to reject', 'error');
+    }
+  };
+
+  // --- Season Handlers ---
+  const handleStartSeason = async (name: string) => {
+    try {
+      await startSeason(name);
+      refreshData();
+      showToast('New season started!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to start season', 'error');
+    }
+  };
+
+  const handleEndSeason = async () => {
+    try {
+      await endSeason();
+      refreshData();
+      showToast('Season ended! Standings archived.', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to end season', 'error');
+    }
+  };
+
+  // --- Challenge Handlers ---
+  const handleCreateChallenge = async (challengedId: string, wager: number, message?: string) => {
+    try {
+      await createChallenge(challengedId, wager, message);
+      refreshData();
+      showToast('Challenge sent!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to send challenge', 'error');
+    }
+  };
+
+  const handleRespondChallenge = async (challengeId: string, accept: boolean) => {
+    try {
+      await respondToChallenge(challengeId, accept);
+      refreshData();
+      showToast(accept ? 'Challenge accepted!' : 'Challenge declined', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to respond', 'error');
+    }
+  };
+
+  // --- Tournament Handlers ---
+  const handleCreateTournament = async (name: string, format: Tournament['format'], gameType: GameType, playerIds: string[]) => {
+    try {
+      await createTournament(name, format, gameType, playerIds);
+      refreshData();
+      showToast('Tournament created!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to create tournament', 'error');
+    }
+  };
+
+  const handleSubmitTournamentResult = async (tournamentId: string, matchupId: string, winnerId: string, score1: number, score2: number) => {
+    try {
+      await submitTournamentResult(tournamentId, matchupId, winnerId, score1, score2);
+      refreshData();
+      showToast('Result submitted!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to submit result', 'error');
+    }
+  };
+
+  const handleDeleteTournament = async (tournamentId: string) => {
+    try {
+      await deleteTournament(tournamentId);
+      refreshData();
+      showToast('Tournament deleted', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete tournament', 'error');
+    }
+  };
+
   // --- Loading / Auth Gate ---
   if (authLoading) {
     return (
@@ -323,19 +482,50 @@ function App() {
         googleName={currentUser.displayName || firebaseUser.displayName || ''}
         googlePhoto={currentUser.photoURL || firebaseUser.photoURL || ''}
         onComplete={handleProfileSetup}
+        unclaimedPlayers={unclaimedPlayers}
+        onClaim={handleClaimPlayer}
       />
     );
   }
 
+  const currentSeason = seasons.find(s => s.status === 'active');
+
   const renderContent = () => {
     if (activeTab === 'leaderboard') {
       return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <Leaderboard players={players} matches={matches} onPlayerClick={handleLeaderboardPlayerClick} />
+        <div className="space-y-8">
+          {/* Player of the Week + Weekly Challenges row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PlayerOfTheWeek players={players} matches={matches} history={history} />
+            <WeeklyChallenges matches={matches} players={players} history={history} currentPlayerId={currentUser?.player?.id} />
           </div>
-          <div className="lg:col-span-1">
-             <RecentMatches matches={matches} players={players} onDeleteMatch={isAdmin ? handleDeleteMatch : undefined} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <Leaderboard players={players} matches={matches} onPlayerClick={handleLeaderboardPlayerClick} />
+            </div>
+            <div className="lg:col-span-1 space-y-6">
+              {pendingMatches.length > 0 && (
+                <PendingMatches
+                  pendingMatches={pendingMatches}
+                  players={players}
+                  currentUserUid={currentUser?.uid}
+                  isAdmin={isAdmin}
+                  onConfirm={handleConfirmPending}
+                  onDispute={handleDisputePending}
+                  onForceConfirm={isAdmin ? handleForceConfirmPending : undefined}
+                  onReject={isAdmin ? handleRejectPending : undefined}
+                />
+              )}
+              <RecentMatches
+                matches={matches}
+                players={players}
+                isAdmin={isAdmin}
+                currentUserUid={currentUser?.uid}
+                onDeleteMatch={handleDeleteMatch}
+                onEditMatch={handleEditMatch}
+              />
+            </div>
           </div>
         </div>
       );
@@ -344,7 +534,7 @@ function App() {
     if (activeTab === 'log') {
       if (players.length < 2) return <div className="text-center text-gray-500 mt-10">Add at least 2 players to log matches.</div>;
       return (
-        <div className="max-w-2xl mx-auto space-y-0">
+        <div className="max-w-2xl mx-auto space-y-6">
           <MatchMaker players={players} onSelectMatch={handleMatchmakerSelect} />
           <MatchLogger
             players={players}
@@ -358,21 +548,24 @@ function App() {
 
     if (activeTab === 'players') {
       return (
-        <PlayersHub
-          players={players}
-          matches={matches}
-          history={history}
-          rackets={rackets}
-          isAdmin={isAdmin}
-          currentUserId={currentUser?.player?.id}
-          initialSelectedId={selectedPlayerId}
-          onUpdateRacket={handleUpdatePlayerRacket}
-          onDeletePlayer={handleDeletePlayer}
-          onAddPlayer={() => setShowCreatePlayerModal(true)}
-          onNavigateToArmory={() => setActiveTab('armory')}
-          onUpdatePlayerName={handleUpdatePlayerName}
-          onClearInitialSelection={() => setSelectedPlayerId(null)}
-        />
+        <div className="space-y-8">
+          <PlayersHub
+            players={players}
+            matches={matches}
+            history={history}
+            rackets={rackets}
+            isAdmin={isAdmin}
+            currentUserId={currentUser?.player?.id}
+            initialSelectedId={selectedPlayerId}
+            onUpdateRacket={handleUpdatePlayerRacket}
+            onDeletePlayer={handleDeletePlayer}
+            onAddPlayer={() => setShowCreatePlayerModal(true)}
+            onNavigateToArmory={() => setActiveTab('armory')}
+            onUpdatePlayerName={handleUpdatePlayerName}
+            onClearInitialSelection={() => setSelectedPlayerId(null)}
+          />
+          <AdvancedStats players={players} matches={matches} history={history} />
+        </div>
       );
     }
 
@@ -380,22 +573,66 @@ function App() {
       return <RacketManager rackets={rackets} onCreateRacket={handleCreateRacket} onDeleteRacket={isAdmin ? handleDeleteRacket : undefined} onUpdateRacket={handleUpdateRacket} />
     }
 
+    if (activeTab === 'events') {
+      return (
+        <div className="space-y-8">
+          <TournamentBracket
+            tournaments={tournaments}
+            players={players}
+            isAdmin={isAdmin}
+            currentUserUid={currentUser?.uid}
+            onCreateTournament={handleCreateTournament}
+            onSubmitResult={handleSubmitTournamentResult}
+            onDeleteTournament={isAdmin ? handleDeleteTournament : undefined}
+          />
+          <ChallengeBoard
+            challenges={challenges}
+            players={players}
+            currentPlayerId={currentUser?.player?.id}
+            currentUserUid={currentUser?.uid}
+            onCreateChallenge={handleCreateChallenge}
+            onRespondChallenge={handleRespondChallenge}
+          />
+          <HallOfFame players={players} matches={matches} history={history} />
+        </div>
+      );
+    }
+
     if (activeTab === 'settings') {
-      return <Settings
-        isAdmin={isAdmin}
-        currentUser={currentUser}
-        onResetSeason={handleSeasonReset}
-        onFactoryReset={handleFactoryReset}
-        onStartFresh={handleStartFresh}
-        onExport={handleExport}
-        onImport={handleImport}
-        onUpdateProfile={handleUpdateProfile}
-      />;
+      return (
+        <div className="space-y-8">
+          <Settings
+            isAdmin={isAdmin}
+            currentUser={currentUser}
+            onResetSeason={handleSeasonReset}
+            onFactoryReset={handleFactoryReset}
+            onStartFresh={handleStartFresh}
+            onExport={handleExport}
+            onImport={handleImport}
+            onUpdateProfile={handleUpdateProfile}
+          />
+          <SeasonManager
+            seasons={seasons}
+            players={players}
+            currentSeason={currentSeason}
+            isAdmin={isAdmin}
+            onStartSeason={handleStartSeason}
+            onEndSeason={handleEndSeason}
+          />
+        </div>
+      );
     }
   };
 
   return (
-    <Layout activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onSignOut={handleSignOut}>
+    <Layout activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onSignOut={handleSignOut} pendingCount={pendingMatches.filter(pm => {
+      const involvedIds = [...pm.winners, ...pm.losers];
+      const myPlayer = players.find(p => p.uid === currentUser?.uid);
+      return myPlayer && involvedIds.includes(myPlayer.id) && !pm.confirmations.includes(currentUser?.uid || '');
+    }).length} challengeCount={challenges.filter(c => {
+      const myPlayer = players.find(p => p.uid === currentUser?.uid);
+      return myPlayer && c.challengedId === myPlayer.id && c.status === 'pending';
+    }).length}>
       {!isConnected && (
         <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-center text-xs py-1 z-[100] font-bold flex items-center justify-center gap-2">
            <WifiOff size={12} /> CONNECTION LOST - ATTEMPTING RECONNECT

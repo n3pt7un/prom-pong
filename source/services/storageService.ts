@@ -1,4 +1,4 @@
-import { Player, Match, EloHistoryEntry, GameType, Racket, RacketStats, AppUser } from '../types';
+import { Player, Match, EloHistoryEntry, GameType, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament, MatchReaction } from '../types';
 import { getIdToken } from './authService';
 
 export interface LeagueState {
@@ -6,6 +6,11 @@ export interface LeagueState {
   matches: Match[];
   history: EloHistoryEntry[];
   rackets: Racket[];
+  pendingMatches: PendingMatch[];
+  seasons: Season[];
+  challenges: Challenge[];
+  tournaments: Tournament[];
+  reactions: MatchReaction[];
 }
 
 export interface Backup {
@@ -53,6 +58,14 @@ export const setupProfile = async (name: string, avatar: string, bio: string): P
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, avatar, bio })
+  });
+};
+
+export const claimPlayer = async (playerId: string): Promise<AppUser> => {
+  return apiRequest(`${API_URL}/me/claim`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerId })
   });
 };
 
@@ -118,6 +131,14 @@ export const recordMatch = async (
   });
 };
 
+export const editMatch = async (matchId: string, data: { winners: string[]; losers: string[]; scoreWinner: number; scoreLoser: number }) => {
+  return apiRequest(`${API_URL}/matches/${matchId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+};
+
 export const deleteMatch = async (matchId: string) => {
   return apiRequest(`${API_URL}/matches/${matchId}`, { method: 'DELETE' });
 };
@@ -161,6 +182,121 @@ export const demoteUser = async (uid: string) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ uid })
   });
+};
+
+// --- Pending Matches (Match Confirmation) ---
+export const createPendingMatch = async (type: GameType, winnerIds: string[], loserIds: string[], scoreWinner: number, scoreLoser: number): Promise<PendingMatch> => {
+  return apiRequest(`${API_URL}/pending-matches`, {
+    method: 'POST',
+    body: JSON.stringify({ type, winners: winnerIds, losers: loserIds, scoreWinner, scoreLoser })
+  });
+};
+
+export const confirmPendingMatch = async (matchId: string) => {
+  return apiRequest(`${API_URL}/pending-matches/${matchId}/confirm`, { method: 'PUT' });
+};
+
+export const disputePendingMatch = async (matchId: string) => {
+  return apiRequest(`${API_URL}/pending-matches/${matchId}/dispute`, { method: 'PUT' });
+};
+
+export const forceConfirmPendingMatch = async (matchId: string) => {
+  return apiRequest(`${API_URL}/pending-matches/${matchId}/force-confirm`, { method: 'PUT' });
+};
+
+export const rejectPendingMatch = async (matchId: string) => {
+  return apiRequest(`${API_URL}/pending-matches/${matchId}`, { method: 'DELETE' });
+};
+
+// --- Seasons ---
+export const getSeasons = async (): Promise<Season[]> => {
+  return apiRequest(`${API_URL}/seasons`);
+};
+
+export const startSeason = async (name: string): Promise<Season> => {
+  return apiRequest(`${API_URL}/seasons/start`, {
+    method: 'POST',
+    body: JSON.stringify({ name })
+  });
+};
+
+export const endSeason = async (): Promise<Season> => {
+  return apiRequest(`${API_URL}/seasons/end`, { method: 'POST' });
+};
+
+// --- Challenges ---
+export const getChallenges = async (): Promise<Challenge[]> => {
+  return apiRequest(`${API_URL}/challenges`);
+};
+
+export const createChallenge = async (challengedId: string, wager: number, message?: string): Promise<Challenge> => {
+  return apiRequest(`${API_URL}/challenges`, {
+    method: 'POST',
+    body: JSON.stringify({ challengedId, wager, message })
+  });
+};
+
+export const respondToChallenge = async (challengeId: string, accept: boolean) => {
+  return apiRequest(`${API_URL}/challenges/${challengeId}/respond`, {
+    method: 'PUT',
+    body: JSON.stringify({ accept })
+  });
+};
+
+export const completeChallenge = async (challengeId: string, matchId: string) => {
+  return apiRequest(`${API_URL}/challenges/${challengeId}/complete`, {
+    method: 'PUT',
+    body: JSON.stringify({ matchId })
+  });
+};
+
+export const cancelChallenge = async (challengeId: string) => {
+  return apiRequest(`${API_URL}/challenges/${challengeId}`, { method: 'DELETE' });
+};
+
+// --- Tournaments ---
+export const getTournaments = async (): Promise<Tournament[]> => {
+  return apiRequest(`${API_URL}/tournaments`);
+};
+
+export const createTournament = async (name: string, format: Tournament['format'], gameType: GameType, playerIds: string[]): Promise<Tournament> => {
+  return apiRequest(`${API_URL}/tournaments`, {
+    method: 'POST',
+    body: JSON.stringify({ name, format, gameType, playerIds })
+  });
+};
+
+export const submitTournamentResult = async (tournamentId: string, matchupId: string, winnerId: string, score1: number, score2: number): Promise<Tournament> => {
+  return apiRequest(`${API_URL}/tournaments/${tournamentId}/result`, {
+    method: 'PUT',
+    body: JSON.stringify({ matchupId, winnerId, score1, score2 })
+  });
+};
+
+export const deleteTournament = async (tournamentId: string) => {
+  return apiRequest(`${API_URL}/tournaments/${tournamentId}`, { method: 'DELETE' });
+};
+
+// --- Match Reactions ---
+export const addMatchReaction = async (matchId: string, type: 'emoji' | 'comment', content: string) => {
+  return apiRequest(`${API_URL}/matches/${matchId}/reactions`, {
+    method: 'POST',
+    body: JSON.stringify({ type, content })
+  });
+};
+
+export const removeMatchReaction = async (matchId: string, reactionId: string) => {
+  return apiRequest(`${API_URL}/matches/${matchId}/reactions/${reactionId}`, { method: 'DELETE' });
+};
+
+// --- Player of the Week ---
+export const getPlayerOfWeek = async () => {
+  return apiRequest(`${API_URL}/player-of-week`);
+};
+
+// --- Hall of Fame ---
+export const getHallOfFame = async () => {
+  return apiRequest(`${API_URL}/hall-of-fame`);
 };
 
 // --- Client-Side Backup ---

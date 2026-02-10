@@ -35,3 +35,11 @@ export const calculateMatchDelta = (
   const newWinnerElo = calculateNewRating(winnerElo, 1, expectedWinner);
   return newWinnerElo - winnerElo;
 };
+
+/**
+ * Predicts the probability of player A winning against player B.
+ * Returns a value between 0 and 1.
+ */
+export const predictWinProbability = (eloA: number, eloB: number): number => {
+  return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+};

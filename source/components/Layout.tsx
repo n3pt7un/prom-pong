@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, PlusCircle, Users, Settings, Sword, LogOut, ShieldCheck } from 'lucide-react';
+import { Trophy, PlusCircle, Users, Settings, Sword, LogOut, ShieldCheck, Swords } from 'lucide-react';
 import { AppUser } from '../types';
 
 interface LayoutProps {
@@ -8,9 +8,13 @@ interface LayoutProps {
   onTabChange: (tab: string) => void;
   currentUser: AppUser | null;
   onSignOut: () => void;
+  pendingCount?: number;
+  challengeCount?: number;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, currentUser, onSignOut }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, currentUser, onSignOut, pendingCount = 0, challengeCount = 0 }) => {
+  const eventsBadge = pendingCount + challengeCount;
+
   return (
     <div className="min-h-screen bg-cyber-bg text-gray-200 font-sans selection:bg-cyber-cyan selection:text-black">
       {/* Background Ambience */}
@@ -46,6 +50,13 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, curre
               label="Players" 
               active={activeTab === 'players'} 
               onClick={() => onTabChange('players')} 
+            />
+            <NavButton 
+              icon={<Swords size={20} />} 
+              label="Events" 
+              active={activeTab === 'events'} 
+              onClick={() => onTabChange('events')}
+              badge={eventsBadge > 0 ? eventsBadge : undefined}
             />
              <NavButton 
               icon={<Sword size={20} />} 
@@ -105,10 +116,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, curre
   );
 };
 
-const NavButton = ({ icon, label, active, onClick }: any) => (
+const NavButton = ({ icon, label, active, onClick, badge }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void; badge?: number }) => (
   <button
     onClick={onClick}
-    className={`flex flex-col md:flex-row items-center gap-2 px-3 lg:px-4 py-2 rounded-lg transition-all duration-300 flex-shrink-0 ${
+    className={`relative flex flex-col md:flex-row items-center gap-2 px-3 lg:px-4 py-2 rounded-lg transition-all duration-300 flex-shrink-0 ${
       active 
         ? 'text-cyber-cyan bg-cyber-cyan/10 shadow-[0_0_15px_rgba(0,243,255,0.2)]' 
         : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -116,6 +127,11 @@ const NavButton = ({ icon, label, active, onClick }: any) => (
   >
     {icon}
     <span className="text-xs md:text-sm font-bold tracking-wide">{label}</span>
+    {badge !== undefined && badge > 0 && (
+      <span className="absolute -top-1 -right-1 bg-cyber-pink text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-neon-pink">
+        {badge > 9 ? '9+' : badge}
+      </span>
+    )}
   </button>
 );
 
