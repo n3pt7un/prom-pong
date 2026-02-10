@@ -16,6 +16,7 @@ COPY .env* ./
 COPY components ./components
 COPY services ./services
 COPY utils ./utils
+COPY lib ./lib
 COPY public ./public
 RUN npm run build
 
@@ -25,6 +26,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install --omit=dev
 COPY server.js ./
+COPY lib ./lib
 COPY --from=build /app/dist ./dist
 EXPOSE 8080
 CMD ["node", "server.js"]
