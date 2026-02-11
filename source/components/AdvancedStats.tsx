@@ -18,26 +18,44 @@ interface AdvancedStatsProps {
   players: Player[];
   matches: Match[];
   history: EloHistoryEntry[];
+  initialSelectedId?: string | null;
 }
 
-const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history }) => {
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
+const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history, initialSelectedId }) => {
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string>(initialSelectedId || '');
+  const [selectedGameType, setSelectedGameType] = useState<'singles' | 'doubles'>('singles');
+
+  // Sync with external selection (e.g., from PlayerProfile navigation)
+  React.useEffect(() => {
+    if (initialSelectedId) {
+      setSelectedPlayerId(initialSelectedId);
+    }
+  }, [initialSelectedId]);
 
   const selectedPlayer = useMemo(
     () => players.find(p => p.id === selectedPlayerId) ?? null,
     [players, selectedPlayerId]
   );
 
+  // Filter matches and history by selected game type
+  const filteredMatches = useMemo(() => {
+    return matches.filter(m => m.type === selectedGameType);
+  }, [matches, selectedGameType]);
+
+  const filteredHistory = useMemo(() => {
+    return history.filter(h => h.gameType === selectedGameType);
+  }, [history, selectedGameType]);
+
   // --- Computed Stats ---
 
   const rollingWinRate = useMemo(() => {
     if (!selectedPlayerId) return [];
-    return calculateRollingWinRate(matches, selectedPlayerId, 10);
-  }, [matches, selectedPlayerId]);
+    return calculateRollingWinRate(filteredMatches, selectedPlayerId, 10);
+  }, [filteredMatches, selectedPlayerId]);
 
   const winRateByOpponent = useMemo(() => {
     if (!selectedPlayerId) return [];
-    const raw = getWinRateByOpponent(matches, selectedPlayerId);
+    const raw = getWinRateByOpponent(filteredMatches, selectedPlayerId);
     const playerMap = new Map(players.map(p => [p.id, p.name]));
     return raw
       .filter(o => o.wins + o.losses >= 2)
@@ -46,16 +64,16 @@ const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history
         opponentName: playerMap.get(o.opponentId) || o.opponentId,
       }))
       .sort((a, b) => b.winRate - a.winRate);
-  }, [matches, selectedPlayerId, players]);
+  }, [filteredMatches, selectedPlayerId, players]);
 
   const dayOfWeekStats = useMemo(() => {
     if (!selectedPlayerId) return [];
-    return getDayOfWeekStats(matches, selectedPlayerId);
-  }, [matches, selectedPlayerId]);
+    return getDayOfWeekStats(filteredMatches, selectedPlayerId);
+  }, [filteredMatches, selectedPlayerId]);
 
   const scoreAnalysis = useMemo(() => {
     if (!selectedPlayerId) return null;
-    const analysis = getScoreAnalysis(matches, selectedPlayerId);
+    const analysis = getScoreAnalysis(filteredMatches, selectedPlayerId);
     const playerMap = new Map(players.map(p => [p.id, p.name]));
     return {
       ...analysis,
@@ -68,24 +86,24 @@ const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history
         opponent: playerMap.get(analysis.biggestBlowout.opponent) || analysis.biggestBlowout.opponent,
       },
     };
-  }, [matches, selectedPlayerId, players]);
+  }, [filteredMatches, selectedPlayerId, players]);
 
   const eloVolatility = useMemo(() => {
     if (!selectedPlayerId) return 0;
-    return getEloVolatility(history, selectedPlayerId, 20);
-  }, [history, selectedPlayerId]);
+    return getEloVolatility(filteredHistory, selectedPlayerId, 20);
+  }, [filteredHistory, selectedPlayerId]);
 
   const recentForm = useMemo(() => {
     if (!selectedPlayerId) return [];
-    return getRecentForm(matches, selectedPlayerId, 10);
-  }, [matches, selectedPlayerId]);
+    return getRecentForm(filteredMatches, selectedPlayerId, 10);
+  }, [filteredMatches, selectedPlayerId]);
 
   const playerMatchCount = useMemo(() => {
     if (!selectedPlayerId) return 0;
-    return matches.filter(
+    return filteredMatches.filter(
       m => m.winners.includes(selectedPlayerId) || m.losers.includes(selectedPlayerId)
     ).length;
-  }, [matches, selectedPlayerId]);
+  }, [filteredMatches, selectedPlayerId]);
 
   // --- Helper: bar color based on win rate ---
   const getBarColor = (winRate: number): string => {
@@ -125,6 +143,34 @@ const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history
         </select>
       </div>
 
+      {/* Game Type Toggle */}
+      {selectedPlayer && (
+        <div className="glass-panel rounded-xl border border-white/5 p-4">
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => setSelectedGameType('singles')}
+              className={`px-6 py-2 rounded-lg font-bold text-xs tracking-wider transition-all ${
+                selectedGameType === 'singles'
+                  ? 'bg-cyber-cyan text-black shadow-neon-cyan'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              SINGLES
+            </button>
+            <button
+              onClick={() => setSelectedGameType('doubles')}
+              className={`px-6 py-2 rounded-lg font-bold text-xs tracking-wider transition-all ${
+                selectedGameType === 'doubles'
+                  ? 'bg-cyber-pink text-black shadow-neon-pink'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              DOUBLES
+            </button>
+          </div>
+        </div>
+      )}
+
       {!selectedPlayer && (
         <div className="glass-panel rounded-xl border border-white/5 p-8 text-center">
           <Target size={48} className="text-gray-600 mx-auto mb-3" />
@@ -136,7 +182,7 @@ const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history
         <div className="glass-panel rounded-xl border border-white/5 p-8 text-center">
           <Activity size={48} className="text-gray-600 mx-auto mb-3" />
           <p className="text-gray-500 font-mono text-sm">
-            {selectedPlayer.name} needs at least 2 matches for stats analysis.
+            {selectedPlayer.name} needs at least 2 {selectedGameType} matches for stats analysis.
           </p>
         </div>
       )}
@@ -148,7 +194,7 @@ const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history
             <div className="flex items-center gap-2 mb-3">
               <Activity size={16} className="text-cyber-pink" />
               <h3 className="font-display text-sm text-white tracking-wider">RECENT FORM</h3>
-              <span className="text-[10px] font-mono text-gray-500 ml-auto">Last {recentForm.length} matches</span>
+              <span className="text-[10px] font-mono text-gray-500 ml-auto">Last {recentForm.length} {selectedGameType} matches</span>
             </div>
             <div className="flex items-center gap-1.5">
               {recentForm.map((result, i) => (
@@ -179,7 +225,7 @@ const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history
               </div>
               {winRateByOpponent.length === 0 ? (
                 <p className="text-gray-500 font-mono text-xs text-center py-8">
-                  Need 2+ matches against an opponent
+                  Need 2+ {selectedGameType} matches against an opponent
                 </p>
               ) : (
                 <ResponsiveContainer width="100%" height={Math.max(200, winRateByOpponent.length * 40)}>
@@ -208,7 +254,7 @@ const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history
                 <h3 className="font-display text-sm text-white tracking-wider">PERFORMANCE TREND</h3>
               </div>
               {rollingWinRate.length === 0 ? (
-                <p className="text-gray-500 font-mono text-xs text-center py-8">Not enough matches</p>
+                <p className="text-gray-500 font-mono text-xs text-center py-8">Not enough {selectedGameType} matches</p>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={rollingWinRate} margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
@@ -312,7 +358,7 @@ const AdvancedStats: React.FC<AdvancedStatsProps> = ({ players, matches, history
             <div className="flex items-center gap-2 mb-3">
               <Zap size={16} className="text-cyber-purple" />
               <h3 className="font-display text-sm text-white tracking-wider">ELO VOLATILITY</h3>
-              <span className="text-[10px] font-mono text-gray-500 ml-auto">Last 20 matches</span>
+              <span className="text-[10px] font-mono text-gray-500 ml-auto">Last 20 {selectedGameType} matches</span>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex-1">

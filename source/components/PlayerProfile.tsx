@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Player, EloHistoryEntry, Racket, Match } from '../types';
+import { Player, EloHistoryEntry, Racket, Match, GameType } from '../types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { RACKET_ICONS, formatRacketStats } from './RacketManager';
 import { Zap, TrendingUp, TrendingDown, Calendar, Sword, AlertTriangle, Pencil, Check, X } from 'lucide-react';
 import { getPlayerAchievements } from '../achievements';
+import { getStatsForGameType } from '../utils/gameTypeStats';
 
 interface PlayerProfileProps {
   player: Player;
@@ -21,17 +22,21 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
   player, history, matches, rackets, onUpdateRacket,
   isAdmin, currentUserId, onNavigateToArmory, onUpdatePlayerName,
 }) => {
+  const [selectedGameType, setSelectedGameType] = useState<GameType>('singles');
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(player.name);
   const [showEquipDropdown, setShowEquipDropdown] = useState(false);
   const selectRef = useRef<HTMLSelectElement>(null);
 
   const playerHistory = history
-    .filter(h => h.playerId === player.id)
+    .filter(h => h.playerId === player.id && h.gameType === selectedGameType)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   const playerMatches = matches
-    .filter(m => m.winners.includes(player.id) || m.losers.includes(player.id))
+    .filter(m => 
+      (m.winners.includes(player.id) || m.losers.includes(player.id)) &&
+      m.type === selectedGameType
+    )
     .slice(0, 5);
 
   const chartData = playerHistory.map((h, i) => ({
@@ -48,8 +53,8 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
   const currentRacket = rackets.find(r => r.id === player.mainRacketId);
   const RacketIcon = currentRacket ? (RACKET_ICONS[currentRacket.icon] || Zap) : Zap;
 
-  const totalGames = player.wins + player.losses;
-  const winRate = totalGames > 0 ? Math.round((player.wins / totalGames) * 100) : 0;
+  const stats = getStatsForGameType(player, selectedGameType);
+  const { totalGames, winRate, wins, losses, streak } = stats;
 
   const achievements = getPlayerAchievements(player, matches);
 
@@ -221,12 +226,34 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
         </div>
       )}
 
+      {/* Game Type Toggle */}
+      <div className="flex justify-center">
+        <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
+          <button
+            onClick={() => setSelectedGameType('singles')}
+            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
+              selectedGameType === 'singles' ? 'bg-cyber-cyan text-black shadow-neon-cyan' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            SINGLES
+          </button>
+          <button
+            onClick={() => setSelectedGameType('doubles')}
+            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
+              selectedGameType === 'doubles' ? 'bg-cyber-pink text-black shadow-neon-pink' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            DOUBLES
+          </button>
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
          <StatCard label="Matches" value={totalGames} color="text-white" icon={<Calendar size={16} />} />
          <StatCard label="Win Rate" value={`${winRate}%`} color="text-cyber-yellow" />
-         <StatCard label="Record" value={`${player.wins}W - ${player.losses}L`} color="text-cyber-cyan" />
-         <StatCard label="Streak" value={Math.abs(player.streak)} color={player.streak >= 0 ? 'text-green-400' : 'text-red-400'} icon={player.streak >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />} />
+         <StatCard label="Record" value={`${wins}W - ${losses}L`} color="text-cyber-cyan" />
+         <StatCard label="Streak" value={Math.abs(streak)} color={streak >= 0 ? 'text-green-400' : 'text-red-400'} icon={streak >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -286,7 +313,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
                         </div>
                     )
                 }) : (
-                    <div className="text-xs text-gray-600 italic">No matches played yet.</div>
+                    <div className="text-xs text-gray-600 italic">No matches played</div>
                 )}
             </div>
         </div>

@@ -3,6 +3,7 @@ import { Player, Match, GameType, League } from '../types';
 import RankBadge from './RankBadge';
 import { TrendingUp, TrendingDown, Minus, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { RANKS } from '../constants';
+import { getPlayerStats } from '../utils/gameTypeStats';
 
 interface LeaderboardProps {
   players: Player[];
@@ -30,10 +31,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
   });
 
   // Find last ELO delta for each player from the most recent match they were in
-  const getLastDelta = (playerId: string): number | null => {
-    const sortedMatches = [...matches].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+  const getLastDelta = (playerId: string, gameType: GameType): number | null => {
+    const sortedMatches = [...matches]
+      .filter(m => m.type === gameType)
+      .sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
     const lastMatch = sortedMatches.find(
       m => m.winners.includes(playerId) || m.losers.includes(playerId)
     );
@@ -174,7 +177,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
             <tbody className="divide-y divide-white/5">
               {sortedPlayers.map((player, index) => {
                 const elo = type === 'singles' ? player.eloSingles : player.eloDoubles;
-                const delta = getLastDelta(player.id);
+                const delta = getLastDelta(player.id, type);
+                const stats = getPlayerStats(player, type);
                 return (
                   <tr key={player.id} className={`hover:bg-white/5 transition-colors group ${onPlayerClick ? 'cursor-pointer' : ''}`} onClick={() => onPlayerClick?.(player.id)}>
                     <td className="p-4 text-center font-mono text-gray-500 font-bold text-lg group-hover:text-cyber-cyan">
@@ -214,17 +218,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
                       )}
                     </td>
                     <td className="p-4 text-center hidden md:table-cell text-sm text-gray-400 font-mono">
-                      <span className="text-green-400">{player.wins}</span> - <span className="text-red-400">{player.losses}</span>
+                      <span className="text-green-400">{stats.wins}</span> - <span className="text-red-400">{stats.losses}</span>
                     </td>
                     <td className="p-4 text-center hidden sm:table-cell">
                       <div className="flex items-center justify-center gap-1 font-mono text-xs font-bold">
-                        {player.streak > 0 ? (
+                        {stats.streak > 0 ? (
                           <span className="flex items-center text-green-400">
-                            <TrendingUp size={14} className="mr-1" /> {player.streak}W
+                            <TrendingUp size={14} className="mr-1" /> {stats.streak}W
                           </span>
-                        ) : player.streak < 0 ? (
+                        ) : stats.streak < 0 ? (
                           <span className="flex items-center text-red-400">
-                            <TrendingDown size={14} className="mr-1" /> {Math.abs(player.streak)}L
+                            <TrendingDown size={14} className="mr-1" /> {Math.abs(stats.streak)}L
                           </span>
                         ) : (
                           <span className="flex items-center text-gray-500">
