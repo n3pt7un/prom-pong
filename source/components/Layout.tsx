@@ -1,6 +1,6 @@
 import React from 'react';
-import { Trophy, PlusCircle, Users, Settings, Sword, LogOut, ShieldCheck, Swords } from 'lucide-react';
-import { AppUser } from '../types';
+import { Trophy, PlusCircle, Users, Settings, Sword, LogOut, ShieldCheck, Swords, Building2 } from 'lucide-react';
+import { AppUser, League } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,9 +10,12 @@ interface LayoutProps {
   onSignOut: () => void;
   pendingCount?: number;
   challengeCount?: number;
+  leagues?: League[];
+  activeLeagueId?: string | null;
+  onLeagueChange?: (leagueId: string | null) => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, currentUser, onSignOut, pendingCount = 0, challengeCount = 0 }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, currentUser, onSignOut, pendingCount = 0, challengeCount = 0, leagues = [], activeLeagueId, onLeagueChange }) => {
   const eventsBadge = pendingCount + challengeCount;
 
   return (
@@ -31,6 +34,23 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, curre
               CYBER<span className="text-cyber-cyan">PONG</span>
             </span>
           </div>
+
+          {/* League Selector - Desktop */}
+          {leagues.length > 0 && onLeagueChange && (
+            <div className="hidden md:flex items-center gap-2">
+              <Building2 size={14} className="text-gray-500" />
+              <select
+                value={activeLeagueId || ''}
+                onChange={e => onLeagueChange(e.target.value || null)}
+                className="bg-black/50 border border-white/10 text-gray-300 text-xs p-1.5 rounded-lg font-mono focus:border-cyber-cyan outline-none cursor-pointer hover:border-white/30 transition-colors"
+              >
+                <option value="">🌐 Global</option>
+                {leagues.map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex w-full md:w-auto justify-around md:gap-4 lg:gap-8 overflow-x-auto">
             <NavButton 
@@ -109,7 +129,24 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, curre
         </div>
       </nav>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-4 pb-24 pt-8 md:pt-24 md:pb-12">
+      {/* League Selector - Mobile (above content) */}
+      {leagues.length > 0 && onLeagueChange && (
+        <div className="md:hidden fixed top-0 left-0 right-0 z-40 glass-panel border-b border-white/10 px-4 py-2 flex items-center justify-center gap-2">
+          <Building2 size={14} className="text-gray-500" />
+          <select
+            value={activeLeagueId || ''}
+            onChange={e => onLeagueChange(e.target.value || null)}
+            className="bg-black/50 border border-white/10 text-gray-300 text-xs p-1.5 rounded-lg font-mono focus:border-cyber-cyan outline-none flex-1 max-w-[200px]"
+          >
+            <option value="">🌐 Global</option>
+            {leagues.map(l => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <main className={`relative z-10 max-w-7xl mx-auto px-4 pb-24 md:pb-12 ${leagues.length > 0 ? 'pt-14 md:pt-24' : 'pt-8 md:pt-24'}`}>
         {children}
       </main>
     </div>

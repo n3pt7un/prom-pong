@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Player, Match, EloHistoryEntry, Racket } from '../types';
+import { Player, Match, EloHistoryEntry, Racket, League } from '../types';
 import PlayerProfile from './PlayerProfile';
 import RankBadge from './RankBadge';
 import {
@@ -22,12 +22,15 @@ interface PlayersHubProps {
   onNavigateToArmory: () => void;
   onUpdatePlayerName: (playerId: string, newName: string) => void;
   onClearInitialSelection?: () => void;
+  activeLeagueId?: string | null;
+  leagues?: League[];
 }
 
 const PlayersHub: React.FC<PlayersHubProps> = ({
   players, matches, history, rackets, isAdmin, currentUserId,
   initialSelectedId, onUpdateRacket, onDeletePlayer, onAddPlayer,
   onNavigateToArmory, onUpdatePlayerName, onClearInitialSelection,
+  activeLeagueId, leagues = [],
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId || null);
   const [secondaryId, setSecondaryId] = useState<string>('');
@@ -133,6 +136,11 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
     </div>
   );
 
+  // Filter players by active league
+  const filteredPlayers = activeLeagueId
+    ? players.filter(p => p.leagueId === activeLeagueId)
+    : players;
+
   // ===== GRID VIEW =====
   if (!selectedId) {
     return (
@@ -143,6 +151,14 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
             <h2 className="text-3xl font-display font-bold text-white neon-text-cyan">
               ROSTER
             </h2>
+            {activeLeagueId && (() => {
+              const league = leagues.find(l => l.id === activeLeagueId);
+              return league ? (
+                <span className="text-xs font-mono font-bold text-cyber-purple bg-cyber-purple/10 border border-cyber-purple/30 px-2 py-1 rounded-full">
+                  {league.name}
+                </span>
+              ) : null;
+            })()}
           </div>
           <button
             onClick={onAddPlayer}
@@ -152,13 +168,13 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
           </button>
         </div>
 
-        {players.length === 0 ? (
+        {filteredPlayers.length === 0 ? (
           <div className="text-center py-10 border border-dashed border-white/10 rounded-xl text-gray-500">
-            No agents found. Initialize new player to begin.
+            {activeLeagueId ? 'No players in this league yet.' : 'No agents found. Initialize new player to begin.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[...players].sort((a, b) => b.eloSingles - a.eloSingles).map(player => {
+            {[...filteredPlayers].sort((a, b) => b.eloSingles - a.eloSingles).map(player => {
               const totalGames = player.wins + player.losses;
               const winRate = totalGames > 0 ? Math.round((player.wins / totalGames) * 100) : 0;
               const isEditingThis = editingNameId === player.id;
@@ -232,6 +248,16 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                         {player.name}
                       </span>
                     )}
+
+                    {/* League Badge */}
+                    {!activeLeagueId && player.leagueId && (() => {
+                      const league = leagues.find(l => l.id === player.leagueId);
+                      return league ? (
+                        <span className="text-[9px] font-mono font-bold text-cyber-purple bg-cyber-purple/10 border border-cyber-purple/30 px-1.5 py-0.5 rounded-full">
+                          {league.name}
+                        </span>
+                      ) : null;
+                    })()}
 
                     {/* Rank Badge */}
                     <RankBadge elo={player.eloSingles} />

@@ -1,4 +1,4 @@
-import { Player, Match, EloHistoryEntry, GameType, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament } from '../types';
+import { Player, Match, EloHistoryEntry, GameType, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament, League } from '../types';
 import { getIdToken } from './authService';
 
 export interface LeagueState {
@@ -10,6 +10,7 @@ export interface LeagueState {
   seasons: Season[];
   challenges: Challenge[];
   tournaments: Tournament[];
+  leagues: League[];
 }
 
 export interface Backup {
@@ -121,12 +122,14 @@ export const recordMatch = async (
   winnerIds: string[],
   loserIds: string[],
   scoreWinner: number,
-  scoreLoser: number
+  scoreLoser: number,
+  isFriendly: boolean = false,
+  leagueId?: string
 ) => {
   return apiRequest(`${API_URL}/matches`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type, winners: winnerIds, losers: loserIds, scoreWinner, scoreLoser })
+    body: JSON.stringify({ type, winners: winnerIds, losers: loserIds, scoreWinner, scoreLoser, isFriendly, leagueId })
   });
 };
 
@@ -181,6 +184,10 @@ export const demoteUser = async (uid: string) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ uid })
   });
+};
+
+export const recalculateStats = async () => {
+  return apiRequest(`${API_URL}/admin/recalculate-stats`, { method: 'POST' });
 };
 
 // --- Pending Matches (Match Confirmation) ---
@@ -284,6 +291,36 @@ export const getPlayerOfWeek = async () => {
 // --- Hall of Fame ---
 export const getHallOfFame = async () => {
   return apiRequest(`${API_URL}/hall-of-fame`);
+};
+
+// --- Leagues ---
+export const getLeagues = async (): Promise<League[]> => {
+  return apiRequest(`${API_URL}/leagues`);
+};
+
+export const createLeague = async (name: string, description?: string): Promise<League> => {
+  return apiRequest(`${API_URL}/leagues`, {
+    method: 'POST',
+    body: JSON.stringify({ name, description })
+  });
+};
+
+export const updateLeague = async (leagueId: string, updates: { name?: string; description?: string }): Promise<League> => {
+  return apiRequest(`${API_URL}/leagues/${leagueId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates)
+  });
+};
+
+export const deleteLeague = async (leagueId: string) => {
+  return apiRequest(`${API_URL}/leagues/${leagueId}`, { method: 'DELETE' });
+};
+
+export const assignPlayerLeague = async (playerId: string, leagueId: string | null) => {
+  return apiRequest(`${API_URL}/players/${playerId}/league`, {
+    method: 'PUT',
+    body: JSON.stringify({ leagueId })
+  });
 };
 
 // --- Client-Side Backup ---

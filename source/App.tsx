@@ -18,6 +18,7 @@ import AdvancedStats from './components/AdvancedStats';
 import ChallengeBoard from './components/ChallengeBoard';
 import TournamentBracket from './components/TournamentBracket';
 import SeasonManager from './components/SeasonManager';
+import LeagueManager from './components/LeagueManager';
 import {
   getLeagueData, recordMatch, createPlayer, createRacket, updateRacket, updatePlayer,
   deletePlayer, deleteRacket, resetLeagueData, deleteMatch,
@@ -28,10 +29,14 @@ import {
   createChallenge, respondToChallenge, completeChallenge, cancelChallenge,
   createTournament, submitTournamentResult, deleteTournament,
   createPendingMatch,
+  createLeague as apiCreateLeague,
+  updateLeague as apiUpdateLeague,
+  deleteLeague as apiDeleteLeague,
+  assignPlayerLeague as apiAssignPlayerLeague,
 } from './services/storageService';
 import { onAuthStateChanged, signOut } from './services/authService';
 import { LeagueState } from './services/storageService';
-import { Player, Match, GameType, EloHistoryEntry, Racket, RacketStats, AppUser, PendingMatch as PendingMatchType, Season, Challenge, Tournament } from './types';
+import { Player, Match, GameType, EloHistoryEntry, Racket, RacketStats, AppUser, PendingMatch as PendingMatchType, Season, Challenge, Tournament, League } from './types';
 import { WifiOff, CheckCircle, AlertCircle, X, Undo2, Loader2 } from 'lucide-react';
 
 // --- Toast System ---
@@ -57,6 +62,8 @@ function App() {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [leagues, setLeagues] = useState<League[]>([]);
+  const [activeLeagueId, setActiveLeagueId] = useState<string | null>(null);
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -144,6 +151,7 @@ function App() {
       setSeasons(data.seasons || []);
       setChallenges(data.challenges || []);
       setTournaments(data.tournaments || []);
+      setLeagues(data.leagues || []);
       setIsConnected(true);
     } catch (err) {
       console.error("Connection lost:", err);
@@ -169,6 +177,8 @@ function App() {
     setSeasons([]);
     setChallenges([]);
     setTournaments([]);
+    setLeagues([]);
+    setActiveLeagueId(null);
   };
 
   const handleProfileSetup = async (name: string, avatar: string, bio: string) => {
@@ -189,9 +199,9 @@ function App() {
     refreshData();
   };
 
-  const handleMatchSubmit = async (type: GameType, winners: string[], losers: string[], scoreW: number, scoreL: number) => {
+  const handleMatchSubmit = async (type: GameType, winners: string[], losers: string[], scoreW: number, scoreL: number, isFriendly: boolean = false, leagueId?: string) => {
     try {
-      const result = await recordMatch(type, winners, losers, scoreW, scoreL);
+      const result = await recordMatch(type, winners, losers, scoreW, scoreL, isFriendly, leagueId || activeLeagueId);
       refreshData();
       setActiveTab('leaderboard');
       showToast('Match logged!', 'success', {
@@ -456,6 +466,47 @@ function App() {
     }
   };
 
+  // --- League Handlers ---
+  const handleCreateLeague = async (name: string, description?: string) => {
+    try {
+      await apiCreateLeague(name, description);
+      refreshData();
+      showToast(`League "${name}" created!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to create league', 'error');
+    }
+  };
+
+  const handleUpdateLeague = async (id: string, updates: { name?: string; description?: string }) => {
+    try {
+      await apiUpdateLeague(id, updates);
+      refreshData();
+      showToast('League updated', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update league', 'error');
+    }
+  };
+
+  const handleDeleteLeague = async (id: string) => {
+    try {
+      await apiDeleteLeague(id);
+      if (activeLeagueId === id) setActiveLeagueId(null);
+      refreshData();
+      showToast('League deleted', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete league', 'error');
+    }
+  };
+
+  const handleAssignPlayerLeague = async (playerId: string, leagueId: string | null) => {
+    try {
+      await apiAssignPlayerLeague(playerId, leagueId);
+      refreshData();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to assign league', 'error');
+    }
+  };
+
   // --- Loading / Auth Gate ---
   if (authLoading) {
     return (
@@ -502,7 +553,7 @@ function App() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <Leaderboard players={players} matches={matches} onPlayerClick={handleLeaderboardPlayerClick} />
+              <Leaderboard players={players} matches={matches} onPlayerClick={handleLeaderboardPlayerClick} activeLeagueId={activeLeagueId} leagues={leagues} />
             </div>
             <div className="lg:col-span-1 space-y-6">
               {pendingMatches.length > 0 && (
@@ -535,12 +586,16 @@ function App() {
       if (players.length < 2) return <div className="text-center text-gray-500 mt-10">Add at least 2 players to log matches.</div>;
       return (
         <div className="max-w-2xl mx-auto space-y-6">
-          <MatchMaker players={players} onSelectMatch={handleMatchmakerSelect} />
+          <MatchMaker players={players} onSelectMatch={handleMatchmakerSelect} activeLeagueId={activeLeagueId} />
           <MatchLogger
             players={players}
             onSubmit={handleMatchSubmit}
             prefill={matchPrefill}
             onPrefillConsumed={() => setMatchPrefill(null)}
+            currentPlayerId={currentUser?.player?.id}
+            isAdmin={isAdmin}
+            activeLeagueId={activeLeagueId}
+            leagues={leagues}
           />
         </div>
       );
@@ -563,6 +618,8 @@ function App() {
             onNavigateToArmory={() => setActiveTab('armory')}
             onUpdatePlayerName={handleUpdatePlayerName}
             onClearInitialSelection={() => setSelectedPlayerId(null)}
+            activeLeagueId={activeLeagueId}
+            leagues={leagues}
           />
           <AdvancedStats players={players} matches={matches} history={history} />
         </div>
@@ -610,6 +667,19 @@ function App() {
             onExport={handleExport}
             onImport={handleImport}
             onUpdateProfile={handleUpdateProfile}
+            players={players}
+            matches={matches}
+            leagues={leagues}
+            onRefreshData={refreshData}
+          />
+          <LeagueManager
+            leagues={leagues}
+            players={players}
+            isAdmin={isAdmin}
+            onCreateLeague={handleCreateLeague}
+            onUpdateLeague={handleUpdateLeague}
+            onDeleteLeague={handleDeleteLeague}
+            onAssignPlayer={handleAssignPlayerLeague}
           />
           <SeasonManager
             seasons={seasons}
@@ -625,7 +695,7 @@ function App() {
   };
 
   return (
-    <Layout activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onSignOut={handleSignOut} pendingCount={pendingMatches.filter(pm => {
+    <Layout activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onSignOut={handleSignOut} leagues={leagues} activeLeagueId={activeLeagueId} onLeagueChange={setActiveLeagueId} pendingCount={pendingMatches.filter(pm => {
       const involvedIds = [...pm.winners, ...pm.losers];
       const myPlayer = players.find(p => p.uid === currentUser?.uid);
       return myPlayer && involvedIds.includes(myPlayer.id) && !pm.confirmations.includes(currentUser?.uid || '');

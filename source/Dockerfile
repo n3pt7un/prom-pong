@@ -12,7 +12,8 @@ COPY achievements.ts ./
 COPY firebaseConfig.ts ./
 COPY vite.config.ts ./
 COPY tsconfig.json ./
-COPY .env* ./
+# Copy .env files if they exist (package.json is included to guarantee the glob never fails)
+COPY package.json .env* ./
 COPY components ./components
 COPY services ./services
 COPY utils ./utils

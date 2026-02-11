@@ -199,9 +199,15 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="inline-block bg-cyber-cyan/10 text-cyber-cyan text-xs font-mono font-bold px-2 py-1 rounded border border-cyber-cyan/30">
-                    +{match.eloChange}
-                  </span>
+                  {match.isFriendly ? (
+                    <span className="inline-block bg-amber-500/10 text-amber-300 text-xs font-mono font-bold px-2 py-1 rounded border border-amber-500/30">
+                      FRIENDLY
+                    </span>
+                  ) : (
+                    <span className="inline-block bg-cyber-cyan/10 text-cyber-cyan text-xs font-mono font-bold px-2 py-1 rounded border border-cyber-cyan/30">
+                      +{match.eloChange}
+                    </span>
+                  )}
                   {showActions && onEditMatch && (
                     <button
                       onClick={() => startEdit(match)}

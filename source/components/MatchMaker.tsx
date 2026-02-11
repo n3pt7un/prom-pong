@@ -6,6 +6,7 @@ import { predictWinProbability, predictDoublesWinProbability, formatProbability 
 interface MatchMakerProps {
   players: Player[];
   onSelectMatch: (type: GameType, team1: string[], team2: string[]) => void;
+  activeLeagueId?: string | null;
 }
 
 interface Suggestion {
@@ -19,13 +20,18 @@ interface Suggestion {
 const MAX_SINGLES_SUGGESTIONS = 8;
 const MAX_DOUBLES_SUGGESTIONS = 8;
 
-const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch }) => {
+const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch, activeLeagueId }) => {
   const [expanded, setExpanded] = useState(false);
   const [type, setType] = useState<GameType>('singles');
 
+  // Filter players by league when active
+  const filteredPlayers = useMemo(() => {
+    return activeLeagueId ? players.filter(p => p.leagueId === activeLeagueId) : players;
+  }, [players, activeLeagueId]);
+
   const singlesSuggestions = useMemo((): Suggestion[] => {
-    if (players.length < 2) return [];
-    const sorted = [...players].sort((a, b) => a.eloSingles - b.eloSingles);
+    if (filteredPlayers.length < 2) return [];
+    const sorted = [...filteredPlayers].sort((a, b) => a.eloSingles - b.eloSingles);
     const pairs: Suggestion[] = [];
 
     // Generate all pairs, sorted by ELO gap (smallest first)
@@ -44,15 +50,15 @@ const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch }) => {
 
     pairs.sort((a, b) => a.gap - b.gap);
     return pairs.slice(0, MAX_SINGLES_SUGGESTIONS);
-  }, [players]);
+  }, [filteredPlayers]);
 
   const doublesSuggestions = useMemo((): Suggestion[] => {
-    if (players.length < 4) return [];
+    if (filteredPlayers.length < 4) return [];
 
     // Generate all unique 2v2 combinations
     const combos: Suggestion[] = [];
-    const ids = players.map(p => p.id);
-    const eloMap = new Map(players.map(p => [p.id, p.eloDoubles]));
+    const ids = filteredPlayers.map(p => p.id);
+    const eloMap = new Map(filteredPlayers.map(p => [p.id, p.eloDoubles]));
 
     for (let a = 0; a < ids.length; a++) {
       for (let b = a + 1; b < ids.length; b++) {
@@ -83,13 +89,13 @@ const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch }) => {
 
     combos.sort((a, b) => a.gap - b.gap);
     return combos.slice(0, MAX_DOUBLES_SUGGESTIONS);
-  }, [players]);
+  }, [filteredPlayers]);
 
   const suggestions = type === 'singles' ? singlesSuggestions : doublesSuggestions;
   const playerMap = useMemo(() => new Map(players.map(p => [p.id, p])), [players]);
 
   const minPlayers = type === 'singles' ? 2 : 4;
-  const hasEnough = players.length >= minPlayers;
+  const hasEnough = filteredPlayers.length >= minPlayers;
 
   return (
     <div className="glass-panel rounded-xl border border-white/5 mb-6 overflow-hidden">

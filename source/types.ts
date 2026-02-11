@@ -25,12 +25,22 @@ export interface Player {
   bio?: string;
   eloSingles: number;
   eloDoubles: number;
-  wins: number;
-  losses: number;
-  streak: number;
+  // Singles stats
+  winsSingles: number;
+  lossesSingles: number;
+  streakSingles: number;
+  // Doubles stats  
+  winsDoubles: number;
+  lossesDoubles: number;
+  streakDoubles: number;
+  // Legacy combined stats (backward compatibility)
+  wins?: number;
+  losses?: number;
+  streak?: number;
   joinedAt: string;
   mainRacketId?: string;
   uid?: string; // Firebase UID — links player to a logged-in user
+  leagueId?: string; // League/group the player belongs to
 }
 
 export interface Match {
@@ -43,6 +53,8 @@ export interface Match {
   timestamp: string;
   eloChange: number; // How much the winners gained (and losers lost)
   loggedBy?: string; // Firebase UID of the user who logged the match
+  isFriendly?: boolean; // Friendly matches skip ELO but still count in stats
+  leagueId?: string; // League context the match was played in (null = global/cross-league)
 }
 
 export interface EloHistoryEntry {
@@ -85,6 +97,7 @@ export interface PendingMatch {
   confirmations: string[]; // UIDs who confirmed
   createdAt: string;
   expiresAt: string; // auto-confirm deadline (24h)
+  isFriendly?: boolean; // Friendly matches skip ELO but still count in stats
 }
 
 // --- Seasons ---
@@ -150,6 +163,15 @@ export interface Tournament {
   createdAt: string;
   completedAt?: string;
   winnerId?: string;
+}
+
+// --- Leagues ---
+export interface League {
+  id: string;
+  name: string;
+  description?: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 // --- Weekly Challenges ---

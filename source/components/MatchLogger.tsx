@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Player, GameType } from '../types';
-import { Swords, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Player, GameType, League } from '../types';
+import { Swords, AlertCircle, Loader2, Globe, Search } from 'lucide-react';
 
 interface MatchLoggerProps {
   players: Player[];
-  onSubmit: (type: GameType, winners: string[], losers: string[], scoreW: number, scoreL: number) => void;
+  onSubmit: (type: GameType, winners: string[], losers: string[], scoreW: number, scoreL: number, isFriendly: boolean, leagueId: string) => void;
   prefill?: { type: GameType; team1: string[]; team2: string[] } | null;
   onPrefillConsumed?: () => void;
+  currentPlayerId?: string;
+  isAdmin?: boolean;
+  activeLeagueId?: string | null;
+  leagues?: League[];
 }
 
-const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, onPrefillConsumed }) => {
+const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, onPrefillConsumed, currentPlayerId, isAdmin, activeLeagueId, leagues = [] }) => {
   const [gameType, setGameType] = useState<GameType>('singles');
   const [team1, setTeam1] = useState<string[]>([]);
   const [team2, setTeam2] = useState<string[]>([]);
@@ -17,6 +21,31 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
   const [score2, setScore2] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFriendly, setIsFriendly] = useState(false);
+  const [crossLeague, setCrossLeague] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter available players by league + search
+  const availablePlayers = useMemo(() => {
+    let filtered = players;
+    // Filter by league unless cross-league is enabled
+    if (activeLeagueId && !crossLeague) {
+      filtered = filtered.filter(p => p.leagueId === activeLeagueId);
+    }
+    // Filter by search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
+    }
+    return filtered;
+  }, [players, activeLeagueId, crossLeague, searchQuery]);
+
+  // Auto-assign current player to Team 1 on mount (non-admins)
+  useEffect(() => {
+    if (currentPlayerId && !isAdmin && team1.length === 0 && team2.length === 0 && !prefill) {
+      setTeam1([currentPlayerId]);
+    }
+  }, [currentPlayerId, isAdmin]);
 
   // Apply prefill from matchmaker
   useEffect(() => {
@@ -69,18 +98,24 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
 
     setIsSubmitting(true);
     try {
-      await onSubmit(gameType, winners, losers, wScore, lScore);
+      await onSubmit(gameType, winners, losers, wScore, lScore, isFriendly, activeLeagueId || undefined);
     } finally {
       setIsSubmitting(false);
     }
 
     setScore1('');
     setScore2('');
-    setTeam1([]);
+    // Keep current player pre-selected after submit (non-admins)
+    if (currentPlayerId && !isAdmin) {
+      setTeam1([currentPlayerId]);
+    } else {
+      setTeam1([]);
+    }
     setTeam2([]);
   };
 
   const isSelected = (id: string) => team1.includes(id) || team2.includes(id);
+  const isLockedPlayer = (id: string) => !isAdmin && currentPlayerId === id;
 
   return (
     <div className="glass-panel p-6 md:p-8 rounded-xl max-w-2xl mx-auto shadow-neon-pink animate-fadeIn">
@@ -99,13 +134,29 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
         {/* Type Toggle */}
         <div className="flex justify-center gap-4">
           <label className={`cursor-pointer px-6 py-3 rounded-lg border font-bold transition-all ${gameType === 'singles' ? 'bg-white text-black border-white' : 'border-white/20 text-gray-400'}`}>
-            <input type="radio" className="hidden" checked={gameType === 'singles'} onChange={() => { setGameType('singles'); setTeam1([]); setTeam2([]); }} />
+            <input type="radio" className="hidden" checked={gameType === 'singles'} onChange={() => { setGameType('singles'); setTeam1(currentPlayerId && !isAdmin ? [currentPlayerId] : []); setTeam2([]); }} />
             1 vs 1
           </label>
           <label className={`cursor-pointer px-6 py-3 rounded-lg border font-bold transition-all ${gameType === 'doubles' ? 'bg-white text-black border-white' : 'border-white/20 text-gray-400'}`}>
-            <input type="radio" className="hidden" checked={gameType === 'doubles'} onChange={() => { setGameType('doubles'); setTeam1([]); setTeam2([]); }} />
+            <input type="radio" className="hidden" checked={gameType === 'doubles'} onChange={() => { setGameType('doubles'); setTeam1(currentPlayerId && !isAdmin ? [currentPlayerId] : []); setTeam2([]); }} />
             2 vs 2
           </label>
+        </div>
+
+        {/* Friendly Toggle */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setIsFriendly(!isFriendly)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-bold text-sm transition-all ${
+              isFriendly
+                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                : 'border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
+            }`}
+          >
+            <span className="text-base">{isFriendly ? '🤝' : '🏆'}</span>
+            {isFriendly ? 'FRIENDLY (No ELO)' : 'RANKED'}
+          </button>
         </div>
 
         {/* Player Grid */}
@@ -116,9 +167,10 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
             <div className="bg-black/40 p-4 rounded-lg border border-cyber-cyan/30 min-h-[100px] flex flex-wrap gap-2 justify-center">
                {team1.map(id => {
                  const p = players.find(player => player.id === id);
+                 const locked = isLockedPlayer(id);
                  return (
-                   <div key={id} onClick={() => setTeam1(team1.filter(pid => pid !== id))} className="cursor-pointer flex items-center gap-2 bg-cyber-cyan text-black px-2 py-1 rounded font-bold text-sm">
-                     {p?.name} <span className="text-[10px]">&#10005;</span>
+                   <div key={id} onClick={() => !locked && setTeam1(team1.filter(pid => pid !== id))} className={`flex items-center gap-2 px-2 py-1 rounded font-bold text-sm ${locked ? 'bg-cyber-cyan/70 text-black ring-2 ring-white/40' : 'cursor-pointer bg-cyber-cyan text-black'}`}>
+                     {p?.name} {locked ? <span className="text-[10px] opacity-60">&#128274;</span> : <span className="text-[10px]">&#10005;</span>}
                    </div>
                  )
                })}
@@ -159,10 +211,42 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
 
         {/* Roster Selection */}
         <div className="pt-4 border-t border-white/10">
-          <p className="text-xs text-gray-400 mb-3 uppercase tracking-widest text-center">Available Players</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-gray-400 uppercase tracking-widest">Available Players</p>
+            <div className="flex items-center gap-2">
+              {activeLeagueId && leagues.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCrossLeague(!crossLeague)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-bold transition-all ${
+                    crossLeague
+                      ? 'bg-cyber-purple/20 border-cyber-purple/50 text-cyber-purple'
+                      : 'border-white/10 text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <Globe size={12} />
+                  {crossLeague ? 'ALL LEAGUES' : 'SAME LEAGUE'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Search bar */}
+          <div className="relative mb-3">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search players..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 text-white text-sm pl-8 pr-3 py-2 rounded-lg font-mono focus:border-cyber-cyan outline-none"
+            />
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {players.map(player => {
+            {availablePlayers.map(player => {
                const active = isSelected(player.id);
+               const playerLeague = leagues.find(l => l.id === player.leagueId);
                return (
                  <button
                    key={player.id}
@@ -180,9 +264,19 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
                  >
                    <img src={player.avatar} className="w-6 h-6 rounded-full" />
                    <span className="truncate">{player.name}</span>
+                   {crossLeague && playerLeague && (
+                     <span className="text-[8px] font-mono text-cyber-purple bg-cyber-purple/10 px-1 py-0.5 rounded-full ml-auto flex-shrink-0">
+                       {playerLeague.name}
+                     </span>
+                   )}
                  </button>
                )
             })}
+            {availablePlayers.length === 0 && (
+              <p className="col-span-full text-gray-500 text-sm italic text-center py-4">
+                No players found{searchQuery ? ' matching search' : activeLeagueId ? ' in this league' : ''}.
+              </p>
+            )}
           </div>
         </div>
 

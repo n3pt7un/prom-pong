@@ -95,8 +95,8 @@ const seedData = () => {
     { id: 'r3', name: 'Void Smasher', icon: 'Target', color: '#ff00ff', stats: { speed: 3, spin: 2, power: 18, control: 3, defense: 3, chaos: 1 } },
   ];
   db.players = [
-    { id: '1', name: 'Neo', avatar: "https://picsum.photos/id/64/200/200", eloSingles: 1450, eloDoubles: 1200, wins: 15, losses: 2, streak: 5, joinedAt: new Date().toISOString(), mainRacketId: 'r1' },
-    { id: '2', name: 'Trinity', avatar: "https://picsum.photos/id/65/200/200", eloSingles: 1380, eloDoubles: 1250, wins: 12, losses: 5, streak: 2, joinedAt: new Date().toISOString(), mainRacketId: 'r2' },
+    { id: '1', name: 'Neo', avatar: "https://picsum.photos/id/64/200/200", eloSingles: 1450, eloDoubles: 1200, winsSingles: 10, lossesSingles: 1, streakSingles: 3, winsDoubles: 5, lossesDoubles: 1, streakDoubles: 2, joinedAt: new Date().toISOString(), mainRacketId: 'r1' },
+    { id: '2', name: 'Trinity', avatar: "https://picsum.photos/id/65/200/200", eloSingles: 1380, eloDoubles: 1250, winsSingles: 8, lossesSingles: 3, streakSingles: 1, winsDoubles: 4, lossesDoubles: 2, streakDoubles: -1, joinedAt: new Date().toISOString(), mainRacketId: 'r2' },
   ];
   db.matches = [];
   db.history = [];
@@ -171,14 +171,24 @@ const toLegacyPlayer = (p) => ({
   name: p.name,
   avatar: p.avatar,
   bio: p.bio,
-  eloSingles: p.elo_singles,
-  eloDoubles: p.elo_doubles,
-  wins: p.wins,
-  losses: p.losses,
-  streak: p.streak,
+  eloSingles: p.elo_singles ?? INITIAL_ELO,
+  eloDoubles: p.elo_doubles ?? INITIAL_ELO,
+  // Singles stats
+  winsSingles: p.wins_singles ?? 0,
+  lossesSingles: p.losses_singles ?? 0,
+  streakSingles: p.streak_singles ?? 0,
+  // Doubles stats
+  winsDoubles: p.wins_doubles ?? 0,
+  lossesDoubles: p.losses_doubles ?? 0,
+  streakDoubles: p.streak_doubles ?? 0,
+  // Legacy combined stats (backward compatibility)
+  wins: (p.wins_singles ?? 0) + (p.wins_doubles ?? 0),
+  losses: (p.losses_singles ?? 0) + (p.losses_doubles ?? 0),
+  streak: Math.max(p.streak_singles ?? 0, p.streak_doubles ?? 0),
   joinedAt: p.joined_at,
   mainRacketId: p.main_racket_id,
   uid: p.firebase_uid,
+  leagueId: p.league_id || null,
 });
 
 const toLegacyRacket = (r) => ({
@@ -210,6 +220,8 @@ const toLegacyMatch = async (m) => {
     timestamp: m.timestamp,
     eloChange: m.elo_change,
     loggedBy: m.logged_by,
+    isFriendly: m.is_friendly || false,
+    leagueId: m.league_id || null,
   };
 };
 
@@ -330,9 +342,12 @@ const dbOps = {
         bio: player.bio,
         elo_singles: player.eloSingles,
         elo_doubles: player.eloDoubles,
-        wins: player.wins,
-        losses: player.losses,
-        streak: player.streak,
+        wins_singles: player.winsSingles ?? 0,
+        losses_singles: player.lossesSingles ?? 0,
+        streak_singles: player.streakSingles ?? 0,
+        wins_doubles: player.winsDoubles ?? 0,
+        losses_doubles: player.lossesDoubles ?? 0,
+        streak_doubles: player.streakDoubles ?? 0,
         joined_at: player.joinedAt,
         main_racket_id: player.mainRacketId,
         firebase_uid: player.uid,
@@ -353,9 +368,14 @@ const dbOps = {
       if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
       if (updates.eloSingles !== undefined) dbUpdates.elo_singles = updates.eloSingles;
       if (updates.eloDoubles !== undefined) dbUpdates.elo_doubles = updates.eloDoubles;
-      if (updates.wins !== undefined) dbUpdates.wins = updates.wins;
-      if (updates.losses !== undefined) dbUpdates.losses = updates.losses;
-      if (updates.streak !== undefined) dbUpdates.streak = updates.streak;
+      // Singles stats
+      if (updates.winsSingles !== undefined) dbUpdates.wins_singles = updates.winsSingles;
+      if (updates.lossesSingles !== undefined) dbUpdates.losses_singles = updates.lossesSingles;
+      if (updates.streakSingles !== undefined) dbUpdates.streak_singles = updates.streakSingles;
+      // Doubles stats
+      if (updates.winsDoubles !== undefined) dbUpdates.wins_doubles = updates.winsDoubles;
+      if (updates.lossesDoubles !== undefined) dbUpdates.losses_doubles = updates.lossesDoubles;
+      if (updates.streakDoubles !== undefined) dbUpdates.streak_doubles = updates.streakDoubles;
       if (updates.mainRacketId !== undefined) dbUpdates.main_racket_id = updates.mainRacketId;
       if (updates.uid !== undefined) dbUpdates.firebase_uid = updates.uid;
       
@@ -467,6 +487,8 @@ const dbOps = {
         timestamp: match.timestamp,
         elo_change: match.eloChange,
         logged_by: match.loggedBy,
+        is_friendly: match.isFriendly || false,
+        league_id: match.leagueId || null,
       }).select().single();
       if (matchError) throw matchError;
       
@@ -818,7 +840,7 @@ const dbOps = {
   // Full state (for /api/state)
   async getFullState() {
     if (isSupabaseEnabled()) {
-      const [players, matches, history, rackets, pendingMatches, seasons, challenges, tournaments, reactions] = await Promise.all([
+      const [players, matches, history, rackets, pendingMatches, seasons, challenges, tournaments, reactions, leagues] = await Promise.all([
         this.getPlayers(),
         this.getMatches(),
         this.getHistory(),
@@ -828,8 +850,9 @@ const dbOps = {
         this.getChallenges(),
         this.getTournaments(),
         this.getReactions(),
+        this.getLeagues(),
       ]);
-      return { players, matches, history, rackets, pendingMatches, seasons, challenges, tournaments, reactions };
+      return { players, matches, history, rackets, pendingMatches, seasons, challenges, tournaments, reactions, leagues };
     }
     return {
       players: db.players,
@@ -841,6 +864,7 @@ const dbOps = {
       challenges: db.challenges,
       tournaments: db.tournaments,
       reactions: db.reactions,
+      leagues: db.leagues || [],
     };
   },
   
@@ -850,9 +874,12 @@ const dbOps = {
       const { error } = await supabase.from('players').update({
         elo_singles: updates.eloSingles,
         elo_doubles: updates.eloDoubles,
-        wins: updates.wins,
-        losses: updates.losses,
-        streak: updates.streak,
+        wins_singles: updates.winsSingles ?? 0,
+        losses_singles: updates.lossesSingles ?? 0,
+        streak_singles: updates.streakSingles ?? 0,
+        wins_doubles: updates.winsDoubles ?? 0,
+        losses_doubles: updates.lossesDoubles ?? 0,
+        streak_doubles: updates.streakDoubles ?? 0,
       }).neq('id', '');
       if (error) throw error;
       return true;
@@ -880,14 +907,124 @@ const dbOps = {
       const tables = [
         'match_reactions', 'tournaments', 'challenges', 'seasons',
         'pending_match_players', 'pending_matches', 'admins',
-        'elo_history', 'match_players', 'matches', 'players', 'rackets'
+        'elo_history', 'match_players', 'matches', 'players', 'rackets', 'leagues'
       ];
       for (const table of tables) {
         await supabase.from(table).delete().neq('id', '');
       }
       return true;
     }
-    db = { players: [], matches: [], history: [], rackets: [], backups: [], admins: [], pendingMatches: [], seasons: [], challenges: [], tournaments: [], reactions: [] };
+    db = { players: [], matches: [], history: [], rackets: [], backups: [], admins: [], pendingMatches: [], seasons: [], challenges: [], tournaments: [], reactions: [], leagues: [] };
+    await saveDB();
+    return true;
+  },
+
+  // --- Leagues ---
+  async getLeagues() {
+    if (isSupabaseEnabled()) {
+      const { data, error } = await supabase.from('leagues').select('*').order('created_at', { ascending: true });
+      if (error) throw error;
+      return data.map(l => ({
+        id: l.id,
+        name: l.name,
+        description: l.description,
+        createdBy: l.created_by,
+        createdAt: l.created_at,
+      }));
+    }
+    return db.leagues || [];
+  },
+
+  async getLeagueById(id) {
+    if (isSupabaseEnabled()) {
+      const { data, error } = await supabase.from('leagues').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data ? {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        createdBy: data.created_by,
+        createdAt: data.created_at,
+      } : null;
+    }
+    return (db.leagues || []).find(l => l.id === id) || null;
+  },
+
+  async createLeague(league) {
+    if (isSupabaseEnabled()) {
+      const { data, error } = await supabase.from('leagues').insert({
+        id: league.id,
+        name: league.name,
+        description: league.description || null,
+        created_by: league.createdBy,
+      }).select().single();
+      if (error) throw error;
+      return {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        createdBy: data.created_by,
+        createdAt: data.created_at,
+      };
+    }
+    if (!db.leagues) db.leagues = [];
+    const newLeague = { ...league, createdAt: new Date().toISOString() };
+    db.leagues.push(newLeague);
+    await saveDB();
+    return newLeague;
+  },
+
+  async updateLeague(id, updates) {
+    if (isSupabaseEnabled()) {
+      const updateObj = {};
+      if (updates.name !== undefined) updateObj.name = updates.name;
+      if (updates.description !== undefined) updateObj.description = updates.description;
+      const { data, error } = await supabase.from('leagues').update(updateObj).eq('id', id).select().single();
+      if (error) throw error;
+      return {
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        createdBy: data.created_by,
+        createdAt: data.created_at,
+      };
+    }
+    if (!db.leagues) db.leagues = [];
+    const idx = db.leagues.findIndex(l => l.id === id);
+    if (idx === -1) throw new Error('League not found');
+    db.leagues[idx] = { ...db.leagues[idx], ...updates };
+    await saveDB();
+    return db.leagues[idx];
+  },
+
+  async deleteLeague(id) {
+    if (isSupabaseEnabled()) {
+      // Unset league_id on affected players
+      await supabase.from('players').update({ league_id: null }).eq('league_id', id);
+      // Unset league_id on affected matches
+      await supabase.from('matches').update({ league_id: null }).eq('league_id', id);
+      const { error } = await supabase.from('leagues').delete().eq('id', id);
+      if (error) throw error;
+      return true;
+    }
+    if (!db.leagues) db.leagues = [];
+    db.leagues = db.leagues.filter(l => l.id !== id);
+    // Unset league references
+    db.players = db.players.map(p => p.leagueId === id ? { ...p, leagueId: null } : p);
+    db.matches = db.matches.map(m => m.leagueId === id ? { ...m, leagueId: null } : m);
+    await saveDB();
+    return true;
+  },
+
+  async assignPlayerLeague(playerId, leagueId) {
+    if (isSupabaseEnabled()) {
+      const { error } = await supabase.from('players').update({ league_id: leagueId }).eq('id', playerId);
+      if (error) throw error;
+      return true;
+    }
+    const idx = db.players.findIndex(p => p.id === playerId);
+    if (idx === -1) throw new Error('Player not found');
+    db.players[idx].leagueId = leagueId;
     await saveDB();
     return true;
   },
@@ -950,35 +1087,43 @@ app.get('/api/state', authMiddleware, async (req, res) => {
         
         let wElo = 0, lElo = 0;
         if (pm.type === 'singles') {
+          if (!pm.winners[0] || !pm.losers[0]) continue;
           wElo = getP(pm.winners[0])?.eloSingles || INITIAL_ELO;
           lElo = getP(pm.losers[0])?.eloSingles || INITIAL_ELO;
         } else {
-          wElo = pm.winners.reduce((sum, id) => sum + (getP(id)?.eloDoubles || INITIAL_ELO), 0) / pm.winners.length;
-          lElo = pm.losers.reduce((sum, id) => sum + (getP(id)?.eloDoubles || INITIAL_ELO), 0) / pm.losers.length;
+          if (!pm.winners[0] || !pm.winners[1] || !pm.losers[0] || !pm.losers[1]) continue;
+          wElo = (getP(pm.winners[0])?.eloDoubles || INITIAL_ELO + getP(pm.winners[1])?.eloDoubles || INITIAL_ELO) / 2;
+          lElo = (getP(pm.losers[0])?.eloDoubles || INITIAL_ELO + getP(pm.losers[1])?.eloDoubles || INITIAL_ELO) / 2;
         }
         
         const delta = calculateMatchDelta(wElo, lElo);
         const timestamp = pm.createdAt;
+        const matchId = pm.id; // Use the pending match ID as the match ID
         const historyEntries = [];
         
+        const pmIsSingles = pm.type === 'singles';
         for (const p of players) {
           if (pm.winners.includes(p.id)) {
-            const newElo = pm.type === 'singles' ? p.eloSingles + delta : p.eloDoubles + delta;
-            historyEntries.push({ playerId: p.id, matchId: timestamp, newElo, timestamp, gameType: pm.type });
+            const newElo = pmIsSingles ? p.eloSingles + delta : p.eloDoubles + delta;
+            historyEntries.push({ playerId: p.id, matchId, newElo, timestamp, gameType: pm.type });
             await dbOps.updatePlayer(p.id, {
-              eloSingles: pm.type === 'singles' ? newElo : p.eloSingles,
-              eloDoubles: pm.type === 'doubles' ? newElo : p.eloDoubles,
-              wins: p.wins + 1,
-              streak: p.streak >= 0 ? p.streak + 1 : 1
+              eloSingles: pmIsSingles ? newElo : p.eloSingles,
+              eloDoubles: !pmIsSingles ? newElo : p.eloDoubles,
+              winsSingles: pmIsSingles ? (p.winsSingles || 0) + 1 : (p.winsSingles || 0),
+              winsDoubles: !pmIsSingles ? (p.winsDoubles || 0) + 1 : (p.winsDoubles || 0),
+              streakSingles: pmIsSingles ? ((p.streakSingles || 0) >= 0 ? (p.streakSingles || 0) + 1 : 1) : (p.streakSingles || 0),
+              streakDoubles: !pmIsSingles ? ((p.streakDoubles || 0) >= 0 ? (p.streakDoubles || 0) + 1 : 1) : (p.streakDoubles || 0),
             });
           } else if (pm.losers.includes(p.id)) {
-            const newElo = pm.type === 'singles' ? p.eloSingles - delta : p.eloDoubles - delta;
-            historyEntries.push({ playerId: p.id, matchId: timestamp, newElo, timestamp, gameType: pm.type });
+            const newElo = pmIsSingles ? p.eloSingles - delta : p.eloDoubles - delta;
+            historyEntries.push({ playerId: p.id, matchId, newElo, timestamp, gameType: pm.type });
             await dbOps.updatePlayer(p.id, {
-              eloSingles: pm.type === 'singles' ? newElo : p.eloSingles,
-              eloDoubles: pm.type === 'doubles' ? newElo : p.eloDoubles,
-              losses: p.losses + 1,
-              streak: p.streak <= 0 ? p.streak - 1 : -1
+              eloSingles: pmIsSingles ? newElo : p.eloSingles,
+              eloDoubles: !pmIsSingles ? newElo : p.eloDoubles,
+              lossesSingles: pmIsSingles ? (p.lossesSingles || 0) + 1 : (p.lossesSingles || 0),
+              lossesDoubles: !pmIsSingles ? (p.lossesDoubles || 0) + 1 : (p.lossesDoubles || 0),
+              streakSingles: pmIsSingles ? ((p.streakSingles || 0) <= 0 ? (p.streakSingles || 0) - 1 : -1) : (p.streakSingles || 0),
+              streakDoubles: !pmIsSingles ? ((p.streakDoubles || 0) <= 0 ? (p.streakDoubles || 0) - 1 : -1) : (p.streakDoubles || 0),
             });
           }
         }
@@ -1076,9 +1221,12 @@ app.post('/api/me/setup', authMiddleware, async (req, res) => {
       bio: (req.body.bio || '').trim().substring(0, 150),
       eloSingles: INITIAL_ELO,
       eloDoubles: INITIAL_ELO,
-      wins: 0,
-      losses: 0,
-      streak: 0,
+      winsSingles: 0,
+      lossesSingles: 0,
+      streakSingles: 0,
+      winsDoubles: 0,
+      lossesDoubles: 0,
+      streakDoubles: 0,
       joinedAt: new Date().toISOString(),
       uid,
     };
@@ -1196,7 +1344,12 @@ app.post('/api/players', authMiddleware, async (req, res) => {
       mainRacketId: req.body.mainRacketId || undefined,
       eloSingles: INITIAL_ELO,
       eloDoubles: INITIAL_ELO,
-      wins: 0, losses: 0, streak: 0,
+      winsSingles: 0,
+      lossesSingles: 0,
+      streakSingles: 0,
+      winsDoubles: 0,
+      lossesDoubles: 0,
+      streakDoubles: 0,
       joinedAt: new Date().toISOString(),
       uid: req.body.uid || undefined,
     };
@@ -1322,7 +1475,7 @@ app.delete('/api/rackets/:id', authMiddleware, adminMiddleware, async (req, res)
 // --- Matches ---
 app.post('/api/matches', authMiddleware, async (req, res) => {
   try {
-    const { type, winners, losers, scoreWinner, scoreLoser } = req.body;
+    const { type, winners, losers, scoreWinner, scoreLoser, isFriendly } = req.body;
 
     // Validate inputs
     if (!type || !['singles', 'doubles'].includes(type)) {
@@ -1338,6 +1491,20 @@ app.post('/api/matches', authMiddleware, async (req, res) => {
     const players = await dbOps.getPlayers();
     const getP = (id) => players.find(p => p.id === id);
 
+    // Self-only match logging: user must be a participant (admins bypass)
+    const admins = await dbOps.getAdmins();
+    const isAdmin = admins.includes(req.user.uid);
+    if (!isAdmin) {
+      const callerPlayer = players.find(p => p.uid === req.user.uid);
+      if (!callerPlayer) {
+        return res.status(403).json({ error: 'You need a player profile to log matches' });
+      }
+      const allParticipants = [...winners, ...losers];
+      if (!allParticipants.includes(callerPlayer.id)) {
+        return res.status(403).json({ error: 'You can only log matches where you are a participant' });
+      }
+    }
+
     // Validate all players exist
     const allIds = [...winners, ...losers];
     for (const id of allIds) {
@@ -1346,51 +1513,100 @@ app.post('/api/matches', authMiddleware, async (req, res) => {
       }
     }
 
+    const friendly = !!isFriendly;
     const timestamp = new Date().toISOString();
-    let wElo = 0, lElo = 0;
-
-    if (type === 'singles') {
-      wElo = getP(winners[0]).eloSingles;
-      lElo = getP(losers[0]).eloSingles;
-    } else {
-      wElo = (getP(winners[0]).eloDoubles + getP(winners[1]).eloDoubles) / 2;
-      lElo = (getP(losers[0]).eloDoubles + getP(losers[1]).eloDoubles) / 2;
-    }
-
-    const delta = calculateMatchDelta(wElo, lElo);
+    const matchId = Date.now().toString(); // Generate match ID first
+    let delta = 0;
     const historyEntries = [];
 
-    for (const p of players) {
-      if (winners.includes(p.id)) {
-        const newElo = type === 'singles' ? p.eloSingles + delta : p.eloDoubles + delta;
-        historyEntries.push({ playerId: p.id, matchId: timestamp, newElo, timestamp, gameType: type });
-        await dbOps.updatePlayer(p.id, {
-          eloSingles: type === 'singles' ? newElo : p.eloSingles,
-          eloDoubles: type === 'doubles' ? newElo : p.eloDoubles,
-          wins: p.wins + 1,
-          streak: p.streak >= 0 ? p.streak + 1 : 1
-        });
-      } else if (losers.includes(p.id)) {
-        const newElo = type === 'singles' ? p.eloSingles - delta : p.eloDoubles - delta;
-        historyEntries.push({ playerId: p.id, matchId: timestamp, newElo, timestamp, gameType: type });
-        await dbOps.updatePlayer(p.id, {
-          eloSingles: type === 'singles' ? newElo : p.eloSingles,
-          eloDoubles: type === 'doubles' ? newElo : p.eloDoubles,
-          losses: p.losses + 1,
-          streak: p.streak <= 0 ? p.streak - 1 : -1
-        });
+    if (!friendly) {
+      // Ranked match: calculate and apply ELO
+      let wElo = 0, lElo = 0;
+      if (type === 'singles') {
+        if (!winners[0] || !losers[0]) {
+          return res.status(400).json({ error: 'Singles match requires exactly 1 winner and 1 loser' });
+        }
+        wElo = getP(winners[0]).eloSingles;
+        lElo = getP(losers[0]).eloSingles;
+      } else {
+        if (!winners[0] || !winners[1] || !losers[0] || !losers[1]) {
+          return res.status(400).json({ error: 'Doubles match requires exactly 2 winners and 2 losers' });
+        }
+        const w0 = getP(winners[0]);
+        const w1 = getP(winners[1]);
+        const l0 = getP(losers[0]);
+        const l1 = getP(losers[1]);
+        wElo = ((w0.eloDoubles ?? INITIAL_ELO) + (w1.eloDoubles ?? INITIAL_ELO)) / 2;
+        lElo = ((l0.eloDoubles ?? INITIAL_ELO) + (l1.eloDoubles ?? INITIAL_ELO)) / 2;
+      }
+      delta = calculateMatchDelta(wElo, lElo);
+
+      for (const p of players) {
+        if (winners.includes(p.id)) {
+          const newElo = type === 'singles' ? p.eloSingles + delta : p.eloDoubles + delta;
+          historyEntries.push({ playerId: p.id, matchId, newElo, timestamp, gameType: type });
+          const isSingles = type === 'singles';
+          await dbOps.updatePlayer(p.id, {
+            eloSingles: isSingles ? newElo : p.eloSingles,
+            eloDoubles: !isSingles ? newElo : p.eloDoubles,
+            winsSingles: isSingles ? (p.winsSingles || 0) + 1 : (p.winsSingles || 0),
+            streakSingles: isSingles ? ((p.streakSingles || 0) >= 0 ? (p.streakSingles || 0) + 1 : 1) : (p.streakSingles || 0),
+            winsDoubles: !isSingles ? (p.winsDoubles || 0) + 1 : (p.winsDoubles || 0),
+            streakDoubles: !isSingles ? ((p.streakDoubles || 0) >= 0 ? (p.streakDoubles || 0) + 1 : 1) : (p.streakDoubles || 0),
+          });
+        } else if (losers.includes(p.id)) {
+          const newElo = type === 'singles' ? p.eloSingles - delta : p.eloDoubles - delta;
+          historyEntries.push({ playerId: p.id, matchId, newElo, timestamp, gameType: type });
+          const isSingles = type === 'singles';
+          await dbOps.updatePlayer(p.id, {
+            eloSingles: isSingles ? newElo : p.eloSingles,
+            eloDoubles: !isSingles ? newElo : p.eloDoubles,
+            lossesSingles: isSingles ? (p.lossesSingles || 0) + 1 : (p.lossesSingles || 0),
+            streakSingles: isSingles ? ((p.streakSingles || 0) <= 0 ? (p.streakSingles || 0) - 1 : -1) : (p.streakSingles || 0),
+            lossesDoubles: !isSingles ? (p.lossesDoubles || 0) + 1 : (p.lossesDoubles || 0),
+            streakDoubles: !isSingles ? ((p.streakDoubles || 0) <= 0 ? (p.streakDoubles || 0) - 1 : -1) : (p.streakDoubles || 0),
+          });
+        }
+      }
+    } else {
+      // Friendly match: no ELO change, but update wins/losses/streak
+      for (const p of players) {
+        const isSingles = type === 'singles';
+        if (winners.includes(p.id)) {
+          await dbOps.updatePlayer(p.id, {
+            winsSingles: isSingles ? (p.winsSingles || 0) + 1 : (p.winsSingles || 0),
+            streakSingles: isSingles ? ((p.streakSingles || 0) >= 0 ? (p.streakSingles || 0) + 1 : 1) : (p.streakSingles || 0),
+            winsDoubles: !isSingles ? (p.winsDoubles || 0) + 1 : (p.winsDoubles || 0),
+            streakDoubles: !isSingles ? ((p.streakDoubles || 0) >= 0 ? (p.streakDoubles || 0) + 1 : 1) : (p.streakDoubles || 0),
+          });
+        } else if (losers.includes(p.id)) {
+          await dbOps.updatePlayer(p.id, {
+            lossesSingles: isSingles ? (p.lossesSingles || 0) + 1 : (p.lossesSingles || 0),
+            streakSingles: isSingles ? ((p.streakSingles || 0) <= 0 ? (p.streakSingles || 0) - 1 : -1) : (p.streakSingles || 0),
+            lossesDoubles: !isSingles ? (p.lossesDoubles || 0) + 1 : (p.lossesDoubles || 0),
+            streakDoubles: !isSingles ? ((p.streakDoubles || 0) <= 0 ? (p.streakDoubles || 0) - 1 : -1) : (p.streakDoubles || 0),
+          });
+        }
       }
     }
 
+    const leagueId = req.body.leagueId || null;
     const newMatch = { 
-      id: Date.now().toString(), type, winners, losers, 
-      scoreWinner, scoreLoser, timestamp, eloChange: delta, loggedBy: req.user.uid 
+      id: matchId, type, winners, losers, 
+      scoreWinner, scoreLoser, timestamp, eloChange: delta, loggedBy: req.user.uid,
+      isFriendly: friendly,
+      leagueId,
     };
     
+    console.log('[DEBUG] POST /api/matches - before createMatch:', { matchId, type, winners, losers, delta, isNaN: isNaN(delta), historyEntriesCount: historyEntries.length });
     const created = await dbOps.createMatch(newMatch, winners, losers, historyEntries);
+    console.log('[DEBUG] POST /api/matches - createMatch success:', { createdId: created?.id });
     res.json(created);
   } catch (err) {
     console.error('Error in POST /api/matches:', err);
+    // #region agent log - Hypothesis C/D/E: Exception caught
+    fetch('http://127.0.0.1:7242/ingest/46adb973-1f59-4ccf-87ee-78cf19e34bcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server.js:1618',message:'Exception in POST /api/matches',data:{errorMessage:err?.message,errorStack:err?.stack?.split('\n')?.slice(0,3)},timestamp:Date.now(),runId:'debug-run',hypothesisId:'CDE'})}).catch(()=>{});
+    // #endregion
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1434,23 +1650,28 @@ app.put('/api/matches/:id', authMiddleware, async (req, res) => {
 
     // Step 1: Reverse old ELO changes
     const { type: oldType, winners: oldWinners, losers: oldLosers, eloChange: oldEloChange } = match;
+    const oldIsSingles = oldType === 'singles';
 
     for (const p of players) {
       if (oldWinners.includes(p.id)) {
-        const restoredElo = oldType === 'singles' ? p.eloSingles - oldEloChange : p.eloDoubles - oldEloChange;
+        const restoredElo = oldIsSingles ? p.eloSingles - oldEloChange : p.eloDoubles - oldEloChange;
         await dbOps.updatePlayer(p.id, {
-          eloSingles: oldType === 'singles' ? restoredElo : p.eloSingles,
-          eloDoubles: oldType === 'doubles' ? restoredElo : p.eloDoubles,
-          wins: Math.max(0, p.wins - 1),
-          streak: 0
+          eloSingles: oldIsSingles ? restoredElo : p.eloSingles,
+          eloDoubles: !oldIsSingles ? restoredElo : p.eloDoubles,
+          winsSingles: oldIsSingles ? Math.max(0, (p.winsSingles || 0) - 1) : (p.winsSingles || 0),
+          winsDoubles: !oldIsSingles ? Math.max(0, (p.winsDoubles || 0) - 1) : (p.winsDoubles || 0),
+          streakSingles: oldIsSingles ? 0 : (p.streakSingles || 0),
+          streakDoubles: !oldIsSingles ? 0 : (p.streakDoubles || 0),
         });
       } else if (oldLosers.includes(p.id)) {
-        const restoredElo = oldType === 'singles' ? p.eloSingles + oldEloChange : p.eloDoubles + oldEloChange;
+        const restoredElo = oldIsSingles ? p.eloSingles + oldEloChange : p.eloDoubles + oldEloChange;
         await dbOps.updatePlayer(p.id, {
-          eloSingles: oldType === 'singles' ? restoredElo : p.eloSingles,
-          eloDoubles: oldType === 'doubles' ? restoredElo : p.eloDoubles,
-          losses: Math.max(0, p.losses - 1),
-          streak: 0
+          eloSingles: oldIsSingles ? restoredElo : p.eloSingles,
+          eloDoubles: !oldIsSingles ? restoredElo : p.eloDoubles,
+          lossesSingles: oldIsSingles ? Math.max(0, (p.lossesSingles || 0) - 1) : (p.lossesSingles || 0),
+          lossesDoubles: !oldIsSingles ? Math.max(0, (p.lossesDoubles || 0) - 1) : (p.lossesDoubles || 0),
+          streakSingles: oldIsSingles ? 0 : (p.streakSingles || 0),
+          streakDoubles: !oldIsSingles ? 0 : (p.streakDoubles || 0),
         });
       }
     }
@@ -1466,42 +1687,60 @@ app.put('/api/matches/:id', authMiddleware, async (req, res) => {
     let wElo = 0, lElo = 0;
 
     if (type === 'singles') {
+      if (!winners[0] || !losers[0]) {
+        return res.status(400).json({ error: 'Singles match requires exactly 1 winner and 1 loser' });
+      }
       const winner = await dbOps.getPlayerById(winners[0]);
       const loser = await dbOps.getPlayerById(losers[0]);
+      if (!winner || !loser) {
+        return res.status(400).json({ error: 'Player not found' });
+      }
       wElo = winner.eloSingles;
       lElo = loser.eloSingles;
     } else {
+      if (!winners[0] || !winners[1] || !losers[0] || !losers[1]) {
+        return res.status(400).json({ error: 'Doubles match requires exactly 2 winners and 2 losers' });
+      }
       const winner1 = await dbOps.getPlayerById(winners[0]);
       const winner2 = await dbOps.getPlayerById(winners[1]);
       const loser1 = await dbOps.getPlayerById(losers[0]);
       const loser2 = await dbOps.getPlayerById(losers[1]);
+      if (!winner1 || !winner2 || !loser1 || !loser2) {
+        return res.status(400).json({ error: 'One or more players not found' });
+      }
       wElo = (winner1.eloDoubles + winner2.eloDoubles) / 2;
       lElo = (loser1.eloDoubles + loser2.eloDoubles) / 2;
     }
 
     const newDelta = calculateMatchDelta(wElo, lElo);
     const newTimestamp = match.timestamp;
+    const editMatchId = req.params.id; // Use the existing match ID
     const historyEntries = [];
 
     const updatedPlayers = await dbOps.getPlayers();
+    const isSingles = type === 'singles';
     for (const p of updatedPlayers) {
       if (winners.includes(p.id)) {
-        const newElo = type === 'singles' ? p.eloSingles + newDelta : p.eloDoubles + newDelta;
-        historyEntries.push({ playerId: p.id, matchId: newTimestamp, newElo, timestamp: newTimestamp, gameType: type });
+        const newElo = isSingles ? p.eloSingles + newDelta : p.eloDoubles + newDelta;
+        historyEntries.push({ playerId: p.id, matchId: editMatchId, newElo, timestamp: newTimestamp, gameType: type });
         await dbOps.updatePlayer(p.id, {
-          eloSingles: type === 'singles' ? newElo : p.eloSingles,
-          eloDoubles: type === 'doubles' ? newElo : p.eloDoubles,
-          wins: p.wins + 1,
-          streak: p.streak >= 0 ? p.streak + 1 : 1
+          eloSingles: isSingles ? newElo : p.eloSingles,
+          eloDoubles: !isSingles ? newElo : p.eloDoubles,
+          winsSingles: isSingles ? (p.winsSingles || 0) + 1 : (p.winsSingles || 0),
+          winsDoubles: !isSingles ? (p.winsDoubles || 0) + 1 : (p.winsDoubles || 0),
+          streakSingles: isSingles ? ((p.streakSingles || 0) >= 0 ? (p.streakSingles || 0) + 1 : 1) : (p.streakSingles || 0),
+          streakDoubles: !isSingles ? ((p.streakDoubles || 0) >= 0 ? (p.streakDoubles || 0) + 1 : 1) : (p.streakDoubles || 0),
         });
       } else if (losers.includes(p.id)) {
-        const newElo = type === 'singles' ? p.eloSingles - newDelta : p.eloDoubles - newDelta;
-        historyEntries.push({ playerId: p.id, matchId: newTimestamp, newElo, timestamp: newTimestamp, gameType: type });
+        const newElo = isSingles ? p.eloSingles - newDelta : p.eloDoubles - newDelta;
+        historyEntries.push({ playerId: p.id, matchId: editMatchId, newElo, timestamp: newTimestamp, gameType: type });
         await dbOps.updatePlayer(p.id, {
-          eloSingles: type === 'singles' ? newElo : p.eloSingles,
-          eloDoubles: type === 'doubles' ? newElo : p.eloDoubles,
-          losses: p.losses + 1,
-          streak: p.streak <= 0 ? p.streak - 1 : -1
+          eloSingles: isSingles ? newElo : p.eloSingles,
+          eloDoubles: !isSingles ? newElo : p.eloDoubles,
+          lossesSingles: isSingles ? (p.lossesSingles || 0) + 1 : (p.lossesSingles || 0),
+          lossesDoubles: !isSingles ? (p.lossesDoubles || 0) + 1 : (p.lossesDoubles || 0),
+          streakSingles: isSingles ? ((p.streakSingles || 0) <= 0 ? (p.streakSingles || 0) - 1 : -1) : (p.streakSingles || 0),
+          streakDoubles: !isSingles ? ((p.streakDoubles || 0) <= 0 ? (p.streakDoubles || 0) - 1 : -1) : (p.streakDoubles || 0),
         });
       }
     }
@@ -1560,25 +1799,30 @@ app.delete('/api/matches/:id', authMiddleware, async (req, res) => {
     }
 
     const { type, winners, losers, eloChange } = match;
+    const isSingles = type === 'singles';
 
     // Reverse ELO and W/L for each player involved
     const players = await dbOps.getPlayers();
     for (const p of players) {
       if (winners.includes(p.id)) {
-        const restoredElo = type === 'singles' ? p.eloSingles - eloChange : p.eloDoubles - eloChange;
+        const restoredElo = isSingles ? p.eloSingles - eloChange : p.eloDoubles - eloChange;
         await dbOps.updatePlayer(p.id, {
-          eloSingles: type === 'singles' ? restoredElo : p.eloSingles,
-          eloDoubles: type === 'doubles' ? restoredElo : p.eloDoubles,
-          wins: Math.max(0, p.wins - 1),
-          streak: 0
+          eloSingles: isSingles ? restoredElo : p.eloSingles,
+          eloDoubles: !isSingles ? restoredElo : p.eloDoubles,
+          winsSingles: isSingles ? Math.max(0, (p.winsSingles || 0) - 1) : (p.winsSingles || 0),
+          winsDoubles: !isSingles ? Math.max(0, (p.winsDoubles || 0) - 1) : (p.winsDoubles || 0),
+          streakSingles: isSingles ? 0 : (p.streakSingles || 0),
+          streakDoubles: !isSingles ? 0 : (p.streakDoubles || 0),
         });
       } else if (losers.includes(p.id)) {
-        const restoredElo = type === 'singles' ? p.eloSingles + eloChange : p.eloDoubles + eloChange;
+        const restoredElo = isSingles ? p.eloSingles + eloChange : p.eloDoubles + eloChange;
         await dbOps.updatePlayer(p.id, {
-          eloSingles: type === 'singles' ? restoredElo : p.eloSingles,
-          eloDoubles: type === 'doubles' ? restoredElo : p.eloDoubles,
-          losses: Math.max(0, p.losses - 1),
-          streak: 0
+          eloSingles: isSingles ? restoredElo : p.eloSingles,
+          eloDoubles: !isSingles ? restoredElo : p.eloDoubles,
+          lossesSingles: isSingles ? Math.max(0, (p.lossesSingles || 0) - 1) : (p.lossesSingles || 0),
+          lossesDoubles: !isSingles ? Math.max(0, (p.lossesDoubles || 0) - 1) : (p.lossesDoubles || 0),
+          streakSingles: isSingles ? 0 : (p.streakSingles || 0),
+          streakDoubles: !isSingles ? 0 : (p.streakDoubles || 0),
         });
       }
     }
@@ -1625,9 +1869,12 @@ app.post('/api/import', authMiddleware, adminMiddleware, async (req, res) => {
           bio: p.bio,
           elo_singles: p.eloSingles,
           elo_doubles: p.eloDoubles,
-          wins: p.wins,
-          losses: p.losses,
-          streak: p.streak,
+          wins_singles: p.winsSingles ?? 0,
+          losses_singles: p.lossesSingles ?? 0,
+          streak_singles: p.streakSingles ?? 0,
+          wins_doubles: p.winsDoubles ?? 0,
+          losses_doubles: p.lossesDoubles ?? 0,
+          streak_doubles: p.streakDoubles ?? 0,
           joined_at: p.joinedAt,
           main_racket_id: p.mainRacketId,
           firebase_uid: p.uid,
@@ -1656,9 +1903,12 @@ app.post('/api/reset', authMiddleware, adminMiddleware, async (req, res) => {
       await dbOps.resetPlayers({ 
         eloSingles: INITIAL_ELO, 
         eloDoubles: INITIAL_ELO, 
-        wins: 0, 
-        losses: 0, 
-        streak: 0 
+        winsSingles: 0, 
+        lossesSingles: 0, 
+        streakSingles: 0,
+        winsDoubles: 0, 
+        lossesDoubles: 0, 
+        streakDoubles: 0,
       });
       await dbOps.clearMatches();
     } else if (req.body.mode === 'fresh') {
@@ -1670,6 +1920,91 @@ app.post('/api/reset', authMiddleware, adminMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Error in /api/reset:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Recalculate all player stats from match history (admin only)
+app.post('/api/admin/recalculate-stats', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const players = await dbOps.getPlayers();
+    const matches = await dbOps.getMatches();
+    
+    // Reset all player stats to 0
+    for (const p of players) {
+      await dbOps.updatePlayer(p.id, {
+        winsSingles: 0,
+        lossesSingles: 0,
+        streakSingles: 0,
+        winsDoubles: 0,
+        lossesDoubles: 0,
+        streakDoubles: 0,
+      });
+    }
+    
+    // Sort matches by timestamp (oldest first)
+    const sortedMatches = [...matches].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    
+    // Recalculate stats for each match
+    const playerStats = {};
+    for (const p of players) {
+      playerStats[p.id] = {
+        winsSingles: 0, lossesSingles: 0, streakSingles: 0,
+        winsDoubles: 0, lossesDoubles: 0, streakDoubles: 0,
+      };
+    }
+    
+    for (const match of sortedMatches) {
+      const isSingles = match.type === 'singles';
+      
+      for (const winnerId of match.winners) {
+        if (playerStats[winnerId]) {
+          if (isSingles) {
+            playerStats[winnerId].winsSingles++;
+            playerStats[winnerId].streakSingles = playerStats[winnerId].streakSingles >= 0 
+              ? playerStats[winnerId].streakSingles + 1 
+              : 1;
+          } else {
+            playerStats[winnerId].winsDoubles++;
+            playerStats[winnerId].streakDoubles = playerStats[winnerId].streakDoubles >= 0 
+              ? playerStats[winnerId].streakDoubles + 1 
+              : 1;
+          }
+        }
+      }
+      
+      for (const loserId of match.losers) {
+        if (playerStats[loserId]) {
+          if (isSingles) {
+            playerStats[loserId].lossesSingles++;
+            playerStats[loserId].streakSingles = playerStats[loserId].streakSingles <= 0 
+              ? playerStats[loserId].streakSingles - 1 
+              : -1;
+          } else {
+            playerStats[loserId].lossesDoubles++;
+            playerStats[loserId].streakDoubles = playerStats[loserId].streakDoubles <= 0 
+              ? playerStats[loserId].streakDoubles - 1 
+              : -1;
+          }
+        }
+      }
+    }
+    
+    // Update all players with recalculated stats
+    for (const p of players) {
+      const stats = playerStats[p.id];
+      await dbOps.updatePlayer(p.id, stats);
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Recalculated stats for ${players.length} players from ${matches.length} matches`,
+      playerStats 
+    });
+  } catch (err) {
+    console.error('Error in POST /api/admin/recalculate-stats:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1730,6 +2065,21 @@ app.post('/api/pending-matches', authMiddleware, async (req, res) => {
     if (!Array.isArray(winners) || !Array.isArray(losers)) return res.status(400).json({ error: 'Winners and losers must be arrays' });
 
     const players = await dbOps.getPlayers();
+
+    // Self-only match logging: user must be a participant (admins bypass)
+    const admins = await dbOps.getAdmins();
+    const isAdmin = admins.includes(req.user.uid);
+    if (!isAdmin) {
+      const callerPlayer = players.find(p => p.uid === req.user.uid);
+      if (!callerPlayer) {
+        return res.status(403).json({ error: 'You need a player profile to log matches' });
+      }
+      const allParticipants = [...winners, ...losers];
+      if (!allParticipants.includes(callerPlayer.id)) {
+        return res.status(403).json({ error: 'You can only log matches where you are a participant' });
+      }
+    }
+
     for (const id of [...winners, ...losers]) {
       if (!players.find(p => p.id === id)) return res.status(400).json({ error: `Player "${id}" not found` });
     }
@@ -1776,35 +2126,54 @@ app.put('/api/pending-matches/:id/confirm', authMiddleware, async (req, res) => 
       const getP = (id) => players.find(p => p.id === id);
       let wElo = 0, lElo = 0;
       if (pm.type === 'singles') {
+        if (!pm.winners[0] || !pm.losers[0] || !getP(pm.winners[0]) || !getP(pm.losers[0])) {
+          return res.status(400).json({ error: 'Singles match requires exactly 1 winner and 1 loser' });
+        }
         wElo = getP(pm.winners[0]).eloSingles;
         lElo = getP(pm.losers[0]).eloSingles;
       } else {
-        wElo = pm.winners.reduce((s, id) => s + getP(id).eloDoubles, 0) / pm.winners.length;
-        lElo = pm.losers.reduce((s, id) => s + getP(id).eloDoubles, 0) / pm.losers.length;
+        if (!pm.winners[0] || !pm.winners[1] || !pm.losers[0] || !pm.losers[1]) {
+          return res.status(400).json({ error: 'Doubles match requires exactly 2 winners and 2 losers' });
+        }
+        const w1 = getP(pm.winners[0]);
+        const w2 = getP(pm.winners[1]);
+        const l1 = getP(pm.losers[0]);
+        const l2 = getP(pm.losers[1]);
+        if (!w1 || !w2 || !l1 || !l2) {
+          return res.status(400).json({ error: 'One or more players not found' });
+        }
+        wElo = (w1.eloDoubles + w2.eloDoubles) / 2;
+        lElo = (l1.eloDoubles + l2.eloDoubles) / 2;
       }
       
       const delta = calculateMatchDelta(wElo, lElo);
       const timestamp = pm.createdAt;
+      const confirmMatchId = pm.id; // Use the pending match ID as the match ID
       const historyEntries = [];
 
+      const pmIsSingles = pm.type === 'singles';
       for (const p of players) {
         if (pm.winners.includes(p.id)) {
-          const newElo = pm.type === 'singles' ? p.eloSingles + delta : p.eloDoubles + delta;
-          historyEntries.push({ playerId: p.id, matchId: timestamp, newElo, timestamp, gameType: pm.type });
+          const newElo = pmIsSingles ? p.eloSingles + delta : p.eloDoubles + delta;
+          historyEntries.push({ playerId: p.id, matchId: confirmMatchId, newElo, timestamp, gameType: pm.type });
           await dbOps.updatePlayer(p.id, {
-            eloSingles: pm.type === 'singles' ? newElo : p.eloSingles,
-            eloDoubles: pm.type === 'doubles' ? newElo : p.eloDoubles,
-            wins: p.wins + 1,
-            streak: p.streak >= 0 ? p.streak + 1 : 1
+            eloSingles: pmIsSingles ? newElo : p.eloSingles,
+            eloDoubles: !pmIsSingles ? newElo : p.eloDoubles,
+            winsSingles: pmIsSingles ? (p.winsSingles || 0) + 1 : (p.winsSingles || 0),
+            winsDoubles: !pmIsSingles ? (p.winsDoubles || 0) + 1 : (p.winsDoubles || 0),
+            streakSingles: pmIsSingles ? ((p.streakSingles || 0) >= 0 ? (p.streakSingles || 0) + 1 : 1) : (p.streakSingles || 0),
+            streakDoubles: !pmIsSingles ? ((p.streakDoubles || 0) >= 0 ? (p.streakDoubles || 0) + 1 : 1) : (p.streakDoubles || 0),
           });
         } else if (pm.losers.includes(p.id)) {
-          const newElo = pm.type === 'singles' ? p.eloSingles - delta : p.eloDoubles - delta;
-          historyEntries.push({ playerId: p.id, matchId: timestamp, newElo, timestamp, gameType: pm.type });
+          const newElo = pmIsSingles ? p.eloSingles - delta : p.eloDoubles - delta;
+          historyEntries.push({ playerId: p.id, matchId: confirmMatchId, newElo, timestamp, gameType: pm.type });
           await dbOps.updatePlayer(p.id, {
-            eloSingles: pm.type === 'singles' ? newElo : p.eloSingles,
-            eloDoubles: pm.type === 'doubles' ? newElo : p.eloDoubles,
-            losses: p.losses + 1,
-            streak: p.streak <= 0 ? p.streak - 1 : -1
+            eloSingles: pmIsSingles ? newElo : p.eloSingles,
+            eloDoubles: !pmIsSingles ? newElo : p.eloDoubles,
+            lossesSingles: pmIsSingles ? (p.lossesSingles || 0) + 1 : (p.lossesSingles || 0),
+            lossesDoubles: !pmIsSingles ? (p.lossesDoubles || 0) + 1 : (p.lossesDoubles || 0),
+            streakSingles: pmIsSingles ? ((p.streakSingles || 0) <= 0 ? (p.streakSingles || 0) - 1 : -1) : (p.streakSingles || 0),
+            streakDoubles: !pmIsSingles ? ((p.streakDoubles || 0) <= 0 ? (p.streakDoubles || 0) - 1 : -1) : (p.streakDoubles || 0),
           });
         }
       }
@@ -1852,35 +2221,54 @@ app.put('/api/pending-matches/:id/force-confirm', authMiddleware, adminMiddlewar
     const getP = (id) => players.find(p => p.id === id);
     let wElo = 0, lElo = 0;
     if (pm.type === 'singles') {
+      if (!pm.winners[0] || !pm.losers[0] || !getP(pm.winners[0]) || !getP(pm.losers[0])) {
+        return res.status(400).json({ error: 'Singles match requires exactly 1 winner and 1 loser' });
+      }
       wElo = getP(pm.winners[0]).eloSingles;
       lElo = getP(pm.losers[0]).eloSingles;
     } else {
-      wElo = pm.winners.reduce((s, id) => s + getP(id).eloDoubles, 0) / pm.winners.length;
-      lElo = pm.losers.reduce((s, id) => s + getP(id).eloDoubles, 0) / pm.losers.length;
+      if (!pm.winners[0] || !pm.winners[1] || !pm.losers[0] || !pm.losers[1]) {
+        return res.status(400).json({ error: 'Doubles match requires exactly 2 winners and 2 losers' });
+      }
+      const w1 = getP(pm.winners[0]);
+      const w2 = getP(pm.winners[1]);
+      const l1 = getP(pm.losers[0]);
+      const l2 = getP(pm.losers[1]);
+      if (!w1 || !w2 || !l1 || !l2) {
+        return res.status(400).json({ error: 'One or more players not found' });
+      }
+      wElo = (w1.eloDoubles + w2.eloDoubles) / 2;
+      lElo = (l1.eloDoubles + l2.eloDoubles) / 2;
     }
-    
+
     const delta = calculateMatchDelta(wElo, lElo);
     const timestamp = pm.createdAt;
+    const forceMatchId = pm.id; // Use the pending match ID as the match ID
     const historyEntries = [];
 
+    const pmIsSingles = pm.type === 'singles';
     for (const p of players) {
       if (pm.winners.includes(p.id)) {
-        const newElo = pm.type === 'singles' ? p.eloSingles + delta : p.eloDoubles + delta;
-        historyEntries.push({ playerId: p.id, matchId: timestamp, newElo, timestamp, gameType: pm.type });
+        const newElo = pmIsSingles ? p.eloSingles + delta : p.eloDoubles + delta;
+        historyEntries.push({ playerId: p.id, matchId: forceMatchId, newElo, timestamp, gameType: pm.type });
         await dbOps.updatePlayer(p.id, {
-          eloSingles: pm.type === 'singles' ? newElo : p.eloSingles,
-          eloDoubles: pm.type === 'doubles' ? newElo : p.eloDoubles,
-          wins: p.wins + 1,
-          streak: p.streak >= 0 ? p.streak + 1 : 1
+          eloSingles: pmIsSingles ? newElo : p.eloSingles,
+          eloDoubles: !pmIsSingles ? newElo : p.eloDoubles,
+          winsSingles: pmIsSingles ? (p.winsSingles || 0) + 1 : (p.winsSingles || 0),
+          winsDoubles: !pmIsSingles ? (p.winsDoubles || 0) + 1 : (p.winsDoubles || 0),
+          streakSingles: pmIsSingles ? ((p.streakSingles || 0) >= 0 ? (p.streakSingles || 0) + 1 : 1) : (p.streakSingles || 0),
+          streakDoubles: !pmIsSingles ? ((p.streakDoubles || 0) >= 0 ? (p.streakDoubles || 0) + 1 : 1) : (p.streakDoubles || 0),
         });
       } else if (pm.losers.includes(p.id)) {
-        const newElo = pm.type === 'singles' ? p.eloSingles - delta : p.eloDoubles - delta;
-        historyEntries.push({ playerId: p.id, matchId: timestamp, newElo, timestamp, gameType: pm.type });
+        const newElo = pmIsSingles ? p.eloSingles - delta : p.eloDoubles - delta;
+        historyEntries.push({ playerId: p.id, matchId: forceMatchId, newElo, timestamp, gameType: pm.type });
         await dbOps.updatePlayer(p.id, {
-          eloSingles: pm.type === 'singles' ? newElo : p.eloSingles,
-          eloDoubles: pm.type === 'doubles' ? newElo : p.eloDoubles,
-          losses: p.losses + 1,
-          streak: p.streak <= 0 ? p.streak - 1 : -1
+          eloSingles: pmIsSingles ? newElo : p.eloSingles,
+          eloDoubles: !pmIsSingles ? newElo : p.eloDoubles,
+          lossesSingles: pmIsSingles ? (p.lossesSingles || 0) + 1 : (p.lossesSingles || 0),
+          lossesDoubles: !pmIsSingles ? (p.lossesDoubles || 0) + 1 : (p.lossesDoubles || 0),
+          streakSingles: pmIsSingles ? ((p.streakSingles || 0) <= 0 ? (p.streakSingles || 0) - 1 : -1) : (p.streakSingles || 0),
+          streakDoubles: !pmIsSingles ? ((p.streakDoubles || 0) <= 0 ? (p.streakDoubles || 0) - 1 : -1) : (p.streakDoubles || 0),
         });
       }
     }
@@ -1944,9 +2332,12 @@ app.post('/api/seasons/start', authMiddleware, adminMiddleware, async (req, res)
     await dbOps.resetPlayers({ 
       eloSingles: INITIAL_ELO, 
       eloDoubles: INITIAL_ELO, 
-      wins: 0, 
-      losses: 0, 
-      streak: 0 
+      winsSingles: 0, 
+      lossesSingles: 0, 
+      streakSingles: 0,
+      winsDoubles: 0, 
+      lossesDoubles: 0, 
+      streakDoubles: 0,
     });
     await dbOps.clearMatches();
     
@@ -2439,6 +2830,90 @@ app.get('/api/hall-of-fame', authMiddleware, async (req, res) => {
     res.json(records);
   } catch (err) {
     console.error('Error in /api/hall-of-fame:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// --- Leagues ---
+app.get('/api/leagues', authMiddleware, async (req, res) => {
+  try {
+    const leagues = await dbOps.getLeagues();
+    res.json(leagues);
+  } catch (err) {
+    console.error('Error in GET /api/leagues:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/leagues', authMiddleware, async (req, res) => {
+  try {
+    const admins = await dbOps.getAdmins();
+    if (!admins.includes(req.user.uid)) return res.status(403).json({ error: 'Admin only' });
+
+    const { name, description } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'League name is required' });
+
+    const league = await dbOps.createLeague({
+      id: Date.now().toString(),
+      name: name.trim(),
+      description: description?.trim() || null,
+      createdBy: req.user.uid,
+    });
+
+    res.json(league);
+  } catch (err) {
+    console.error('Error in POST /api/leagues:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/leagues/:id', authMiddleware, async (req, res) => {
+  try {
+    const admins = await dbOps.getAdmins();
+    if (!admins.includes(req.user.uid)) return res.status(403).json({ error: 'Admin only' });
+
+    const { name, description } = req.body;
+    const updates = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (description !== undefined) updates.description = description?.trim() || null;
+
+    const league = await dbOps.updateLeague(req.params.id, updates);
+    res.json(league);
+  } catch (err) {
+    console.error('Error in PUT /api/leagues/:id:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.delete('/api/leagues/:id', authMiddleware, async (req, res) => {
+  try {
+    const admins = await dbOps.getAdmins();
+    if (!admins.includes(req.user.uid)) return res.status(403).json({ error: 'Admin only' });
+
+    await dbOps.deleteLeague(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error in DELETE /api/leagues/:id:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/players/:id/league', authMiddleware, async (req, res) => {
+  try {
+    const admins = await dbOps.getAdmins();
+    if (!admins.includes(req.user.uid)) return res.status(403).json({ error: 'Admin only' });
+
+    const { leagueId } = req.body;
+    // Validate league exists if not null
+    if (leagueId) {
+      const league = await dbOps.getLeagueById(leagueId);
+      if (!league) return res.status(400).json({ error: 'League not found' });
+    }
+
+    await dbOps.assignPlayerLeague(req.params.id, leagueId || null);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error in PUT /api/players/:id/league:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

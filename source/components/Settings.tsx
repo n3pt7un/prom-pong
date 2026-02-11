@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, RefreshCw, AlertTriangle, Save, History, UserX, Download, Upload, ShieldCheck, ShieldOff, Users, Pencil, Camera, Check, X } from 'lucide-react';
-import { getBackups, createBackup, Backup, LeagueState, listUsers, promoteUser, demoteUser } from '../services/storageService';
-import { AppUser } from '../types';
+import { Trash2, RefreshCw, AlertTriangle, Save, History, UserX, Download, Upload, ShieldCheck, ShieldOff, Users, Pencil, Camera, Check, X, Trophy, Swords, Building2, Search, Filter, ChevronDown, ChevronUp, UserCog, Plus, Calculator } from 'lucide-react';
+import { getBackups, createBackup, Backup, LeagueState, listUsers, promoteUser, demoteUser, getLeagueData, updatePlayer, deletePlayer, deleteMatch, createLeague, updateLeague, deleteLeague, assignPlayerLeague, recalculateStats } from '../services/storageService';
+import { AppUser, Player, Match, League } from '../types';
 import { AVATARS } from '../constants';
 import { resizeImage } from '../utils/imageUtils';
 
@@ -14,6 +14,10 @@ interface SettingsProps {
   onExport: () => void;
   onImport: (data: LeagueState) => void;
   onUpdateProfile: (updates: { name?: string; avatar?: string; bio?: string }) => Promise<void>;
+  players?: Player[];
+  matches?: Match[];
+  leagues?: League[];
+  onRefreshData?: () => void;
 }
 
 interface UserEntry {
@@ -23,13 +27,38 @@ interface UserEntry {
   isAdmin: boolean;
 }
 
-const Settings: React.FC<SettingsProps> = ({ isAdmin, currentUser, onResetSeason, onFactoryReset, onStartFresh, onExport, onImport, onUpdateProfile }) => {
+const Settings: React.FC<SettingsProps> = ({ isAdmin, currentUser, onResetSeason, onFactoryReset, onStartFresh, onExport, onImport, onUpdateProfile, players = [], matches = [], leagues = [], onRefreshData }) => {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [showBackups, setShowBackups] = useState(false);
   const [users, setUsers] = useState<UserEntry[]>([]);
   const [showUsers, setShowUsers] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Player Management
+  const [showPlayerManager, setShowPlayerManager] = useState(false);
+  const [playerSearch, setPlayerSearch] = useState('');
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [editPlayerName, setEditPlayerName] = useState('');
+  const [editPlayerLeague, setEditPlayerLeague] = useState<string | null>(null);
+  const [playerActionLoading, setPlayerActionLoading] = useState<string | null>(null);
+
+  // Match Management
+  const [showMatchManager, setShowMatchManager] = useState(false);
+  const [matchFilter, setMatchFilter] = useState('');
+  const [matchLeagueFilter, setMatchLeagueFilter] = useState<string | null>(null);
+  const [matchActionLoading, setMatchActionLoading] = useState<string | null>(null);
+
+  // League Management (inline in Settings)
+  const [showLeagueManager, setShowLeagueManager] = useState(false);
+  const [newLeagueName, setNewLeagueName] = useState('');
+  const [newLeagueDesc, setNewLeagueDesc] = useState('');
+  const [editingLeague, setEditingLeague] = useState<League | null>(null);
+  const [editLeagueName, setEditLeagueName] = useState('');
+  const [leagueActionLoading, setLeagueActionLoading] = useState<string | null>(null);
+
+  // Recalculate Stats
+  const [recalcLoading, setRecalcLoading] = useState(false);
 
   // Profile editing state
   const [editingProfile, setEditingProfile] = useState(false);
@@ -160,6 +189,132 @@ const Settings: React.FC<SettingsProps> = ({ isAdmin, currentUser, onResetSeason
       alert(err.message || 'Failed to demote user');
     }
   };
+
+  // --- Player Management Handlers ---
+  const handleEditPlayer = (player: Player) => {
+    setEditingPlayer(player);
+    setEditPlayerName(player.name);
+    setEditPlayerLeague(player.leagueId || null);
+  };
+
+  const handleSavePlayer = async () => {
+    if (!editingPlayer || !editPlayerName.trim()) return;
+    setPlayerActionLoading(editingPlayer.id);
+    try {
+      await updatePlayer(editingPlayer.id, { name: editPlayerName.trim() });
+      if (editPlayerLeague !== editingPlayer.leagueId) {
+        await assignPlayerLeague(editingPlayer.id, editPlayerLeague);
+      }
+      setEditingPlayer(null);
+      onRefreshData?.();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update player');
+    } finally {
+      setPlayerActionLoading(null);
+    }
+  };
+
+  const handleDeletePlayer = async (playerId: string, playerName: string) => {
+    if (!window.confirm(`Delete player "${playerName}"? This cannot be undone.`)) return;
+    setPlayerActionLoading(playerId);
+    try {
+      await deletePlayer(playerId);
+      onRefreshData?.();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete player');
+    } finally {
+      setPlayerActionLoading(null);
+    }
+  };
+
+  // --- Match Management Handlers ---
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!window.confirm('Delete this match and reverse ELO changes?')) return;
+    setMatchActionLoading(matchId);
+    try {
+      await deleteMatch(matchId);
+      onRefreshData?.();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete match');
+    } finally {
+      setMatchActionLoading(null);
+    }
+  };
+
+  // --- League Management Handlers ---
+  const handleCreateLeague = async () => {
+    if (!newLeagueName.trim()) return;
+    setLeagueActionLoading('create');
+    try {
+      await createLeague(newLeagueName.trim(), newLeagueDesc.trim() || undefined);
+      setNewLeagueName('');
+      setNewLeagueDesc('');
+      onRefreshData?.();
+    } catch (err: any) {
+      alert(err.message || 'Failed to create league');
+    } finally {
+      setLeagueActionLoading(null);
+    }
+  };
+
+  const handleEditLeague = (league: League) => {
+    setEditingLeague(league);
+    setEditLeagueName(league.name);
+  };
+
+  const handleSaveLeague = async () => {
+    if (!editingLeague || !editLeagueName.trim()) return;
+    setLeagueActionLoading(editingLeague.id);
+    try {
+      await updateLeague(editingLeague.id, { name: editLeagueName.trim() });
+      setEditingLeague(null);
+      onRefreshData?.();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update league');
+    } finally {
+      setLeagueActionLoading(null);
+    }
+  };
+
+  const handleDeleteLeague = async (leagueId: string, leagueName: string) => {
+    if (!window.confirm(`Delete league "${leagueName}"? Players will be unassigned.`)) return;
+    setLeagueActionLoading(leagueId);
+    try {
+      await deleteLeague(leagueId);
+      onRefreshData?.();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete league');
+    } finally {
+      setLeagueActionLoading(null);
+    }
+  };
+
+  // --- Recalculate Stats Handler ---
+  const handleRecalculateStats = async () => {
+    if (!window.confirm('Recalculate all player stats from match history?\n\nThis will:\n- Reset all wins/losses/streaks to 0\n- Re-count every match\n- Fix any stat discrepancies\n\nThis action cannot be undone.')) return;
+    setRecalcLoading(true);
+    try {
+      const result = await recalculateStats();
+      onRefreshData?.();
+      alert(`Stats recalculated!\n${result.message}`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to recalculate stats');
+    } finally {
+      setRecalcLoading(false);
+    }
+  };
+
+  // Filtered data
+  const filteredPlayers = players.filter(p => 
+    p.name.toLowerCase().includes(playerSearch.toLowerCase())
+  );
+
+  const filteredMatches = matches.filter(m => {
+    const playerNames = [...m.winners, ...m.losers].map(id => players.find(p => p.id === id)?.name || '').join(' ');
+    const matchesSearch = playerNames.toLowerCase().includes(matchFilter.toLowerCase());
+    const matchesLeague = matchLeagueFilter ? m.leagueId === matchLeagueFilter : true;
+    return matchesSearch && matchesLeague;
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-fadeIn pb-20">
@@ -417,6 +572,398 @@ const Settings: React.FC<SettingsProps> = ({ isAdmin, currentUser, onResetSeason
                   </div>
                 ))
               )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Admin-only: League Management */}
+      {isAdmin && (
+        <div className="glass-panel p-6 rounded-xl border-l-4 border-l-cyber-cyan">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Building2 className="text-cyber-cyan" size={20} />
+              League Management
+            </h3>
+            <button
+              onClick={() => setShowLeagueManager(!showLeagueManager)}
+              className="text-xs bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan hover:bg-cyber-cyan hover:text-black px-3 py-1.5 rounded font-bold transition-all"
+            >
+              {showLeagueManager ? 'Hide' : 'Manage Leagues'}
+            </button>
+          </div>
+          <p className="text-gray-400 text-sm mb-4">
+            Create, edit, and delete leagues. Players can be assigned to leagues in the Player Management section.
+          </p>
+
+          {showLeagueManager && (
+            <div className="space-y-4 animate-slideUp">
+              {/* Create New League */}
+              <div className="bg-black/30 rounded-lg p-4 border border-white/5">
+                <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                  <Plus size={14} /> Create New League
+                </h4>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="League name"
+                    value={newLeagueName}
+                    onChange={(e) => setNewLeagueName(e.target.value)}
+                    className="w-full bg-black/50 border border-white/10 text-white p-2.5 rounded-lg font-mono text-sm focus:border-cyber-cyan outline-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Description (optional)"
+                    value={newLeagueDesc}
+                    onChange={(e) => setNewLeagueDesc(e.target.value)}
+                    className="w-full bg-black/50 border border-white/10 text-white p-2.5 rounded-lg font-mono text-sm focus:border-cyber-cyan outline-none"
+                  />
+                  <button
+                    onClick={handleCreateLeague}
+                    disabled={!newLeagueName.trim() || leagueActionLoading === 'create'}
+                    className="w-full bg-cyber-cyan/10 border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black px-4 py-2 rounded font-bold transition-all text-sm disabled:opacity-50"
+                  >
+                    {leagueActionLoading === 'create' ? 'Creating...' : 'Create League'}
+                  </button>
+                </div>
+              </div>
+
+              {/* League List */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Existing Leagues ({leagues.length})</h4>
+                {leagues.length === 0 ? (
+                  <div className="text-gray-500 text-sm py-4 text-center italic border border-dashed border-white/10 rounded-lg">
+                    No leagues yet. Create one to organize players.
+                  </div>
+                ) : (
+                  leagues.map(league => (
+                    <div key={league.id} className="flex items-center justify-between bg-black/30 rounded-lg p-3 border border-white/5">
+                      {editingLeague?.id === league.id ? (
+                        <div className="flex-1 flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editLeagueName}
+                            onChange={(e) => setEditLeagueName(e.target.value)}
+                            className="flex-1 bg-black/50 border border-cyber-cyan/50 text-white p-2 rounded-lg font-mono text-sm focus:border-cyber-cyan outline-none"
+                            autoFocus
+                          />
+                          <button
+                            onClick={handleSaveLeague}
+                            disabled={leagueActionLoading === league.id}
+                            className="p-2 text-green-400 hover:bg-green-400/20 rounded-lg transition-colors"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            onClick={() => setEditingLeague(null)}
+                            className="p-2 text-gray-400 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <Building2 size={16} className="text-cyber-cyan" />
+                            <div>
+                              <span className="text-sm font-bold text-white">{league.name}</span>
+                              {league.description && (
+                                <p className="text-xs text-gray-500">{league.description}</p>
+                              )}
+                              <p className="text-xs text-gray-600 font-mono">
+                                {players.filter(p => p.leagueId === league.id).length} players
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleEditLeague(league)}
+                              className="p-2 text-gray-400 hover:text-cyber-cyan hover:bg-cyber-cyan/10 rounded-lg transition-colors"
+                              title="Edit league"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLeague(league.id, league.name)}
+                              disabled={leagueActionLoading === league.id}
+                              className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Delete league"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Admin-only: Player Management */}
+      {isAdmin && (
+        <div className="glass-panel p-6 rounded-xl border-l-4 border-l-cyber-pink">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <UserCog className="text-cyber-pink" size={20} />
+              Player Management
+            </h3>
+            <button
+              onClick={() => setShowPlayerManager(!showPlayerManager)}
+              className="text-xs bg-cyber-pink/10 border border-cyber-pink/30 text-cyber-pink hover:bg-cyber-pink hover:text-black px-3 py-1.5 rounded font-bold transition-all"
+            >
+              {showPlayerManager ? 'Hide' : 'Manage Players'}
+            </button>
+          </div>
+          <p className="text-gray-400 text-sm mb-4">
+            Edit player names, assign to leagues, or delete players. Use with caution.
+          </p>
+
+          {showPlayerManager && (
+            <div className="space-y-4 animate-slideUp">
+              {/* Search */}
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search players..."
+                  value={playerSearch}
+                  onChange={(e) => setPlayerSearch(e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 text-white pl-10 pr-4 py-2 rounded-lg font-mono text-sm focus:border-cyber-pink outline-none"
+                />
+              </div>
+
+              {/* Player List */}
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {filteredPlayers.length === 0 ? (
+                  <div className="text-gray-500 text-sm py-4 text-center italic">
+                    {playerSearch ? 'No players match your search.' : 'No players found.'}
+                  </div>
+                ) : (
+                  filteredPlayers.map(player => (
+                    <div key={player.id} className="bg-black/30 rounded-lg p-3 border border-white/5">
+                      {editingPlayer?.id === player.id ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <img src={player.avatar} className="w-10 h-10 rounded-full border border-white/10" />
+                            <div className="flex-1 space-y-2">
+                              <input
+                                type="text"
+                                value={editPlayerName}
+                                onChange={(e) => setEditPlayerName(e.target.value)}
+                                className="w-full bg-black/50 border border-cyber-pink/50 text-white p-2 rounded-lg font-mono text-sm focus:border-cyber-pink outline-none"
+                                autoFocus
+                              />
+                              <select
+                                value={editPlayerLeague || ''}
+                                onChange={(e) => setEditPlayerLeague(e.target.value || null)}
+                                className="w-full bg-black/50 border border-white/10 text-gray-300 p-2 rounded-lg font-mono text-sm focus:border-cyber-pink outline-none"
+                              >
+                                <option value="">No League (Global)</option>
+                                {leagues.map(l => (
+                                  <option key={l.id} value={l.id}>{l.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={handleSavePlayer}
+                              disabled={playerActionLoading === player.id}
+                              className="flex items-center gap-1 text-xs bg-green-500/10 border border-green-500 text-green-400 hover:bg-green-500 hover:text-black px-3 py-1.5 rounded font-bold transition-all"
+                            >
+                              <Check size={12} /> Save
+                            </button>
+                            <button
+                              onClick={() => setEditingPlayer(null)}
+                              className="flex items-center gap-1 text-xs bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10 px-3 py-1.5 rounded font-bold transition-all"
+                            >
+                              <X size={12} /> Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <img src={player.avatar} className="w-10 h-10 rounded-full border border-white/10" />
+                            <div>
+                              <span className="text-sm font-bold text-white">{player.name}</span>
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <span className="font-mono">ELO: {player.eloSingles}</span>
+                                <span>•</span>
+                                <span>{player.wins}W/{player.losses}L</span>
+                                {player.leagueId && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-cyber-cyan">
+                                      {leagues.find(l => l.id === player.leagueId)?.name || 'Unknown League'}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleEditPlayer(player)}
+                              className="p-2 text-gray-400 hover:text-cyber-pink hover:bg-cyber-pink/10 rounded-lg transition-colors"
+                              title="Edit player"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePlayer(player.id, player.name)}
+                              disabled={playerActionLoading === player.id}
+                              className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Delete player"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Admin-only: Recalculate Stats */}
+      {isAdmin && (
+        <div className="glass-panel p-6 rounded-xl border-l-4 border-l-cyber-cyan">
+          <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Calculator className="text-cyber-cyan" size={20} />
+                Recalculate Stats
+              </h3>
+              <p className="text-gray-400 mt-2 text-sm">
+                Fix stat discrepancies by recalculating all player wins/losses/streaks from match history.
+              </p>
+            </div>
+            <button
+              onClick={handleRecalculateStats}
+              disabled={recalcLoading}
+              className="w-full md:w-auto flex-shrink-0 bg-cyber-cyan/10 border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black px-4 py-2 rounded font-bold transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {recalcLoading ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" /> RECALCULATING...
+                </>
+              ) : (
+                <>
+                  <Calculator size={16} /> RECALCULATE
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Admin-only: Match Management */}
+      {isAdmin && (
+        <div className="glass-panel p-6 rounded-xl border-l-4 border-l-cyber-purple">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Swords className="text-cyber-purple" size={20} />
+              Match Management
+            </h3>
+            <button
+              onClick={() => setShowMatchManager(!showMatchManager)}
+              className="text-xs bg-cyber-purple/10 border border-cyber-purple/30 text-cyber-purple hover:bg-cyber-purple hover:text-white px-3 py-1.5 rounded font-bold transition-all"
+            >
+              {showMatchManager ? 'Hide' : 'Manage Matches'}
+            </button>
+          </div>
+          <p className="text-gray-400 text-sm mb-4">
+            View and delete matches. Deleting a match reverses ELO changes and stats.
+          </p>
+
+          {showMatchManager && (
+            <div className="space-y-4 animate-slideUp">
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Search by player name..."
+                    value={matchFilter}
+                    onChange={(e) => setMatchFilter(e.target.value)}
+                    className="w-full bg-black/50 border border-white/10 text-white pl-10 pr-4 py-2 rounded-lg font-mono text-sm focus:border-cyber-purple outline-none"
+                  />
+                </div>
+                <select
+                  value={matchLeagueFilter || ''}
+                  onChange={(e) => setMatchLeagueFilter(e.target.value || null)}
+                  className="bg-black/50 border border-white/10 text-gray-300 px-4 py-2 rounded-lg font-mono text-sm focus:border-cyber-purple outline-none"
+                >
+                  <option value="">All Leagues</option>
+                  {leagues.map(l => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Match List */}
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {filteredMatches.length === 0 ? (
+                  <div className="text-gray-500 text-sm py-4 text-center italic">
+                    {matchFilter || matchLeagueFilter ? 'No matches match your filters.' : 'No matches found.'}
+                  </div>
+                ) : (
+                  filteredMatches.slice(0, 50).map(match => {
+                    const winnerNames = match.winners.map(id => players.find(p => p.id === id)?.name || 'Unknown').join(' & ');
+                    const loserNames = match.losers.map(id => players.find(p => p.id === id)?.name || 'Unknown').join(' & ');
+                    const leagueName = match.leagueId ? leagues.find(l => l.id === match.leagueId)?.name : null;
+                    return (
+                      <div key={match.id} className="bg-black/30 rounded-lg p-3 border border-white/5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="font-bold text-white truncate">{winnerNames}</span>
+                              <span className="text-cyber-cyan font-mono">{match.scoreWinner}-{match.scoreLoser}</span>
+                              <span className="text-gray-400 truncate">{loserNames}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                              <span className="font-mono">{new Date(match.timestamp).toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span className={match.isFriendly ? 'text-amber-400' : 'text-cyber-cyan'}>
+                                {match.isFriendly ? 'Friendly' : `ELO: ${match.eloChange > 0 ? '+' : ''}${match.eloChange}`}
+                              </span>
+                              {leagueName && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-cyber-cyan">{leagueName}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteMatch(match.id)}
+                            disabled={matchActionLoading === match.id}
+                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-2"
+                            title="Delete match and reverse ELO"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {filteredMatches.length > 50 && (
+                  <div className="text-center text-xs text-gray-500 py-2">
+                    Showing 50 of {filteredMatches.length} matches. Refine filters to see more.
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Player, Match, GameType } from '../types';
+import { Player, Match, GameType, League } from '../types';
 import RankBadge from './RankBadge';
 import { TrendingUp, TrendingDown, Minus, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { RANKS } from '../constants';
@@ -8,13 +8,22 @@ interface LeaderboardProps {
   players: Player[];
   matches: Match[];
   onPlayerClick?: (playerId: string) => void;
+  activeLeagueId?: string | null;
+  leagues?: League[];
 }
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerClick }) => {
+const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerClick, activeLeagueId, leagues = [] }) => {
   const [type, setType] = useState<GameType>('singles');
   const [showInfo, setShowInfo] = useState(false);
 
-  const sortedPlayers = [...players].sort((a, b) => {
+  // Filter players by league if active
+  const filteredPlayers = activeLeagueId
+    ? players.filter(p => p.leagueId === activeLeagueId)
+    : players;
+
+  const activeLeague = activeLeagueId ? leagues.find(l => l.id === activeLeagueId) : null;
+
+  const sortedPlayers = [...filteredPlayers].sort((a, b) => {
     const eloA = type === 'singles' ? a.eloSingles : a.eloDoubles;
     const eloB = type === 'singles' ? b.eloSingles : b.eloDoubles;
     return eloB - eloA;
@@ -37,7 +46,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
           <h2 className="text-3xl font-display font-bold text-white neon-text-cyan">
-            GLOBAL <span className="text-cyber-pink">RANKINGS</span>
+            {activeLeague ? activeLeague.name.toUpperCase() : 'GLOBAL'} <span className="text-cyber-pink">RANKINGS</span>
           </h2>
           <button
             onClick={() => setShowInfo(!showInfo)}
@@ -179,7 +188,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
                           className="w-10 h-10 rounded-full border border-white/20"
                         />
                         <div>
-                          <div className="font-bold text-white tracking-wide">{player.name}</div>
+                          <div className="font-bold text-white tracking-wide flex items-center gap-2">
+                            {player.name}
+                            {!activeLeagueId && player.leagueId && (() => {
+                              const league = leagues.find(l => l.id === player.leagueId);
+                              return league ? (
+                                <span className="text-[10px] font-mono font-bold text-cyber-purple bg-cyber-purple/10 border border-cyber-purple/30 px-1.5 py-0.5 rounded-full">
+                                  {league.name}
+                                </span>
+                              ) : null;
+                            })()}
+                          </div>
                           <RankBadge elo={elo} />
                         </div>
                       </div>
