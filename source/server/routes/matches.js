@@ -70,11 +70,11 @@ router.post('/matches', authMiddleware, async (req, res) => {
         wElo = ((w0.eloDoubles ?? INITIAL_ELO) + (w1.eloDoubles ?? INITIAL_ELO)) / 2;
         lElo = ((l0.eloDoubles ?? INITIAL_ELO) + (l1.eloDoubles ?? INITIAL_ELO)) / 2;
       }
-      delta = calculateMatchDelta(wElo, lElo);
+      delta = Math.round(calculateMatchDelta(wElo, lElo));
 
       for (const p of players) {
         if (winners.includes(p.id)) {
-          const newElo = type === 'singles' ? p.eloSingles + delta : p.eloDoubles + delta;
+          const newElo = Math.round(type === 'singles' ? p.eloSingles + delta : p.eloDoubles + delta);
           historyEntries.push({ playerId: p.id, matchId, newElo, timestamp, gameType: type });
           const isSingles = type === 'singles';
           await dbOps.updatePlayer(p.id, {
@@ -86,7 +86,7 @@ router.post('/matches', authMiddleware, async (req, res) => {
             streakDoubles: !isSingles ? ((p.streakDoubles || 0) >= 0 ? (p.streakDoubles || 0) + 1 : 1) : (p.streakDoubles || 0),
           });
         } else if (losers.includes(p.id)) {
-          const newElo = type === 'singles' ? p.eloSingles - delta : p.eloDoubles - delta;
+          const newElo = Math.round(type === 'singles' ? p.eloSingles - delta : p.eloDoubles - delta);
           historyEntries.push({ playerId: p.id, matchId, newElo, timestamp, gameType: type });
           const isSingles = type === 'singles';
           await dbOps.updatePlayer(p.id, {
