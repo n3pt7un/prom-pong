@@ -8,6 +8,19 @@ import { supabase } from '../../lib/supabase.ts';
 
 const router = Router();
 
+function validateMatchScore(scoreWinner, scoreLoser, format = 'vintage21') {
+  const target = format === 'vintage21' ? 21 : 11;
+  const deuceStart = target - 1;
+
+  if (scoreWinner === scoreLoser) return 'Draws are not allowed';
+  if (scoreWinner - scoreLoser < 2) return 'Must win by at least 2 points';
+  if (scoreWinner < target) return `Minimum winning score is ${target}`;
+  if (scoreLoser < deuceStart && scoreWinner > target) {
+    return `Invalid score: if opponent has fewer than ${deuceStart} points, winner must score exactly ${target}`;
+  }
+  return null;
+}
+
 router.post('/matches', authMiddleware, async (req, res) => {
   try {
     const { type, winners, losers, scoreWinner, scoreLoser, isFriendly } = req.body;
@@ -20,6 +33,15 @@ router.post('/matches', authMiddleware, async (req, res) => {
     }
     if (typeof scoreWinner !== 'number' || typeof scoreLoser !== 'number' || scoreWinner < 0 || scoreLoser < 0) {
       return res.status(400).json({ error: 'Scores must be non-negative numbers' });
+    }
+
+    const matchFormat = req.body.matchFormat || 'vintage21';
+    if (!['standard11', 'vintage21'].includes(matchFormat)) {
+      return res.status(400).json({ error: 'Invalid match format' });
+    }
+    const scoreError = validateMatchScore(scoreWinner, scoreLoser, matchFormat);
+    if (scoreError) {
+      return res.status(400).json({ error: scoreError });
     }
 
     const players = await dbOps.getPlayers();
@@ -126,6 +148,7 @@ router.post('/matches', authMiddleware, async (req, res) => {
       scoreWinner, scoreLoser, timestamp, eloChange: delta, loggedBy: req.user.uid,
       isFriendly: friendly,
       leagueId,
+      matchFormat,
     };
 
     const created = await dbOps.createMatch(newMatch, winners, losers, historyEntries);

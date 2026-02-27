@@ -52,6 +52,7 @@ export const toLegacyMatch = async (m) => {
     loggedBy: m.logged_by,
     isFriendly: m.is_friendly || false,
     leagueId: m.league_id || null,
+    matchFormat: m.match_format || 'vintage21',
   };
 };
 

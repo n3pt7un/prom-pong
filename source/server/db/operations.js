@@ -220,6 +220,7 @@ export const dbOps = {
           logged_by: match.loggedBy,
           is_friendly: match.isFriendly || false,
           league_id: match.leagueId || null,
+          match_format: match.matchFormat || 'vintage21',
         })
         .select()
         .single();
