@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import Leaderboard from './components/Leaderboard';
 import MatchLogger from './components/MatchLogger';
@@ -57,18 +57,51 @@ function AppContent() {
   const handlers = useLeagueHandlers();
 
   const [activeTab, setActiveTab] = useState('leaderboard');
+
+  const VALID_TABS = new Set([
+    'leaderboard', 'log', 'recent', 'players', 'matchmaker',
+    'challenges', 'tournaments', 'seasons', 'settings', 'leagues',
+    'rackets', 'weekly', 'hof',
+  ]);
+
+  // On mount: restore tab from hash (supports bookmarks / hard refresh)
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash && VALID_TABS.has(hash)) {
+      setActiveTab(hash);
+    } else {
+      window.history.replaceState({ tab: 'leaderboard' }, '', '#leaderboard');
+    }
+  }, []);
+
+  // Listen for browser back/forward
+  useEffect(() => {
+    const handlePop = (e: PopStateEvent) => {
+      const tab = e.state?.tab;
+      if (tab && VALID_TABS.has(tab)) setActiveTab(tab);
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
+
+  // Replace setActiveTab calls with navigateTo
+  const navigateTo = (tab: string) => {
+    window.history.pushState({ tab }, '', `#${tab}`);
+    setActiveTab(tab);
+  };
+
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
   const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string[]; team2: string[] } | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   const handleMatchmakerSelect = (type: GameType, team1: string[], team2: string[]) => {
     setMatchPrefill({ type, team1, team2 });
-    setActiveTab('log');
+    navigateTo('log');
   };
 
   const handleLeaderboardPlayerClick = (playerId: string) => {
     setSelectedPlayerId(playerId);
-    setActiveTab('players');
+    navigateTo('players');
   };
 
   const handleMatchSubmitWithTab = async (
@@ -81,7 +114,7 @@ function AppContent() {
     leagueId?: string
   ) => {
     const result = await handlers.handleMatchSubmit(type, winners, losers, scoreW, scoreL, isFriendly, leagueId);
-    if (result) setActiveTab('leaderboard');
+    if (result) navigateTo('leaderboard');
   };
 
   const currentSeason = seasons.find((s) => s.status === 'active');
@@ -195,7 +228,7 @@ function AppContent() {
             onUpdateRacket={handlers.handleUpdatePlayerRacket}
             onDeletePlayer={handlers.handleDeletePlayer}
             onAddPlayer={() => setShowCreatePlayerModal(true)}
-            onNavigateToArmory={() => setActiveTab('armory')}
+            onNavigateToArmory={() => navigateTo('armory')}
             onUpdatePlayerName={handlers.handleUpdatePlayerName}
             onClearInitialSelection={() => setSelectedPlayerId(null)}
             activeLeagueId={activeLeagueId}
@@ -302,7 +335,7 @@ function AppContent() {
   return (
     <Layout
       activeTab={activeTab}
-      onTabChange={setActiveTab}
+      onTabChange={navigateTo}
       currentUser={currentUser}
       onSignOut={handleSignOut}
       leagues={leagues}
