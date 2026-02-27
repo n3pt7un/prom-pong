@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, PlusCircle, Users, Settings, Sword, LogOut, ShieldCheck, Swords, Building2 } from 'lucide-react';
+import { Trophy, PlusCircle, Users, Settings, Sword, LogOut, ShieldCheck, Swords, Building2, Github } from 'lucide-react';
 import { AppUser, League } from '../types';
 
 interface LayoutProps {
@@ -149,6 +149,19 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, curre
       <main className={`relative z-10 max-w-7xl mx-auto px-4 pb-24 md:pb-12 ${leagues.length > 0 ? 'pt-14 md:pt-24' : 'pt-8 md:pt-24'}`}>
         {children}
       </main>
+
+      {/* Footer with GitHub link */}
+      <footer className="relative z-10 py-6 text-center border-t border-white/10 mt-8">
+        <a
+          href="https://github.com/n3pt7un/prom-pong/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-cyber-cyan transition-colors text-sm"
+        >
+          <Github size={16} />
+          <span>Report an Issue</span>
+        </a>
+      </footer>
     </div>
   );
 };
