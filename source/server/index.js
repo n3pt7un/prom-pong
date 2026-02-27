@@ -21,6 +21,7 @@ import leaguesRoutes from './routes/leagues.js';
 import adminRoutes from './routes/admin.js';
 import exportImportRoutes from './routes/export-import.js';
 import featuresRoutes from './routes/features.js';
+import correctionsRoutes from './routes/corrections.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,6 +68,7 @@ app.use('/api', leaguesRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', exportImportRoutes);
 app.use('/api', featuresRoutes);
+app.use('/api', correctionsRoutes);
 
 app.get('*', (req, res) => {
   const distIndex = path.join(__dirname, '..', 'dist', 'index.html');
