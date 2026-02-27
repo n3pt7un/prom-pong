@@ -1,4 +1,5 @@
 export type GameType = 'singles' | 'doubles';
+export type MatchFormat = 'standard11' | 'vintage21';
 
 export interface RacketStats {
   speed: number;
@@ -55,6 +56,7 @@ export interface Match {
   loggedBy?: string; // Firebase UID of the user who logged the match
   isFriendly?: boolean; // Friendly matches skip ELO but still count in stats
   leagueId?: string; // League context the match was played in (null = global/cross-league)
+  matchFormat?: MatchFormat; // undefined = legacy match, treat as standard11
 }
 
 export interface EloHistoryEntry {
@@ -133,6 +135,22 @@ export interface Challenge {
   matchId?: string;
   createdAt: string;
   message?: string;
+}
+
+// --- Correction Requests ---
+export interface CorrectionRequest {
+  id: string;
+  matchId: string;
+  requestedBy: string;            // Firebase UID
+  proposedWinners: string[];
+  proposedLosers: string[];
+  proposedScoreWinner: number;
+  proposedScoreLoser: number;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
 }
 
 // --- Tournaments ---
