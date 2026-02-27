@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, RefreshCw, AlertTriangle, Save, History, UserX, Download, Upload, ShieldCheck, ShieldOff, Users, Pencil, Camera, Check, X, Trophy, Swords, Building2, Search, Filter, ChevronDown, ChevronUp, UserCog, Plus, Calculator } from 'lucide-react';
 import { getBackups, createBackup, Backup, LeagueState, listUsers, promoteUser, demoteUser, getLeagueData, updatePlayer, deletePlayer, deleteMatch, createLeague, updateLeague, deleteLeague, assignPlayerLeague, recalculateStats } from '../services/storageService';
-import { AppUser, Player, Match, League } from '../types';
+import { AppUser, Player, Match, League, CorrectionRequest } from '../types';
+import CorrectionRequests from './CorrectionRequests';
 import { AVATARS } from '../constants';
 import { resizeImage } from '../utils/imageUtils';
 
@@ -17,7 +18,10 @@ interface SettingsProps {
   players?: Player[];
   matches?: Match[];
   leagues?: League[];
+  correctionRequests?: CorrectionRequest[];
   onRefreshData?: () => void;
+  onApproveCorrection?: (requestId: string) => void;
+  onRejectCorrection?: (requestId: string) => void;
 }
 
 interface UserEntry {
@@ -27,7 +31,7 @@ interface UserEntry {
   isAdmin: boolean;
 }
 
-const Settings: React.FC<SettingsProps> = ({ isAdmin, currentUser, onResetSeason, onFactoryReset, onStartFresh, onExport, onImport, onUpdateProfile, players = [], matches = [], leagues = [], onRefreshData }) => {
+const Settings: React.FC<SettingsProps> = ({ isAdmin, currentUser, onResetSeason, onFactoryReset, onStartFresh, onExport, onImport, onUpdateProfile, players = [], matches = [], leagues = [], correctionRequests = [], onRefreshData, onApproveCorrection, onRejectCorrection }) => {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [showBackups, setShowBackups] = useState(false);
   const [users, setUsers] = useState<UserEntry[]>([]);
@@ -1088,6 +1092,18 @@ const Settings: React.FC<SettingsProps> = ({ isAdmin, currentUser, onResetSeason
           </div>
         )}
       </div>
+
+      {isAdmin && onApproveCorrection && onRejectCorrection && (
+        <div className="pt-8 border-t border-white/10">
+          <CorrectionRequests
+            requests={correctionRequests}
+            matches={matches}
+            players={players}
+            onApprove={onApproveCorrection}
+            onReject={onRejectCorrection}
+          />
+        </div>
+      )}
 
       <div className="text-center text-xs text-gray-600 font-mono mt-12">
         CyberPong System v3.0 &bull; Server Synced &bull; Auth Enabled &bull; Polling Interval: 5s

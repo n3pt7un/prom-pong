@@ -27,6 +27,8 @@ import {
   updateLeague as apiUpdateLeague,
   deleteLeague as apiDeleteLeague,
   assignPlayerLeague as apiAssignPlayerLeague,
+  approveCorrectionRequest,
+  rejectCorrectionRequest,
 } from '../services/storageService';
 import { LeagueState } from '../services/storageService';
 import { useAuth } from '../context/AuthContext';
@@ -411,6 +413,26 @@ export function useLeagueHandlers() {
     [refreshData, showToast]
   );
 
+  const handleApproveCorrection = useCallback(async (requestId: string) => {
+    try {
+      await approveCorrectionRequest(requestId);
+      await refreshData();
+      showToast('Correction approved & ELO recalculated', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to approve correction', 'error');
+    }
+  }, [refreshData, showToast]);
+
+  const handleRejectCorrection = useCallback(async (requestId: string) => {
+    try {
+      await rejectCorrectionRequest(requestId);
+      await refreshData();
+      showToast('Correction rejected', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to reject correction', 'error');
+    }
+  }, [refreshData, showToast]);
+
   return {
     handleMatchSubmit,
     handleDeleteMatch,
@@ -442,5 +464,7 @@ export function useLeagueHandlers() {
     handleUpdateLeague,
     handleDeleteLeague,
     handleAssignPlayerLeague,
+    handleApproveCorrection,
+    handleRejectCorrection,
   };
 }

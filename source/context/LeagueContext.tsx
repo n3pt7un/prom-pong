@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { getLeagueData } from '../services/storageService';
-import { Player, Match, EloHistoryEntry, Racket, PendingMatch, Season, Challenge, Tournament, League } from '../types';
+import { getLeagueData, getCorrectionRequests } from '../services/storageService';
+import { Player, Match, EloHistoryEntry, Racket, PendingMatch, Season, Challenge, Tournament, League, CorrectionRequest } from '../types';
 import { useAuth } from './AuthContext';
 import { useRealtime } from '../hooks/useRealtime';
 import { isSupabaseEnabled } from '../lib/supabase';
@@ -15,6 +15,7 @@ interface LeagueContextType {
   challenges: Challenge[];
   tournaments: Tournament[];
   leagues: League[];
+  correctionRequests: CorrectionRequest[];
   activeLeagueId: string | null;
   setActiveLeagueId: (id: string | null) => void;
   isConnected: boolean;
@@ -34,6 +35,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
   const [activeLeagueId, setActiveLeagueId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
 
@@ -50,6 +52,13 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       setChallenges(data.challenges || []);
       setTournaments(data.tournaments || []);
       setLeagues(data.leagues || []);
+      // Fetch correction requests — silently ignored for non-admins (403)
+      try {
+        const cr = await getCorrectionRequests();
+        setCorrectionRequests(cr);
+      } catch {
+        setCorrectionRequests([]);
+      }
       setIsConnected(true);
     } catch (err) {
       console.error('Connection lost:', err);
@@ -84,6 +93,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       setChallenges([]);
       setTournaments([]);
       setLeagues([]);
+      setCorrectionRequests([]);
       setActiveLeagueId(null);
       return;
     }
@@ -104,6 +114,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         challenges,
         tournaments,
         leagues,
+        correctionRequests,
         activeLeagueId,
         setActiveLeagueId,
         isConnected,
