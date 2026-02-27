@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Match, Player } from '../types';
+import { validateMatchScore } from '../utils/matchValidation';
 import { Trash2, ChevronDown, Pencil, Check, X, ArrowLeftRight } from 'lucide-react';
 
 const timeAgo = (dateStr: string) => {
@@ -81,10 +82,9 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
     const s1 = parseInt(editScore1);
     const s2 = parseInt(editScore2);
 
-    if (isNaN(s1) || isNaN(s2)) { setEditError('Scores must be numbers'); return; }
-    if (s1 === s2) { setEditError('Draws are not allowed'); return; }
-    if (Math.abs(s1 - s2) < 2) { setEditError('Must win by at least 2 points'); return; }
-    if (s1 < 11 && s2 < 11) { setEditError('Minimum winning score is 11'); return; }
+    const format = matches.find(m => m.id === editingId)?.matchFormat || 'vintage21';
+    const error = validateMatchScore(s1, s2, format);
+    if (error) { setEditError(error); return; }
 
     const winners = s1 > s2 ? editWinners : editLosers;
     const losers = s1 > s2 ? editLosers : editWinners;
@@ -199,6 +199,14 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* Format badge */}
+                  <span className={`inline-block text-xs font-mono font-bold px-2 py-1 rounded border ${
+                    match.matchFormat === 'vintage21'
+                      ? 'bg-cyber-purple/10 text-cyber-purple border-cyber-purple/30'
+                      : 'bg-white/5 text-gray-500 border-white/10'
+                  }`}>
+                    {match.matchFormat === 'vintage21' ? 'V-21' : 'S-11'}
+                  </span>
                   {match.isFriendly ? (
                     <span className="inline-block bg-amber-500/10 text-amber-300 text-xs font-mono font-bold px-2 py-1 rounded border border-amber-500/30">
                       FRIENDLY
