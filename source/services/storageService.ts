@@ -1,4 +1,4 @@
-import { Player, Match, EloHistoryEntry, GameType, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament, League } from '../types';
+import { Player, Match, EloHistoryEntry, GameType, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament, League, CorrectionRequest } from '../types';
 import { getIdToken } from './authService';
 
 export interface LeagueState {
@@ -11,6 +11,7 @@ export interface LeagueState {
   challenges: Challenge[];
   tournaments: Tournament[];
   leagues: League[];
+  correctionRequests: CorrectionRequest[];
 }
 
 export interface Backup {
@@ -347,4 +348,32 @@ export const createBackup = async (label: string = 'Auto-Backup') => {
 
 export const restoreBackup = async (backupId: string) => {
   console.warn("Restore not fully supported in synced mode yet.");
+};
+
+// --- Correction Requests ---
+export const createCorrectionRequest = async (data: {
+  matchId: string;
+  proposedWinners: string[];
+  proposedLosers: string[];
+  proposedScoreWinner: number;
+  proposedScoreLoser: number;
+  reason?: string;
+}): Promise<CorrectionRequest> => {
+  return apiRequest(`${API_URL}/corrections`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+};
+
+export const getCorrectionRequests = async (): Promise<CorrectionRequest[]> => {
+  return apiRequest(`${API_URL}/corrections`);
+};
+
+export const approveCorrectionRequest = async (requestId: string): Promise<void> => {
+  return apiRequest(`${API_URL}/corrections/${requestId}/approve`, { method: 'PATCH' });
+};
+
+export const rejectCorrectionRequest = async (requestId: string): Promise<void> => {
+  return apiRequest(`${API_URL}/corrections/${requestId}/reject`, { method: 'PATCH' });
 };
