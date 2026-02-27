@@ -32,7 +32,7 @@ import { LeagueState } from '../services/storageService';
 import { useAuth } from '../context/AuthContext';
 import { useLeague } from '../context/LeagueContext';
 import { useToast } from '../context/ToastContext';
-import { GameType, RacketStats, Tournament } from '../types';
+import { GameType, MatchFormat, RacketStats, Tournament } from '../types';
 
 export function useLeagueHandlers() {
   const { currentUser, isAdmin } = useAuth();
@@ -40,9 +40,9 @@ export function useLeagueHandlers() {
   const { showToast } = useToast();
 
   const handleMatchSubmit = useCallback(
-    async (type: GameType, winners: string[], losers: string[], scoreW: number, scoreL: number, isFriendly = false, leagueId?: string) => {
+    async (type: GameType, winners: string[], losers: string[], scoreW: number, scoreL: number, isFriendly = false, leagueId?: string, matchFormat?: MatchFormat) => {
       try {
-        const result = await recordMatch(type, winners, losers, scoreW, scoreL, isFriendly, leagueId || (activeLeagueId ?? undefined));
+        const result = await recordMatch(type, winners, losers, scoreW, scoreL, isFriendly, leagueId || (activeLeagueId ?? undefined), matchFormat);
         await refreshData();
         showToast('Match logged!', 'success', {
           label: 'UNDO',

@@ -1,4 +1,4 @@
-import { Player, Match, EloHistoryEntry, GameType, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament, League, CorrectionRequest } from '../types';
+import { Player, Match, EloHistoryEntry, GameType, MatchFormat, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament, League, CorrectionRequest } from '../types';
 import { getIdToken } from './authService';
 
 export interface LeagueState {
@@ -125,12 +125,13 @@ export const recordMatch = async (
   scoreWinner: number,
   scoreLoser: number,
   isFriendly: boolean = false,
-  leagueId?: string
+  leagueId?: string,
+  matchFormat?: MatchFormat
 ) => {
   return apiRequest(`${API_URL}/matches`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type, winners: winnerIds, losers: loserIds, scoreWinner, scoreLoser, isFriendly, leagueId })
+    body: JSON.stringify({ type, winners: winnerIds, losers: loserIds, scoreWinner, scoreLoser, isFriendly, leagueId, matchFormat })
   });
 };
 

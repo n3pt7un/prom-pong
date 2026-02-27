@@ -23,7 +23,7 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LeagueProvider, useLeague } from './context/LeagueContext';
 import { useLeagueHandlers } from './hooks/useLeagueHandlers';
-import { GameType } from './types';
+import { GameType, MatchFormat } from './types';
 import { WifiOff, CheckCircle, AlertCircle, X, Undo2, Loader2 } from 'lucide-react';
 
 function AppContent() {
@@ -111,9 +111,10 @@ function AppContent() {
     scoreW: number,
     scoreL: number,
     isFriendly = false,
-    leagueId?: string
+    leagueId?: string,
+    matchFormat?: MatchFormat
   ) => {
-    const result = await handlers.handleMatchSubmit(type, winners, losers, scoreW, scoreL, isFriendly, leagueId);
+    const result = await handlers.handleMatchSubmit(type, winners, losers, scoreW, scoreL, isFriendly, leagueId, matchFormat);
     if (result) navigateTo('leaderboard');
   };
 
