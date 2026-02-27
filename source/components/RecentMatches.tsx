@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Match, Player } from '../types';
 import { validateMatchScore } from '../utils/matchValidation';
-import { Trash2, ChevronDown, Pencil, Check, X, ArrowLeftRight } from 'lucide-react';
+import { Trash2, ChevronDown, Pencil, Check, X, ArrowLeftRight, Flag } from 'lucide-react';
 
 const timeAgo = (dateStr: string) => {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -20,13 +20,21 @@ interface RecentMatchesProps {
   players: Player[];
   isAdmin?: boolean;
   currentUserUid?: string;
+  currentPlayerIds?: string[];
   onDeleteMatch?: (matchId: string) => void;
   onEditMatch?: (matchId: string, data: { winners: string[]; losers: string[]; scoreWinner: number; scoreLoser: number }) => void;
+  onRequestCorrection?: (matchId: string, data: {
+    proposedWinners: string[];
+    proposedLosers: string[];
+    proposedScoreWinner: number;
+    proposedScoreLoser: number;
+    reason?: string;
+  }) => void;
 }
 
 const PAGE_SIZE = 15;
 
-const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin, currentUserUid, onDeleteMatch, onEditMatch }) => {
+const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin, currentUserUid, currentPlayerIds, onDeleteMatch, onEditMatch, onRequestCorrection }) => {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editScore1, setEditScore1] = useState('');
@@ -34,6 +42,13 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
   const [editWinners, setEditWinners] = useState<string[]>([]);
   const [editLosers, setEditLosers] = useState<string[]>([]);
   const [editError, setEditError] = useState<string | null>(null);
+  const [requestingId, setRequestingId] = useState<string | null>(null);
+  const [reqScore1, setReqScore1] = useState('');
+  const [reqScore2, setReqScore2] = useState('');
+  const [reqWinners, setReqWinners] = useState<string[]>([]);
+  const [reqLosers, setReqLosers] = useState<string[]>([]);
+  const [reqReason, setReqReason] = useState('');
+  const [reqError, setReqError] = useState<string | null>(null);
   // Force re-render every 10s so the 60s window buttons appear/disappear correctly
   const [, setTick] = useState(0);
 
@@ -96,6 +111,50 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
     setEditError(null);
   };
 
+  const canRequestCorrection = (match: Match) => {
+    if (!currentPlayerIds || currentPlayerIds.length === 0) return false;
+    if (isAdmin) return false;
+    if (canModify(match)) return false;
+    return currentPlayerIds.some(pid => match.winners.includes(pid) || match.losers.includes(pid));
+  };
+
+  const startRequest = (match: Match) => {
+    setRequestingId(match.id);
+    setReqScore1(match.scoreWinner.toString());
+    setReqScore2(match.scoreLoser.toString());
+    setReqWinners([...match.winners]);
+    setReqLosers([...match.losers]);
+    setReqReason('');
+    setReqError(null);
+  };
+
+  const cancelRequest = () => {
+    setRequestingId(null);
+    setReqError(null);
+  };
+
+  const submitRequest = () => {
+    if (!onRequestCorrection || !requestingId) return;
+    const s1 = parseInt(reqScore1);
+    const s2 = parseInt(reqScore2);
+    const match = matches.find(m => m.id === requestingId);
+    const format = match?.matchFormat || 'vintage21';
+    const error = validateMatchScore(s1, s2, format);
+    if (error) { setReqError(error); return; }
+
+    const winners = s1 >= s2 ? reqWinners : reqLosers;
+    const losers = s1 >= s2 ? reqLosers : reqWinners;
+
+    onRequestCorrection(requestingId, {
+      proposedWinners: winners,
+      proposedLosers: losers,
+      proposedScoreWinner: Math.max(s1, s2),
+      proposedScoreLoser: Math.min(s1, s2),
+      reason: reqReason || undefined,
+    });
+    setRequestingId(null);
+  };
+
   const visibleMatches = matches.slice(0, visibleCount);
   const hasMore = matches.length > visibleCount;
 
@@ -111,7 +170,63 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
       <div className="grid gap-3">
         {visibleMatches.map(match => {
           const isEditing = editingId === match.id;
+          const isRequesting = requestingId === match.id;
           const showActions = canModify(match);
+
+          if (isRequesting) {
+            return (
+              <div key={match.id} className="glass-panel p-4 rounded-lg border-l-2 border-l-amber-400 space-y-3">
+                <span className="text-[10px] font-mono text-amber-400 uppercase tracking-widest font-bold">Request Score Correction</span>
+
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="flex-1 text-center">
+                    <div className="text-[10px] font-mono text-gray-500 mb-1">TEAM 1</div>
+                    <span className="font-bold text-white">{reqWinners.map(id => getPlayerName(id)).join(' & ')}</span>
+                  </div>
+                  <button
+                    onClick={() => { const tmp = [...reqWinners]; setReqWinners([...reqLosers]); setReqLosers(tmp); }}
+                    className="p-1.5 text-gray-400 hover:text-amber-400 hover:bg-white/5 rounded transition-colors"
+                    title="Swap teams"
+                  >
+                    <ArrowLeftRight size={16} />
+                  </button>
+                  <div className="flex-1 text-center">
+                    <div className="text-[10px] font-mono text-gray-500 mb-1">TEAM 2</div>
+                    <span className="text-gray-400">{reqLosers.map(id => getPlayerName(id)).join(' & ')}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 justify-center">
+                  <input type="number" value={reqScore1} onChange={e => setReqScore1(e.target.value)}
+                    className="w-16 bg-black/50 border border-white/20 text-white text-center p-2 rounded-lg font-mono text-lg focus:border-amber-400 outline-none" min="0" />
+                  <span className="text-gray-500 font-bold">-</span>
+                  <input type="number" value={reqScore2} onChange={e => setReqScore2(e.target.value)}
+                    className="w-16 bg-black/50 border border-white/20 text-white text-center p-2 rounded-lg font-mono text-lg focus:border-amber-400 outline-none" min="0" />
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Reason (optional)"
+                  value={reqReason}
+                  onChange={e => setReqReason(e.target.value)}
+                  className="w-full bg-black/30 border border-white/10 text-white text-sm px-3 py-2 rounded-lg font-mono focus:border-amber-400 outline-none"
+                />
+
+                {reqError && <p className="text-red-400 text-xs font-mono text-center">{reqError}</p>}
+
+                <div className="flex gap-2 justify-end">
+                  <button onClick={cancelRequest}
+                    className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors font-bold flex items-center gap-1">
+                    <X size={12} /> Cancel
+                  </button>
+                  <button onClick={submitRequest}
+                    className="px-3 py-1.5 text-xs text-black bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors font-bold flex items-center gap-1">
+                    <Flag size={12} /> Submit
+                  </button>
+                </div>
+              </div>
+            );
+          }
 
           if (isEditing) {
             return (
@@ -232,6 +347,15 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
                       title="Delete match & reverse ELO"
                     >
                       <Trash2 size={14} />
+                    </button>
+                  )}
+                  {canRequestCorrection(match) && onRequestCorrection && (
+                    <button
+                      onClick={() => startRequest(match)}
+                      className="p-1.5 text-gray-600 hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                      title="Request score correction"
+                    >
+                      <Flag size={14} />
                     </button>
                   )}
                 </div>

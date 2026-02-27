@@ -24,6 +24,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LeagueProvider, useLeague } from './context/LeagueContext';
 import { useLeagueHandlers } from './hooks/useLeagueHandlers';
 import { GameType, MatchFormat } from './types';
+import { createCorrectionRequest } from './services/storageService';
 import { WifiOff, CheckCircle, AlertCircle, X, Undo2, Loader2 } from 'lucide-react';
 
 function AppContent() {
@@ -48,12 +49,13 @@ function AppContent() {
     challenges,
     tournaments,
     leagues,
+    correctionRequests,
     activeLeagueId,
     setActiveLeagueId,
     isConnected,
     refreshData,
   } = useLeague();
-  const { toasts, dismissToast } = useToast();
+  const { toasts, dismissToast, showToast } = useToast();
   const handlers = useLeagueHandlers();
 
   const [activeTab, setActiveTab] = useState('leaderboard');
@@ -93,6 +95,23 @@ function AppContent() {
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
   const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string[]; team2: string[] } | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+
+  const currentPlayerIds = currentUser?.player ? [currentUser.player.id] : [];
+
+  const handleRequestCorrection = async (matchId: string, data: {
+    proposedWinners: string[];
+    proposedLosers: string[];
+    proposedScoreWinner: number;
+    proposedScoreLoser: number;
+    reason?: string;
+  }) => {
+    try {
+      await createCorrectionRequest({ matchId, ...data });
+      showToast('Correction request submitted — admin will review', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to submit request', 'error');
+    }
+  };
 
   const handleMatchmakerSelect = (type: GameType, team1: string[], team2: string[]) => {
     setMatchPrefill({ type, team1, team2 });
@@ -187,8 +206,10 @@ function AppContent() {
                 players={players}
                 isAdmin={isAdmin}
                 currentUserUid={currentUser?.uid}
+                currentPlayerIds={currentPlayerIds}
                 onDeleteMatch={handlers.handleDeleteMatch}
                 onEditMatch={handlers.handleEditMatch}
+                onRequestCorrection={handleRequestCorrection}
               />
             </div>
           </div>
@@ -296,7 +317,10 @@ function AppContent() {
             players={players}
             matches={matches}
             leagues={leagues}
+            correctionRequests={correctionRequests}
             onRefreshData={refreshData}
+            onApproveCorrection={handlers.handleApproveCorrection}
+            onRejectCorrection={handlers.handleRejectCorrection}
           />
           <LeagueManager
             leagues={leagues}
