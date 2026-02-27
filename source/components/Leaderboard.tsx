@@ -1,20 +1,22 @@
 import React, { useState, useMemo } from 'react';
-import { Player, Match, GameType, League } from '../types';
+import { Player, Match, GameType, League, EloHistoryEntry } from '../types';
 import RankBadge from './RankBadge';
-import { TrendingUp, TrendingDown, Minus, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Info, ChevronDown, ChevronUp, Target } from 'lucide-react';
 import { RANKS } from '../constants';
 import { getPlayerStats } from '../utils/gameTypeStats';
 import { partitionPlayers, sortRankedPlayers, sortUnrankedPlayers } from '../utils/playerRanking';
+import { computeSoS, computeAverageElo } from '../utils/sosUtils';
 
 interface LeaderboardProps {
   players: Player[];
   matches: Match[];
+  history?: EloHistoryEntry[];
   onPlayerClick?: (playerId: string) => void;
   activeLeagueId?: string | null;
   leagues?: League[];
 }
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerClick, activeLeagueId, leagues = [] }) => {
+const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [], onPlayerClick, activeLeagueId, leagues = [] }) => {
   const [type, setType] = useState<GameType>('singles');
   const [showInfo, setShowInfo] = useState(false);
 
@@ -37,14 +39,28 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
     };
   }, [filteredPlayers, type]);
 
+  // Compute Strength of Schedule using historical Elo and league scoping
+  const sosMap = useMemo(() => {
+    const raw = computeSoS(players, filteredPlayers, matches, history, type, activeLeagueId);
+    const map = new Map<string, number | null>();
+    for (const [id, result] of raw) {
+      map.set(id, result.sos);
+    }
+    return map;
+  }, [players, filteredPlayers, matches, history, type, activeLeagueId]);
+
+  // League average Elo for SoS color coding
+  const leagueAvgElo = useMemo(
+    () => computeAverageElo(filteredPlayers, type),
+    [filteredPlayers, type]
+  );
+
   // Find last ELO delta for each player from the most recent match they were in (memoized)
   const getLastDelta = useMemo(() => {
-    // Pre-filter and sort matches by game type once
     const sortedMatchesByType = [...matches]
       .filter(m => m.type === type)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // Return a function that looks up the delta for a specific player
     return (playerId: string): number | null => {
       const lastMatch = sortedMatchesByType.find(
         m => m.winners.includes(playerId) || m.losers.includes(playerId)
@@ -147,6 +163,22 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
             <p className="text-xs text-gray-300">In doubles, the <span className="text-white font-bold">average ELO</span> of each team is used for the calculation. Both teammates gain/lose the same amount. Doubles has a separate rating from singles.</p>
           </div>
 
+          {/* Strength of Schedule */}
+          <div className="bg-black/30 rounded-lg p-3 border border-white/5">
+            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <Target size={12} className="text-cyber-yellow" /> Strength of Schedule (SoS)
+            </h4>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              SoS shows the <span className="text-white font-bold">average ELO of your opponents</span>. A high SoS means you've been
+              playing strong opponents — your rating is battle-tested. A low SoS means your rating may be inflated from easier matchups.
+            </p>
+            <div className="mt-2 flex gap-3 text-[10px] font-mono">
+              <span className="text-green-400">● Above avg = tough schedule</span>
+              <span className="text-yellow-400">● Near avg = balanced</span>
+              <span className="text-orange-400">● Below avg = easy schedule</span>
+            </div>
+          </div>
+
           {/* Rank Tiers */}
           <div>
             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Rank Tiers</h4>
@@ -180,6 +212,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
                 <th className="p-4 text-center w-16">#</th>
                 <th className="p-4">Player</th>
                 <th className="p-4 text-right">Rating</th>
+                <th className="p-4 text-center hidden lg:table-cell" title="Strength of Schedule — avg opponent ELO">SoS</th>
                 <th className="p-4 text-center hidden md:table-cell">W/L</th>
                 <th className="p-4 text-center hidden sm:table-cell">Streak</th>
               </tr>
@@ -226,6 +259,21 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
                           {delta > 0 ? '+' : ''}{delta}
                         </span>
                       )}
+                    </td>
+                    <td className="p-4 text-center hidden lg:table-cell">
+                      {(() => {
+                        const sos = sosMap.get(player.id);
+                        if (sos === null || sos === undefined) {
+                          return <span className="text-gray-600 font-mono text-sm">—</span>;
+                        }
+                        const diff = sos - leagueAvgElo;
+                        const color = diff >= 30 ? 'text-green-400' : diff >= -30 ? 'text-yellow-400' : 'text-orange-400';
+                        return (
+                          <span className={`font-mono text-sm font-bold ${color}`} title={`Avg opponent ELO (league avg: ${leagueAvgElo})`}>
+                            {sos}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="p-4 text-center hidden md:table-cell text-sm text-gray-400 font-mono">
                       <span className="text-green-400">{stats.wins}</span> - <span className="text-red-400">{stats.losses}</span>
@@ -299,6 +347,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
                           <span className="font-mono text-xl font-bold text-gray-500">
                             {elo}
                           </span>
+                        </td>
+                        <td className="p-4 text-center hidden lg:table-cell">
+                          <span className="text-gray-600 font-mono text-sm">—</span>
                         </td>
                         <td className="p-4 text-center hidden md:table-cell text-sm text-gray-500 font-mono">
                           0 - 0
