@@ -167,7 +167,7 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
         <span className="text-xs text-gray-500 font-mono">{matches.length} total</span>
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-2">
         {visibleMatches.map(match => {
           const isEditing = editingId === match.id;
           const isRequesting = requestingId === match.id;
@@ -293,29 +293,15 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
           }
 
           return (
-            <div key={match.id} className="glass-panel p-4 rounded-lg border-l-2 border-l-cyber-cyan hover:translate-x-1 transition-transform group">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${match.type === 'singles' ? 'bg-cyber-cyan' : 'bg-cyber-pink'}`}></span>
-                    {match.type} &bull; {timeAgo(match.timestamp)}
-                  </span>
-                  <div className="flex items-center gap-2 text-sm md:text-base">
-                    <span className="font-bold text-white">
-                      {match.winners.map(id => getPlayerName(id)).join(' & ')}
-                    </span>
-                    <span className="text-cyber-cyan font-mono font-bold mx-1">
-                       {match.scoreWinner} - {match.scoreLoser}
-                    </span>
-                    <span className="text-gray-400">
-                      {match.losers.map(id => getPlayerName(id)).join(' & ')}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Format badge */}
-                  <span className={`inline-block text-xs font-mono font-bold px-2 py-1 rounded border ${
+            <div key={match.id} className="glass-panel p-3 rounded-lg border-l-2 border-l-cyber-cyan hover:translate-x-1 transition-transform group">
+              {/* Header row: match type, time, and badges */}
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${match.type === 'singles' ? 'bg-cyber-cyan' : 'bg-cyber-pink'}`}></span>
+                  {match.type} • {timeAgo(match.timestamp)}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${
                     match.matchFormat === 'vintage21'
                       ? 'bg-cyber-purple/10 text-cyber-purple border-cyber-purple/30'
                       : 'bg-white/5 text-gray-500 border-white/10'
@@ -323,42 +309,74 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
                     {match.matchFormat === 'vintage21' ? 'V-21' : 'S-11'}
                   </span>
                   {match.isFriendly ? (
-                    <span className="inline-block bg-amber-500/10 text-amber-300 text-xs font-mono font-bold px-2 py-1 rounded border border-amber-500/30">
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-300 border-amber-500/30">
                       FRIENDLY
                     </span>
                   ) : (
-                    <span className="inline-block bg-cyber-cyan/10 text-cyber-cyan text-xs font-mono font-bold px-2 py-1 rounded border border-cyber-cyan/30">
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-cyber-cyan/10 text-cyber-cyan border-cyber-cyan/30">
                       +{match.eloChange}
                     </span>
                   )}
-                  {showActions && onEditMatch && (
-                    <button
-                      onClick={() => startEdit(match)}
-                      className="p-1.5 text-gray-600 hover:text-cyber-cyan hover:bg-cyber-cyan/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                      title="Edit match"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                  )}
-                  {showActions && onDeleteMatch && (
-                    <button
-                      onClick={() => handleDelete(match.id)}
-                      className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                      title="Delete match & reverse ELO"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                  {canRequestCorrection(match) && onRequestCorrection && (
-                    <button
-                      onClick={() => startRequest(match)}
-                      className="p-1.5 text-gray-600 hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                      title="Request score correction"
-                    >
-                      <Flag size={14} />
-                    </button>
-                  )}
                 </div>
+              </div>
+
+              {/* Match result: stacked layout for better readability */}
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center text-sm">
+                {/* Winner */}
+                <div className="text-left min-w-0">
+                  <div className="font-bold text-white truncate" title={match.winners.map(id => getPlayerName(id)).join(' & ')}>
+                    {match.winners.map(id => getPlayerName(id)).join(' & ')}
+                  </div>
+                </div>
+
+                {/* Score */}
+                <div className="text-center px-2">
+                  <span className="text-cyber-cyan font-mono font-bold">
+                    {match.scoreWinner}
+                  </span>
+                  <span className="text-gray-600 mx-1">-</span>
+                  <span className="text-gray-400 font-mono">
+                    {match.scoreLoser}
+                  </span>
+                </div>
+
+                {/* Loser */}
+                <div className="text-right min-w-0">
+                  <div className="text-gray-400 truncate" title={match.losers.map(id => getPlayerName(id)).join(' & ')}>
+                    {match.losers.map(id => getPlayerName(id)).join(' & ')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action buttons - appear on hover */}
+              <div className="flex items-center justify-end gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {showActions && onEditMatch && (
+                  <button
+                    onClick={() => startEdit(match)}
+                    className="p-1 text-gray-500 hover:text-cyber-cyan hover:bg-cyber-cyan/10 rounded transition-colors"
+                    title="Edit match"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                )}
+                {showActions && onDeleteMatch && (
+                  <button
+                    onClick={() => handleDelete(match.id)}
+                    className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                    title="Delete match & reverse ELO"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
+                {canRequestCorrection(match) && onRequestCorrection && (
+                  <button
+                    onClick={() => startRequest(match)}
+                    className="p-1 text-gray-500 hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors"
+                    title="Request score correction"
+                  >
+                    <Flag size={12} />
+                  </button>
+                )}
               </div>
             </div>
           );

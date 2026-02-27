@@ -15,9 +15,16 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
-const useSupabase = process.env.USE_SUPABASE === 'true';
+// Support both Node.js (process.env) and Vite (import.meta.env)
+const env = typeof process !== 'undefined' && process.env
+  ? process.env
+  : (typeof import.meta !== 'undefined' && import.meta.env)
+    ? import.meta.env
+    : {};
+
+const supabaseUrl = env.SUPABASE_URL || '';
+const supabaseServiceKey = env.SUPABASE_SERVICE_KEY || '';
+const useSupabase = env.USE_SUPABASE === 'true';
 
 let supabase: SupabaseClient | null = null;
 
