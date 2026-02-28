@@ -12,6 +12,9 @@ COPY achievements.ts ./
 COPY firebaseConfig.ts ./
 COPY vite.config.ts ./
 COPY tsconfig.json ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
+COPY styles.css ./
 # Copy .env files if they exist (package.json is included to guarantee the glob never fails)
 COPY package.json .env* ./
 COPY components ./components
