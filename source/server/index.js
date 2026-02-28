@@ -38,8 +38,22 @@ try {
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https:'],
+    },
+  },
+}));
 app.use(compression());
+
+// Serve static files before CORS so asset requests don't require a matching Origin
+app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 const rawOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
 const allowedOrigins = new Set([
@@ -63,8 +77,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-
-app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 if (isSupabaseEnabled()) {
   console.log('📊 Using Supabase PostgreSQL database');
