@@ -3,6 +3,16 @@ import { dbOps } from '../db/operations.js';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 import { INITIAL_ELO } from '../services/elo.js';
 
+function isValidAvatarUrl(url) {
+  if (!url) return true; // empty is fine
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 const router = Router();
 
 router.post('/players', authMiddleware, async (req, res) => {
@@ -10,6 +20,10 @@ router.post('/players', authMiddleware, async (req, res) => {
     const name = (req.body.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Player name is required' });
     if (name.length > 20) return res.status(400).json({ error: 'Player name must be 20 characters or less' });
+
+    if (req.body.avatar && !isValidAvatarUrl(req.body.avatar)) {
+      return res.status(400).json({ error: 'Invalid avatar URL' });
+    }
 
     const newPlayer = {
       id: Date.now().toString(),

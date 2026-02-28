@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabase.ts';
+import { supabase } from '../../lib/supabase.js';
 
 const INITIAL_ELO = 1200;
 

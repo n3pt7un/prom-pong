@@ -3,8 +3,8 @@ import { dbOps } from '../db/operations.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { calculateMatchDelta } from '../services/elo.js';
 import { INITIAL_ELO } from '../services/elo.js';
-import { isSupabaseEnabled } from '../../lib/supabase.ts';
-import { supabase } from '../../lib/supabase.ts';
+import { isSupabaseEnabled } from '../../lib/supabase.js';
+import { supabase } from '../../lib/supabase.js';
 
 const router = Router();
 

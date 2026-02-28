@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { dbOps } from '../db/operations.js';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
-import { isSupabaseEnabled } from '../../lib/supabase.ts';
-import { supabase } from '../../lib/supabase.ts';
+import { isSupabaseEnabled } from '../../lib/supabase.js';
+import { supabase } from '../../lib/supabase.js';
 import { getDB, saveDB, seedData } from '../db/persistence.js';
 
 const router = Router();
@@ -22,7 +22,7 @@ router.get('/export', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/import', authMiddleware, adminMiddleware, async (req, res) => {
+router.post('/import', express.json({ limit: '5mb' }), authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { players, matches, history, rackets } = req.body;
     if (!Array.isArray(players) || !Array.isArray(matches)) {

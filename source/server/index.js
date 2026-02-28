@@ -1,10 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import admin from 'firebase-admin';
-import { isSupabaseEnabled } from '../lib/supabase.ts';
+import { isSupabaseEnabled } from '../lib/supabase.js';
 import { PORT, GCS_BUCKET, ADMIN_EMAILS } from './config.js';
 import { loadDB } from './db/persistence.js';
 
@@ -35,8 +38,24 @@ try {
 
 const app = express();
 
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+app.use(helmet());
+app.use(compression());
+
+const rawOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+const allowedOrigins = new Set([
+  ...rawOrigins,
+  ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:5173', 'http://localhost:8080'] : []),
+]);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    callback(new Error('CORS: origin not allowed'));
+  },
+  credentials: true,
+}));
+
+app.use(express.json({ limit: '1mb' }));
 
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) {
@@ -54,6 +73,35 @@ if (isSupabaseEnabled()) {
 } else {
   console.log('💻 Using local filesystem (JSON file mode)');
 }
+
+// Trust Cloud Run's load balancer so rate limiting uses real client IPs
+app.set('trust proxy', 1);
+
+// General API limiter: 120 requests per minute per IP
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+// Mutation limiter: 30 writes per minute per IP
+const mutationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+app.use('/api', generalLimiter);
+app.use('/api', (req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return mutationLimiter(req, res, next);
+  }
+  next();
+});
 
 app.use('/api', stateRoutes);
 app.use('/api', meRoutes);

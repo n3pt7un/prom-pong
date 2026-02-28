@@ -1,12 +1,7 @@
 import fs from 'fs';
-import { Storage } from '@google-cloud/storage';
 import { DB_FILE, GCS_BUCKET } from '../config.js';
 
 let bucket = null;
-if (GCS_BUCKET) {
-  const storage = new Storage();
-  bucket = storage.bucket(GCS_BUCKET);
-}
 
 let db = {
   players: [],
@@ -59,7 +54,11 @@ export const seedData = () => {
 export const saveDB = async () => {
   try {
     const data = JSON.stringify(db, null, 2);
-    if (bucket) {
+    if (GCS_BUCKET) {
+      if (!bucket) {
+        const { Storage } = await import('@google-cloud/storage');
+        bucket = new Storage().bucket(GCS_BUCKET);
+      }
       await bucket.file('db.json').save(data, { contentType: 'application/json', resumable: false });
     } else {
       fs.writeFileSync(DB_FILE, data);
@@ -71,6 +70,10 @@ export const saveDB = async () => {
 
 export const loadDB = async () => {
   try {
+    if (GCS_BUCKET && !bucket) {
+      const { Storage } = await import('@google-cloud/storage');
+      bucket = new Storage().bucket(GCS_BUCKET);
+    }
     if (bucket) {
       const file = bucket.file('db.json');
       const [exists] = await file.exists();

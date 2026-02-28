@@ -4,6 +4,16 @@ import { authMiddleware } from '../middleware/auth.js';
 import { shouldAutoPromote } from '../middleware/auth.js';
 import { INITIAL_ELO } from '../services/elo.js';
 
+function isValidAvatarUrl(url) {
+  if (!url) return true; // empty is fine
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 const router = Router();
 
 router.get('/me', authMiddleware, async (req, res) => {
@@ -56,6 +66,10 @@ router.post('/me/setup', authMiddleware, async (req, res) => {
     const name = (req.body.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Username is required' });
     if (name.length > 20) return res.status(400).json({ error: 'Username must be 20 characters or less' });
+
+    if (req.body.avatar && !isValidAvatarUrl(req.body.avatar)) {
+      return res.status(400).json({ error: 'Invalid avatar URL' });
+    }
 
     const player = {
       id: Date.now().toString(),
@@ -143,7 +157,12 @@ router.put('/me/profile', authMiddleware, async (req, res) => {
       if (name.length > 20) return res.status(400).json({ error: 'Username must be 20 characters or less' });
       updates.name = name;
     }
-    if (req.body.avatar !== undefined) updates.avatar = req.body.avatar;
+    if (req.body.avatar !== undefined) {
+      if (!isValidAvatarUrl(req.body.avatar)) {
+        return res.status(400).json({ error: 'Invalid avatar URL' });
+      }
+      updates.avatar = req.body.avatar;
+    }
     if (req.body.bio !== undefined) updates.bio = (req.body.bio || '').trim().substring(0, 150);
 
     const updated = await dbOps.updatePlayer(player.id, updates);

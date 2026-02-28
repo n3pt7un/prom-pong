@@ -1,4 +1,4 @@
-import { supabase, isSupabaseEnabled } from '../../lib/supabase.ts';
+import { supabase, isSupabaseEnabled } from '../../lib/supabase.js';
 import { getDB, saveDB, seedData } from './persistence.js';
 import {
   toLegacyPlayer,

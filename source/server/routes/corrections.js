@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import { dbOps } from '../db/operations.js';
-import { isSupabaseEnabled } from '../../lib/supabase.ts';
-import { supabase } from '../../lib/supabase.ts';
+import { isSupabaseEnabled } from '../../lib/supabase.js';
+import { supabase } from '../../lib/supabase.js';
 
 const router = Router();
 

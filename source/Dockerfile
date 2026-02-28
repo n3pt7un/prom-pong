@@ -33,4 +33,4 @@ COPY --from=build /app/server ./server
 COPY --from=build /app/lib ./lib
 COPY --from=build /app/dist ./dist
 EXPOSE 8080
-CMD ["npx", "tsx", "server/index.js"]
+CMD ["node", "server/index.js"]
