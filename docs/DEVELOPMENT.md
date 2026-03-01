@@ -12,15 +12,22 @@ Cyber-Pong Arcade League is a full-stack TypeScript/JavaScript application for m
 Frontend:
 ├── React 18 (TypeScript)
 ├── Vite 5 (build tool)
-├── Tailwind CSS (via CDN)
+├── Tailwind CSS (PostCSS build — NOT CDN)
 ├── Recharts (data visualization)
 └── Lucide React (icons)
 
 Backend:
 ├── Express 4 (Node.js 22)
+├── Helmet (security headers / CSP)
+├── express-rate-limit (API rate limiting)
 ├── Firebase Admin SDK (authentication)
 ├── Supabase PostgreSQL (primary database)
 └── Google Cloud Storage (legacy JSON mode)
+
+Testing:
+├── Jest + ts-jest
+├── @testing-library/react
+└── fast-check (property-based tests)
 
 Infrastructure:
 ├── Google Cloud Run (container hosting)
@@ -59,28 +66,46 @@ Infrastructure:
 
 ```
 source/
-├── index.html              # Entry HTML with Tailwind config
-├── index.tsx               # React entry point
-├── App.tsx                 # Root component with routing
+├── index.html              # Entry HTML
+├── index.tsx               # React entry point (imports styles.css)
+├── styles.css              # Tailwind CSS entry (PostCSS)
+├── App.tsx                 # Root component with tab routing
 ├── types.ts                # TypeScript type definitions
 ├── constants.ts            # App constants (ELO, ranks, presets)
 ├── achievements.ts         # Achievement definitions
 ├── firebaseConfig.ts       # Firebase client SDK config
 ├── vite.config.ts          # Vite configuration
+├── tailwind.config.js      # Tailwind CSS configuration
+├── postcss.config.js       # PostCSS configuration
 ├── tsconfig.json           # TypeScript configuration
+├── jest.config.cjs         # Jest test configuration
+├── jest.setup.cjs          # Jest setup file
 ├── Dockerfile              # Multi-stage Docker build
 ├── package.json            # Dependencies and scripts
 │
 ├── components/             # React UI components
 │   ├── Layout.tsx          # Main layout with navigation
 │   ├── Leaderboard.tsx     # Rankings table
-│   ├── MatchLogger.tsx     # Match entry form
+│   ├── MatchLogger.tsx     # 3-step match wizard (format → players → score)
 │   ├── PlayersHub.tsx      # Player grid and profiles
 │   ├── RacketManager.tsx   # Racket creation/editing
+│   ├── InsightsPage.tsx    # Per-player ELO + teammate insights
+│   ├── CorrectionRequests.tsx # Admin: review/approve/reject corrections
+│   ├── LeagueManager.tsx   # League/group management
 │   ├── TournamentBracket.tsx
 │   ├── SeasonManager.tsx
 │   ├── ChallengeBoard.tsx
-│   └── ... (20+ components)
+│   ├── RecentMatches.tsx   # Match feed with correction request button
+│   └── insights/           # InsightsPage sub-components
+│       ├── SinglesInsightsPanel.tsx
+│       ├── DoublesTeammatePanel.tsx
+│       ├── OpponentInsightCard.tsx
+│       ├── TeammateStatCard.tsx
+│       ├── InsightsSortControls.tsx
+│       ├── TeammateSortControls.tsx
+│       ├── LoadingSkeleton.tsx
+│       ├── EmptyState.tsx
+│       └── InsufficientDataState.tsx
 │
 ├── context/                # React Context providers
 │   ├── AuthContext.tsx     # Firebase auth state
@@ -88,9 +113,10 @@ source/
 │   └── ToastContext.tsx    # Toast notifications
 │
 ├── services/               # API and business logic
-│   ├── storageService.ts   # REST API client
+│   ├── storageService.ts   # REST API client (all endpoints)
 │   ├── authService.ts      # Firebase auth operations
-│   └── eloService.ts       # ELO calculations
+│   ├── eloService.ts       # Client-side ELO calculations
+│   └── insightsService.ts  # Insights data service
 │
 ├── utils/                  # Utility functions
 │   ├── imageUtils.ts       # Image processing
@@ -104,7 +130,7 @@ source/
 ├── lib/                    # External service clients
 │   └── supabase.ts         # Supabase client config
 │
-└── server/                 # Express backend
+└── server/                 # Express backend (modular)
     ├── index.js            # Server entry point
     ├── config.js           # Environment configuration
     │
@@ -112,21 +138,25 @@ source/
     │   ├── state.js        # GET /api/state
     │   ├── me.js           # User profile endpoints
     │   ├── players.js      # Player CRUD
-    │   ├── matches.js      # Match logging
+    │   ├── matches.js      # Match logging + format validation
     │   ├── rackets.js      # Racket management
     │   ├── pending-matches.js
     │   ├── seasons.js
     │   ├── challenges.js
     │   ├── tournaments.js
     │   ├── leagues.js
+    │   ├── corrections.js  # Correction request CRUD + approve/reject
+    │   ├── insights.js     # GET /api/insights/:playerId
+    │   ├── features.js     # player-of-week + hall-of-fame
     │   ├── admin.js
     │   └── export-import.js
     │
     ├── middleware/         # Express middleware
-    │   └── auth.js         # JWT verification
+    │   └── auth.js         # JWT verification + admin check
     │
     ├── services/           # Business logic
-    │   └── elo.js          # ELO calculation engine
+    │   ├── elo.js          # ELO calculation engine
+    │   └── insights.js     # Singles insights + teammate stats
     │
     └── db/                 # Database layer
         ├── persistence.js  # Load/save operations
@@ -184,14 +214,18 @@ source/
   "dev": "concurrently \"vite\" \"npx tsx server/index.js\"",
   "build": "vite build",
   "preview": "vite preview",
-  "start": "npx tsx server/index.js"
+  "start": "node server/index.js",
+  "test": "jest",
+  "test:watch": "jest --watch"
 }
 ```
 
-- `npm run dev` - Development mode with hot reload
+- `npm run dev` - Development mode with hot reload (Vite + Express)
 - `npm run build` - Production build to `dist/`
 - `npm run preview` - Preview production build locally
 - `npm start` - Run production server
+- `npm test` - Run all tests
+- `npm run test:watch` - Run tests in watch mode
 
 ## Core Concepts
 
@@ -531,7 +565,8 @@ Content-Type: application/json
    ```
 
 2. **Styling Guidelines**
-   - Use Tailwind utility classes
+   - Use Tailwind utility classes (compiled at build time via PostCSS — do NOT link Tailwind from CDN)
+   - CSS entry point: `styles.css` (imported in `index.tsx`)
    - Follow cyberpunk theme colors:
      - `cyber-cyan` (#00f3ff)
      - `cyber-pink` (#ff00ff)
@@ -583,6 +618,26 @@ try {
 
 ## Testing
 
+### Automated Tests
+
+The project uses Jest with ts-jest for unit and integration tests.
+
+```bash
+# Run all tests
+npm test
+
+# Watch mode
+npm run test:watch
+```
+
+Test files are co-located with source files using the `.test.tsx` / `.test.ts` suffix:
+- `components/Leaderboard.test.tsx` — Component tests
+- `components/PlayerProfile.test.tsx`
+- `components/StatsDashboard.test.tsx`
+- `components/GameTypeIndicators.test.tsx`
+- `services/insightsService.test.ts` — Service unit tests (includes property-based tests with fast-check)
+- `components/integration.test.tsx` — Integration tests
+
 ### Manual Testing Checklist
 
 **Authentication:**
@@ -592,12 +647,16 @@ try {
 - [ ] Admin promotion/demotion
 
 **Match Logging:**
+- [ ] 3-step wizard: format selection → player selection → score entry
+- [ ] Standard-11 score validation (first to 11, win by 2)
+- [ ] Vintage-21 score validation (first to 21, win by 2)
 - [ ] Singles match logging
 - [ ] Doubles match logging
-- [ ] Score validation
 - [ ] ELO calculation accuracy
 - [ ] Pending match confirmation
 - [ ] Match dispute flow
+- [ ] Correction request submission (match participants only)
+- [ ] Admin correction request review (approve / reject)
 
 **Player Management:**
 - [ ] Create player

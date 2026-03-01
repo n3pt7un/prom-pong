@@ -290,12 +290,17 @@ Log a new match. Creates a pending match requiring confirmation.
   "type": "singles" | "doubles",
   "winners": ["player-id-1", "player-id-2"],
   "losers": ["player-id-3", "player-id-4"],
-  "scoreWinner": 21,
-  "scoreLoser": 19,
+  "scoreWinner": 11,
+  "scoreLoser": 7,
+  "matchFormat": "standard11" | "vintage21",
   "isFriendly": false,
   "leagueId": "league-uuid" // optional
 }
 ```
+
+**Match Formats:**
+- `standard11`: First to 11, win by 2. Valid scores are 11-0 through 11-9, or 12-10, 13-11, etc.
+- `vintage21`: First to 21, win by 2. Valid scores are 21-0 through 21-19, or 22-20, 23-21, etc.
 
 **Validation:**
 - Singles: 1 winner, 1 loser
@@ -776,6 +781,229 @@ Delete a tournament.
 
 ---
 
+### Correction Requests
+
+#### Submit Correction Request
+
+```http
+POST /api/corrections
+```
+
+Submit a correction for an existing confirmed match. Only match participants can submit corrections.
+
+**Auth:** User (must be a participant in the match)
+
+**Body:**
+```json
+{
+  "matchId": "match-uuid",
+  "proposedWinners": ["player-id-1"],
+  "proposedLosers": ["player-id-2"],
+  "proposedScoreWinner": 11,
+  "proposedScoreLoser": 8,
+  "reason": "Score was entered incorrectly"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "cr_...",
+  "matchId": "match-uuid",
+  "requestedBy": "firebase-uid",
+  "proposedWinners": ["player-id-1"],
+  "proposedLosers": ["player-id-2"],
+  "proposedScoreWinner": 11,
+  "proposedScoreLoser": 8,
+  "reason": "Score was entered incorrectly",
+  "status": "pending",
+  "createdAt": "2024-03-01T10:00:00Z"
+}
+```
+
+#### List Correction Requests
+
+```http
+GET /api/corrections
+```
+
+Get all correction requests for admin review.
+
+**Auth:** Admin
+
+**Response:**
+```json
+[CorrectionRequest]
+```
+
+**Note:** Returns an empty array in JSON/GCS mode. Fully supported in Supabase mode.
+
+#### Approve Correction
+
+```http
+PATCH /api/corrections/:id/approve
+```
+
+Approve a correction request. Applies the proposed changes to the match and recalculates ELO.
+
+**Auth:** Admin
+
+**Response:**
+```json
+{
+  "success": true
+}
+```
+
+**Note:** Only supported in Supabase mode.
+
+#### Reject Correction
+
+```http
+PATCH /api/corrections/:id/reject
+```
+
+Reject a correction request without applying any changes.
+
+**Auth:** Admin
+
+**Response:**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+### Insights
+
+#### Get Player Insights
+
+```http
+GET /api/insights/:playerId
+```
+
+Returns ELO insights and teammate statistics for a player.
+
+**Auth:** User
+
+**Response:**
+```json
+{
+  "singlesInsights": [
+    {
+      "opponentId": "player-uuid",
+      "opponentName": "Alice",
+      "opponentElo": 1450,
+      "playerElo": 1320,
+      "winsNeeded": 5,
+      "headToHead": {
+        "wins": 3,
+        "losses": 7,
+        "totalMatches": 10
+      }
+    }
+  ],
+  "doublesTeammateStats": [
+    {
+      "teammateId": "player-uuid",
+      "teammateName": "Bob",
+      "teammateElo": 1380,
+      "matchesPlayed": 12,
+      "wins": 8,
+      "losses": 4,
+      "winRate": 66.7,
+      "avgEloChange": 11.5
+    }
+  ]
+}
+```
+
+**Singles Insights:** For each opponent ranked higher, shows the number of consecutive wins needed to surpass their ELO. `winsNeeded` is `null` if not achievable within 20 wins.
+
+**Teammate Stats:** Aggregated doubles performance per partner. Sorted by win rate by default.
+
+---
+
+### Features
+
+#### Player of the Week
+
+```http
+GET /api/player-of-week
+```
+
+Returns the top-performing player since the start of the current week (Monday 00:00), based on a weighted score of wins, ELO gained, and current streak.
+
+**Auth:** User
+
+**Response:**
+```json
+{
+  "player": Player | null,
+  "stats": {
+    "playerId": "player-uuid",
+    "wins": 8,
+    "losses": 2,
+    "matches": 10,
+    "eloGained": 64,
+    "score": 61.5,
+    "winRate": 0.8
+  } | null
+}
+```
+
+Returns `{ player: null, stats: null }` if no matches have been played this week.
+
+#### Hall of Fame
+
+```http
+GET /api/hall-of-fame
+```
+
+Returns all-time league records.
+
+**Auth:** User
+
+**Response:**
+```json
+{
+  "highestEloSingles": {
+    "playerId": "uuid",
+    "playerName": "Alice",
+    "value": 1820,
+    "date": "2024-05-10T14:00:00Z"
+  },
+  "highestEloDoubles": { ... },
+  "mostMatchesPlayed": {
+    "playerId": "uuid",
+    "playerName": "Bob",
+    "value": 152
+  },
+  "bestWinRate": {
+    "playerId": "uuid",
+    "playerName": "Charlie",
+    "value": 78
+  },
+  "highestEloGain": {
+    "matchId": "uuid",
+    "value": 29,
+    "winners": ["Alice"]
+  },
+  "mostDominantVictory": {
+    "matchId": "uuid",
+    "score": "11-0",
+    "margin": 11,
+    "winners": ["Bob"]
+  }
+}
+```
+
+**Note:** Fields are omitted if there is insufficient data (e.g., no matches played yet). `bestWinRate` requires at least 20 matches.
+
+---
+
 ### Leagues
 
 #### Create League
@@ -1081,6 +1309,7 @@ interface Match {
   loggedBy?: string; // Firebase UID
   isFriendly?: boolean;
   leagueId?: string;
+  matchFormat?: 'standard11' | 'vintage21'; // undefined = legacy (treat as standard11)
 }
 ```
 
@@ -1200,6 +1429,57 @@ interface League {
   description?: string;
   createdBy: string; // Firebase UID
   createdAt: string; // ISO timestamp
+}
+```
+
+### CorrectionRequest
+
+```typescript
+interface CorrectionRequest {
+  id: string;
+  matchId: string;
+  requestedBy: string;            // Firebase UID of submitter
+  proposedWinners: string[];      // Proposed new winner player IDs
+  proposedLosers: string[];       // Proposed new loser player IDs
+  proposedScoreWinner: number;
+  proposedScoreLoser: number;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;              // ISO timestamp
+  reviewedBy?: string;            // Admin UID who reviewed
+  reviewedAt?: string;
+}
+```
+
+### SinglesInsight
+
+```typescript
+interface SinglesInsight {
+  opponentId: string;
+  opponentName: string;
+  opponentElo: number;
+  playerElo: number;
+  winsNeeded: number | null; // null if not achievable within 20 wins
+  headToHead: {
+    wins: number;
+    losses: number;
+    totalMatches: number;
+  };
+}
+```
+
+### TeammateStatistics
+
+```typescript
+interface TeammateStatistics {
+  teammateId: string;
+  teammateName: string;
+  teammateElo: number;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number;    // 0–100
+  avgEloChange: number; // Can be negative
 }
 ```
 
