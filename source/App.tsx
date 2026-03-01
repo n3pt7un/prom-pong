@@ -94,6 +94,18 @@ function AppContent() {
   };
 
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
+  const [showLogMatchModal, setShowLogMatchModal] = useState(false);
+
+  // Announcement popup: show once per session until March 3 2026
+  const ANNOUNCE_EXPIRY = new Date('2026-03-04T00:00:00Z');
+  const [showAnnouncement, setShowAnnouncement] = useState(() => {
+    if (new Date() >= ANNOUNCE_EXPIRY) return false;
+    return !sessionStorage.getItem('announcement_v1_dismissed');
+  });
+  const dismissAnnouncement = () => {
+    sessionStorage.setItem('announcement_v1_dismissed', '1');
+    setShowAnnouncement(false);
+  };
   const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string[]; team2: string[] } | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
@@ -364,36 +376,80 @@ function AppContent() {
   }).length;
 
   return (
-    <Layout
-      activeTab={activeTab}
-      onTabChange={navigateTo}
-      currentUser={currentUser}
-      onSignOut={handleSignOut}
-      leagues={leagues}
-      activeLeagueId={activeLeagueId}
-      onLeagueChange={setActiveLeagueId}
-      pendingCount={pendingCount}
-      challengeCount={challengeCount}
-    >
+    <>
+      <Layout
+        activeTab={activeTab}
+        onTabChange={navigateTo}
+        currentUser={currentUser}
+        onSignOut={handleSignOut}
+        onLogMatch={() => setShowLogMatchModal(true)}
+        leagues={leagues}
+        activeLeagueId={activeLeagueId}
+        onLeagueChange={setActiveLeagueId}
+        pendingCount={pendingCount}
+        challengeCount={challengeCount}
+      >
+        {renderContent()}
+
+        {showCreatePlayerModal && (
+          <CreatePlayerForm
+            rackets={rackets}
+            onClose={() => setShowCreatePlayerModal(false)}
+            onSubmit={(name, avatar, racketId) => {
+              handlers.handleCreatePlayer(name, avatar, racketId);
+              setShowCreatePlayerModal(false);
+            }}
+          />
+        )}
+      </Layout>
+
+      {/* Connection lost — z-[150]: above hamburger overlay (z-[100]) */}
       {!isConnected && (
-        <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-center text-xs py-1 z-[100] font-bold flex items-center justify-center gap-2">
+        <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-center text-xs py-1 z-[150] font-bold flex items-center justify-center gap-2">
           <WifiOff size={12} /> CONNECTION LOST - ATTEMPTING RECONNECT
         </div>
       )}
-      {renderContent()}
 
-      {showCreatePlayerModal && (
-        <CreatePlayerForm
-          rackets={rackets}
-          onClose={() => setShowCreatePlayerModal(false)}
-          onSubmit={(name, avatar, racketId) => {
-            handlers.handleCreatePlayer(name, avatar, racketId);
-            setShowCreatePlayerModal(false);
-          }}
-        />
+      {/* Log match modal — z-[300] */}
+      {showLogMatchModal && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={e => { if (e.target === e.currentTarget) setShowLogMatchModal(false); }}
+        >
+          {/* Column layout: sticky close button on top, scrollable content below */}
+          <div className="w-full max-w-2xl flex flex-col" style={{ maxHeight: '90vh' }}>
+            <div className="flex justify-end pb-2 flex-shrink-0">
+              <button
+                onClick={() => setShowLogMatchModal(false)}
+                className="text-gray-400 hover:text-white bg-black/60 border border-white/10 rounded-full p-1.5 transition-colors"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto">
+              {players.length < 2 ? (
+                <div className="text-center text-gray-500 mt-10">Add at least 2 players to log matches.</div>
+              ) : (
+                <MatchLogger
+                  players={players}
+                  onSubmit={async (type, winners, losers, scoreW, scoreL, isFriendly, leagueId, matchFormat) => {
+                    const result = await handlers.handleMatchSubmit(type, winners, losers, scoreW, scoreL, isFriendly, leagueId, matchFormat);
+                    if (result) setShowLogMatchModal(false);
+                  }}
+                  currentPlayerId={currentUser?.player?.id}
+                  isAdmin={isAdmin}
+                  activeLeagueId={activeLeagueId}
+                  leagues={leagues}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
-      <div className="fixed bottom-20 md:bottom-6 right-4 z-[200] flex flex-col gap-2 max-w-sm">
+      {/* Toasts — z-[200] */}
+      <div className="fixed bottom-24 right-4 z-[200] flex flex-col gap-2 max-w-sm">
         {toasts.map((toast) => (
           <div
             key={toast.id}
@@ -422,7 +478,56 @@ function AppContent() {
           </div>
         ))}
       </div>
-    </Layout>
+
+      {/* Announcement — z-[300] */}
+      {showAnnouncement && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
+          <div className="bg-cyber-bg border border-cyber-cyan/40 rounded-2xl shadow-[0_0_40px_rgba(0,255,255,0.15)] max-w-lg w-full p-6 relative">
+            <button
+              onClick={dismissAnnouncement}
+              className="absolute top-4 right-4 text-gray-500 hover:text-cyber-cyan transition-colors"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-2xl">📢</span>
+              <div>
+                <h2 className="text-cyber-cyan font-bold text-lg font-mono tracking-wide">What's New</h2>
+                <p className="text-gray-500 text-xs font-mono">Since February 25, 2026</p>
+              </div>
+            </div>
+
+            <div className="bg-yellow-900/40 border border-yellow-500/40 rounded-lg px-4 py-3 mb-5 flex items-start gap-3">
+              <span className="text-yellow-400 mt-0.5">⚠️</span>
+              <div>
+                <p className="text-yellow-300 font-bold text-sm">New Season Has Started</p>
+                <p className="text-yellow-200/80 text-xs mt-1 leading-relaxed">
+                  Match format rules have been updated (<span className="font-mono">Standard-11</span> &amp; <span className="font-mono">Vintage-21</span>) and the ELO K-factor has been tuned for more dynamic rankings. Previous records are preserved but ratings reset for the new season.
+                </p>
+              </div>
+            </div>
+
+            <ul className="space-y-2 text-sm text-gray-300">
+              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Match Formats</strong> — 3-step wizard when logging a match; choose Standard-11 or Vintage-21, scores validated per format.</span></li>
+              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Score Correction Requests</strong> — players can flag a match result; admins can approve or reject from the admin panel.</span></li>
+              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Insights Tab</strong> — ELO history charts, head-to-head stats, and best teammate analysis.</span></li>
+              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Back-button navigation</strong> — browser back/forward now works across tabs.</span></li>
+              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Bug reporting</strong> — footer now has a direct link to the GitHub issues page.</span></li>
+              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">ELO K-factor updated</strong> — bigger swings after each match for faster, more dynamic leaderboard movement.</span></li>
+            </ul>
+
+            <button
+              onClick={dismissAnnouncement}
+              className="mt-5 w-full py-2 rounded-lg bg-cyber-cyan/10 hover:bg-cyber-cyan/20 border border-cyber-cyan/30 text-cyber-cyan font-mono text-sm font-bold transition-colors"
+            >
+              Got it — let's play!
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
