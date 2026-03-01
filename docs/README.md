@@ -205,14 +205,18 @@ source/server/
 ├── index.js               # Server entry point
 ├── config.js              # Server configuration
 ├── routes/                # API route handlers
-│   ├── state.js
+│   ├── state.js           # GET /api/state
 │   ├── players.js
 │   ├── matches.js
-│   └── ... (12 route files)
+│   ├── corrections.js     # Correction request CRUD + approve/reject
+│   ├── insights.js        # GET /api/insights/:playerId
+│   ├── features.js        # player-of-week + hall-of-fame
+│   └── ... (15 route files total)
 ├── middleware/
 │   └── auth.js           # Authentication middleware
 ├── services/
-│   └── elo.js            # ELO calculation
+│   ├── elo.js            # ELO calculation
+│   └── insights.js       # Insights calculations
 └── db/
     ├── persistence.js    # Database I/O
     ├── operations.js     # CRUD operations
@@ -223,10 +227,14 @@ source/server/
 
 ```
 source/
-├── components/            # UI components (20+ files)
+├── components/            # UI components (25+ files)
 │   ├── Layout.tsx
 │   ├── Leaderboard.tsx
-│   ├── MatchLogger.tsx
+│   ├── MatchLogger.tsx    # 3-step match wizard
+│   ├── InsightsPage.tsx   # Per-player ELO + teammate insights
+│   ├── CorrectionRequests.tsx # Admin correction review panel
+│   ├── LeagueManager.tsx
+│   ├── insights/          # InsightsPage sub-components
 │   └── ...
 ├── context/              # React Context providers
 │   ├── AuthContext.tsx
@@ -235,7 +243,8 @@ source/
 ├── services/             # Business logic
 │   ├── storageService.ts
 │   ├── authService.ts
-│   └── eloService.ts
+│   ├── eloService.ts
+│   └── insightsService.ts
 ├── utils/                # Helper functions
 │   ├── imageUtils.ts
 │   ├── statsUtils.ts
@@ -337,9 +346,27 @@ source/
 
 ## Version History
 
-- **v2.1** (2024-02-11) - Current version
+- **v2.3** (2026-03-01) - Current version
+  - Match format support: Standard-11 and Vintage-21 with score validation
+  - 3-step match logging wizard (format → players → score)
+  - Correction request system (participants submit, admins review)
+  - Player insights page (singles ELO gap analysis + doubles teammate stats)
+  - Browser history navigation (back/forward, bookmarkable tabs via URL hash)
+  - React ErrorBoundary for graceful error handling
+  - Tailwind CSS migrated from CDN to PostCSS build step
+  - Express server hardened with Helmet (CSP) and express-rate-limit
+  - Jest test suite (unit, integration, property-based tests)
+  - Announcement popup support
+  - GitHub Issues link in footer
+
+- **v2.2** (2024-02-15)
+  - Modular server refactor (server.js → server/index.js with separate route files)
+  - League/group management
+  - CorrectionRequests admin panel
+  - Format badge in match feed
+
+- **v2.1** (2024-02-11)
   - Supabase PostgreSQL support
-  - League management
   - Friendly matches
   - Split singles/doubles stats
   - Comprehensive documentation
@@ -383,6 +410,6 @@ Regular tasks:
 
 ---
 
-**Last Updated:** February 11, 2024  
-**Documentation Version:** 1.0  
-**Application Version:** 2.1
+**Last Updated:** March 1, 2026
+**Documentation Version:** 2.0
+**Application Version:** 2.3

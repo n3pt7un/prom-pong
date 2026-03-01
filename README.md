@@ -1,6 +1,6 @@
 # Cyber-Pong Arcade League
 
-A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, custom racket forging, matchmaking, tournaments, seasons, challenges, and Google Sign-In authentication. Built with React + Express, deployed on Google Cloud Run (free tier).
+A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, custom racket forging, matchmaking, tournaments, seasons, challenges, match format validation, player insights, and Google Sign-In authentication. Built with React + Express, deployed on Google Cloud Run (free tier).
 
 ---
 
@@ -54,21 +54,26 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 
 ### Match Management
 - **Pending Match Confirmation** -- Matches logged by one player require confirmation from opponents before ELO changes apply. Auto-confirms after 24 hours.
-- **Match Disputes** -- Players can dispute incorrect match entries for admin review
-- **Match Editing** -- Admins can edit match details with automatic ELO recalculation
-- **Match Reactions** -- Add emoji reactions to matches for social engagement
-- **Undo Support** -- Undo recently logged matches with full ELO reversal
+- **Match Formats** -- Choose between **Standard-11** (first to 11, win by 2) and **Vintage-21** (first to 21, win by 2) with score validation enforced at submission time.
+- **3-Step Match Wizard** -- Guided match logging: select format → select players → enter scores.
+- **Match Disputes** -- Players can dispute incorrect match entries for admin review.
+- **Correction Requests** -- Match participants can submit correction requests (propose new score/players). Admins review and approve or reject.
+- **Match Editing** -- Admins can edit match details with automatic ELO recalculation.
+- **Match Reactions** -- Add emoji reactions to matches for social engagement.
+- **Undo Support** -- Undo recently logged matches with full ELO reversal.
 
 ### Admin Features
 - **Admin Controls** -- Season reset, factory reset, data export/import, player deletion, user promotion/demotion, rename any player
 - **User Management** -- Promote/demote users to admin, view all registered users
 - **Force Confirm Matches** -- Admins can force-confirm disputed or pending matches
+- **Correction Request Review** -- Admins review, approve, or reject correction requests submitted by players
 - **Tournament Management** -- Create and delete tournaments, monitor progress
 
 ### Social & Engagement
 - **Achievements** -- First Blood, On Fire, Unstoppable, Veteran, Century, Elo Climber, Master, Comeback Kid
 - **Account Claiming** -- Link Google account to existing player profiles
 - **Advanced Stats** -- Deep statistics including head-to-head records, rivalry tracking, form analysis
+- **Player Insights** -- Per-player analytics page showing: singles insights (how many consecutive wins are needed to surpass each higher-ranked opponent) and doubles teammate statistics (win rate, ELO impact, matches played per partner)
 - **Responsive UI** -- Fully responsive cyberpunk design with glass morphism, neon effects, and mobile-first navigation
 
 ### Technical Features
@@ -76,6 +81,10 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 - **Offline Detection** -- Visual indicator when connection to server is lost
 - **Toast Notifications** -- Success/error feedback with action buttons (e.g., Undo)
 - **Auto-refresh** -- Data automatically refreshes every 5 seconds
+- **Browser History Navigation** -- Browser back/forward buttons navigate between tabs; tabs are bookmarkable via URL hash
+- **Error Boundary** -- React error boundary prevents the whole app from crashing on component errors
+- **Rate Limiting** -- Express rate-limit middleware applied to API routes
+- **Security Hardening** -- Helmet with Content-Security-Policy headers; Tailwind CSS compiled at build time (not loaded from CDN)
 
 ---
 
@@ -83,12 +92,13 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, Tailwind CSS (CDN), Recharts, Lucide Icons |
+| Frontend | React 18, Tailwind CSS (PostCSS build), Recharts, Lucide Icons |
 | Build Tool | Vite 5 |
-| Backend | Express 4, Node 22 |
+| Backend | Express 4, Node 22, Helmet, express-rate-limit |
 | Auth | Firebase Authentication (Google Sign-In) |
 | Auth (Server) | Firebase Admin SDK (JWT verification) |
-| Database | **Supabase PostgreSQL** (new) or Local `db.json` / GCS (legacy) |
+| Database | **Supabase PostgreSQL** (recommended) or Local `db.json` / GCS (legacy) |
+| Testing | Jest + Testing Library + fast-check (property-based tests) |
 | Deployment | Google Cloud Run via Dockerfile |
 | Container | Multi-stage Docker build (Node 22 + Node 22-slim) |
 
@@ -97,19 +107,27 @@ A cyberpunk-themed ping pong league tracker with ELO rankings, player profiles, 
 ## Project Structure
 
 ```
-test-pong/
+prom-pong/
 ├── README.md                   # This file
+├── docs/                       # Extended documentation
+│   ├── README.md              # Documentation index
+│   ├── API_REFERENCE.md       # Complete API endpoint reference
+│   ├── ARCHITECTURE.md        # System design and data flow
+│   ├── DATABASE.md            # Database schema and migrations
+│   ├── DEVELOPMENT.md         # Developer guide
+│   └── AGENT_GUIDE.md         # AI coding agent guide
 ├── source/                     # All application code
-│   ├── README.md              # AI Studio proxy info (legacy)
-│   ├── USER_GUIDE.md          # Deployment guide
+│   ├── USER_GUIDE.md          # End-user documentation
 │   ├── Dockerfile             # Multi-stage Docker build
 │   ├── package.json           # Dependencies and scripts
-│   ├── server.js              # Express backend (API + static serving)
 │   ├── vite.config.ts         # Vite config with API proxy
+│   ├── tailwind.config.js     # Tailwind CSS config (PostCSS build)
+│   ├── postcss.config.js      # PostCSS config
+│   ├── styles.css             # Global CSS entry point
 │   ├── tsconfig.json          # TypeScript config
-│   ├── index.html             # HTML entry + Tailwind config + CSS
+│   ├── index.html             # HTML entry point
 │   ├── index.tsx              # React entry point
-│   ├── App.tsx                # Root component, routing, state management
+│   ├── App.tsx                # Root component, tab routing, state management
 │   ├── types.ts               # TypeScript interfaces
 │   ├── constants.ts           # Ranks, avatars, racket presets, stat budget
 │   ├── achievements.ts        # Achievement definitions and evaluation
@@ -120,41 +138,81 @@ test-pong/
 │   ├── db.json                # Local database (dev only, gitignored)
 │   ├── lib/
 │   │   └── supabase.ts        # Supabase client configuration
+│   ├── context/
+│   │   ├── AuthContext.tsx    # Firebase auth state provider
+│   │   ├── LeagueContext.tsx  # Global league data provider (polling)
+│   │   └── ToastContext.tsx   # Toast notification provider
+│   ├── hooks/
+│   │   └── useLeagueHandlers.ts # Action handlers (match, player, racket ops)
 │   ├── components/
 │   │   ├── Layout.tsx         # Nav bar, tabs, background effects
 │   │   ├── Leaderboard.tsx    # Rankings table with ELO info panel
 │   │   ├── PlayersHub.tsx     # Unified player grid + profile + compare
 │   │   ├── PlayerProfile.tsx  # Detailed player stats, chart, achievements
-│   │   ├── MatchLogger.tsx    # Match submission form
+│   │   ├── InsightsPage.tsx   # Per-player ELO insights + teammate stats
+│   │   ├── MatchLogger.tsx    # 3-step match wizard (format → players → score)
 │   │   ├── MatchMaker.tsx     # Smart matchmaking suggestions
-│   │   ├── MatchReactions.tsx # Emoji reactions on matches
 │   │   ├── RacketManager.tsx  # Racket creation, editing, info guide
 │   │   ├── CreatePlayerForm.tsx # New player modal
 │   │   ├── LoginScreen.tsx    # Google Sign-In screen
 │   │   ├── ProfileSetup.tsx   # First-login profile creation
-│   │   ├── RecentMatches.tsx  # Match history feed
+│   │   ├── RecentMatches.tsx  # Match history feed with correction request button
 │   │   ├── PendingMatches.tsx # Match confirmation UI
+│   │   ├── CorrectionRequests.tsx # Admin panel: review/approve/reject corrections
 │   │   ├── RankBadge.tsx      # Rank tier badge component
 │   │   ├── Settings.tsx       # Admin tools, profile editing
-│   │   ├── StatsDashboard.tsx # (Legacy, replaced by PlayersHub)
-│   │   ├── AdvancedStats.tsx  # Deep statistics and analysis
+│   │   ├── StatsDashboard.tsx # Advanced statistics dashboard
 │   │   ├── ChallengeBoard.tsx # Player challenges interface
 │   │   ├── HallOfFame.tsx     # Historical records display
 │   │   ├── PlayerOfTheWeek.tsx # Weekly highlight component
 │   │   ├── WeeklyChallenges.tsx # Dynamic challenges UI
 │   │   ├── TournamentBracket.tsx # Tournament management
 │   │   ├── SeasonManager.tsx  # Season administration
-│   │   └── StatsDashboard.tsx # (Legacy)
+│   │   ├── LeagueManager.tsx  # League/group management
+│   │   └── insights/          # InsightsPage sub-components
+│   │       ├── SinglesInsightsPanel.tsx
+│   │       ├── DoublesTeammatePanel.tsx
+│   │       ├── OpponentInsightCard.tsx
+│   │       ├── TeammateStatCard.tsx
+│   │       └── ...
 │   ├── services/
 │   │   ├── authService.ts     # Firebase auth operations
 │   │   ├── storageService.ts  # API client (all REST calls)
-│   │   └── eloService.ts      # Client-side ELO utilities
-│   └── utils/
-│       ├── imageUtils.ts      # Client-side image resizing for avatars
-│       ├── statsUtils.ts      # Statistics calculations
-│       ├── rivalryUtils.ts    # Head-to-head analysis
-│       ├── predictionUtils.ts # Win probability calculations
-│       └── offlineQueue.ts    # Offline request queueing
+│   │   ├── eloService.ts      # Client-side ELO utilities
+│   │   └── insightsService.ts # Insights data service
+│   ├── utils/
+│   │   ├── imageUtils.ts      # Client-side image resizing for avatars
+│   │   ├── statsUtils.ts      # Statistics calculations
+│   │   ├── rivalryUtils.ts    # Head-to-head analysis
+│   │   └── predictionUtils.ts # Win probability calculations
+│   └── server/                # Express backend (modular)
+│       ├── index.js           # Server entry point
+│       ├── config.js          # Environment configuration
+│       ├── middleware/
+│       │   └── auth.js        # JWT verification middleware
+│       ├── services/
+│       │   ├── elo.js         # ELO calculation engine
+│       │   └── insights.js    # Insights calculation service
+│       ├── routes/
+│       │   ├── state.js       # GET /api/state
+│       │   ├── me.js          # User profile endpoints
+│       │   ├── players.js     # Player CRUD
+│       │   ├── matches.js     # Match logging + editing
+│       │   ├── rackets.js     # Racket management
+│       │   ├── pending-matches.js # Match confirmation
+│       │   ├── seasons.js     # Season management
+│       │   ├── challenges.js  # Player challenges
+│       │   ├── tournaments.js # Tournament brackets
+│       │   ├── leagues.js     # League/group management
+│       │   ├── corrections.js # Correction request CRUD + approve/reject
+│       │   ├── insights.js    # Player insights endpoint
+│       │   ├── features.js    # Player of the week + hall of fame
+│       │   ├── admin.js       # Admin user management
+│       │   └── export-import.js # Data export/import/reset
+│       └── db/
+│           ├── persistence.js # Database I/O (Supabase / GCS / local)
+│           ├── operations.js  # CRUD operations
+│           └── mappers.js     # Data transformation
 ├── scripts/
 │   └── migrate-to-supabase.ts # Database migration script
 └── supabase/
@@ -209,7 +267,14 @@ Open `http://localhost:5173` in your browser.
 
 ```bash
 npm run build      # Creates dist/ folder
-npm start          # Runs server.js serving dist/ on port 8080
+npm start          # Runs server/index.js serving dist/ on port 8080
+```
+
+### 6. Run tests (optional)
+
+```bash
+npm test           # Run all Jest tests
+npm run test:watch # Run tests in watch mode
 ```
 
 ---
@@ -482,20 +547,20 @@ gcloud storage cp gs://YOUR-BUCKET-NAME/db.json ./backup.json
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │  React App (Vite build)                                 │ │
 │  │  ├─ Firebase Auth SDK (Google Sign-In)                  │ │
+│  │  ├─ Context Providers (Auth, League, Toast)             │ │
 │  │  ├─ storageService.ts (API client, attaches JWT)        │ │
-│  │  └─ Components (Leaderboard, PlayersHub, Armory, etc.)  │ │
+│  │  └─ Components (Leaderboard, PlayersHub, Insights, etc.)│ │
 │  └──────────────────────┬──────────────────────────────────┘ │
 └─────────────────────────┼───────────────────────────────────┘
                           │ REST API + Bearer Token
 ┌─────────────────────────┼───────────────────────────────────┐
-│  Express Server (server.js)                                  │
+│  Express Server (server/index.js)                            │
+│  ├─ Helmet (CSP headers), express-rate-limit                 │
 │  ├─ Static file serving (dist/)                              │
 │  ├─ authMiddleware (Firebase Admin SDK, verifies JWT)        │
-│  ├─ adminMiddleware (checks UID against admins list)         │
-│  ├─ ELO calculation engine                                   │
-│  ├─ Tournament bracket generation                            │
-│  ├─ Season management                                        │
-│  ├─ Challenge/wager system                                   │
+│  ├─ Modular routes (players, matches, corrections, insights) │
+│  ├─ ELO calculation engine (server/services/elo.js)          │
+│  ├─ Insights engine (server/services/insights.js)            │
 │  └─ Data persistence ──┬─── Supabase PostgreSQL (recommended)│
 │                        ├─── Cloud: GCS bucket (legacy)       │
 │                        └─── Local: db.json (dev/legacy)      │
@@ -514,8 +579,9 @@ gcloud storage cp gs://YOUR-BUCKET-NAME/db.json ./backup.json
 ### Data Persistence
 
 - **Local development**: Data is stored in `source/db.json` on the filesystem
-- **Production (Cloud Run)**: Data is stored in a GCS bucket as `db.json`
-- The server detects `GCS_BUCKET` env var to determine the mode
+- **Production (Supabase)**: Data is stored in Supabase PostgreSQL (recommended)
+- **Production (GCS/legacy)**: Data is stored in a GCS bucket as `db.json`
+- The server detects `USE_SUPABASE` and `GCS_BUCKET` env vars to select the storage mode
 
 ---
 
@@ -594,6 +660,28 @@ All endpoints require authentication (`Authorization: Bearer <firebase-id-token>
 | POST | `/api/tournaments` | User | Create a new tournament |
 | PUT | `/api/tournaments/:id/results` | User | Submit tournament match result |
 | DELETE | `/api/tournaments/:id` | Admin | Delete a tournament |
+
+### Correction Requests
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/corrections` | User (match participant) | Submit a correction request for a match |
+| GET | `/api/corrections` | Admin | List all correction requests |
+| PATCH | `/api/corrections/:id/approve` | Admin | Approve a correction (applies the edit) |
+| PATCH | `/api/corrections/:id/reject` | Admin | Reject a correction request |
+
+### Insights
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/insights/:playerId` | User | Get singles ELO insights and doubles teammate stats for a player |
+
+### Features
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/player-of-week` | User | Get the current player of the week and their stats |
+| GET | `/api/hall-of-fame` | User | Get all-time records (highest ELO, most matches, best win rate, etc.) |
 
 ### Admin
 
@@ -866,12 +954,18 @@ interface Player {
   bio?: string;            // Max 150 characters
   eloSingles: number;
   eloDoubles: number;
-  wins: number;
-  losses: number;
-  streak: number;          // Positive = win streak, negative = loss streak
+  // Separate singles stats
+  winsSingles: number;
+  lossesSingles: number;
+  streakSingles: number;
+  // Separate doubles stats
+  winsDoubles: number;
+  lossesDoubles: number;
+  streakDoubles: number;
   joinedAt: string;        // ISO timestamp
   mainRacketId?: string;   // Equipped racket ID
   uid?: string;            // Firebase UID (links to auth account)
+  leagueId?: string;       // League/group the player belongs to
 }
 ```
 
@@ -888,6 +982,28 @@ interface Match {
   timestamp: string;       // ISO timestamp
   eloChange: number;       // Points transferred
   loggedBy?: string;       // Firebase UID of the user who logged the match
+  isFriendly?: boolean;    // Friendly matches skip ELO changes
+  leagueId?: string;       // League context (null = global)
+  matchFormat?: 'standard11' | 'vintage21'; // Score validation format
+}
+```
+
+### CorrectionRequest
+
+```typescript
+interface CorrectionRequest {
+  id: string;
+  matchId: string;
+  requestedBy: string;            // Firebase UID of submitter
+  proposedWinners: string[];      // Proposed new winner player IDs
+  proposedLosers: string[];       // Proposed new loser player IDs
+  proposedScoreWinner: number;
+  proposedScoreLoser: number;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  reviewedBy?: string;            // Admin UID who reviewed
+  reviewedAt?: string;
 }
 ```
 
@@ -985,7 +1101,9 @@ interface Tournament {
   "seasons": [],
   "challenges": [],
   "tournaments": [],
-  "reactions": []
+  "leagues": [],
+  "reactions": [],
+  "correctionRequests": []
 }
 ```
 
@@ -1063,10 +1181,12 @@ Achievements are evaluated client-side based on player data and match history.
 
 | Script | Command | Description |
 |---|---|---|
-| `npm run dev` | `concurrently "vite" "node server.js"` | Start dev server + backend |
+| `npm run dev` | `concurrently "vite" "npx tsx server/index.js"` | Start dev server + backend |
 | `npm run build` | `vite build` | Build frontend to `dist/` |
 | `npm run preview` | `vite preview` | Preview production build |
-| `npm start` | `node server.js` | Start production server |
+| `npm start` | `node server/index.js` | Start production server |
+| `npm test` | `jest` | Run all tests |
+| `npm run test:watch` | `jest --watch` | Run tests in watch mode |
 
 ### Dev Server Architecture
 
@@ -1097,7 +1217,8 @@ Vite proxies `/api/*` to `localhost:8080` (configured in `vite.config.ts`).
 
 ### Styling
 
-- Tailwind CSS is loaded via CDN in `index.html` (with custom config)
+- Tailwind CSS is compiled at build time via PostCSS (configured in `tailwind.config.js` and `postcss.config.js`)
+- The CSS entry point is `styles.css`, imported in `index.tsx`
 - Custom colors: `cyber-bg`, `cyber-cyan`, `cyber-pink`, `cyber-purple`, `cyber-yellow`
 - Fonts: `font-sans` (Inter), `font-mono` (JetBrains Mono), `font-display` (Orbitron)
 - Glass morphism: Use the `glass-panel` class
