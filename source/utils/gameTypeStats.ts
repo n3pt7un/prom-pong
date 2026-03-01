@@ -22,12 +22,41 @@ export function getPlayerStats(
   player: Player,
   gameType: GameType
 ): { wins: number; losses: number; streak: number; elo: number } {
-  return {
-    wins: gameType === 'singles' ? player.winsSingles : player.winsDoubles,
-    losses: gameType === 'singles' ? player.lossesSingles : player.lossesDoubles,
-    streak: gameType === 'singles' ? player.streakSingles : player.streakDoubles,
-    elo: gameType === 'singles' ? player.eloSingles : player.eloDoubles,
-  };
+  // Validate game type and default to 'singles' if invalid
+  if (gameType !== 'singles' && gameType !== 'doubles') {
+    console.warn(`Invalid game type "${gameType}" provided. Defaulting to 'singles'.`);
+    gameType = 'singles';
+  }
+
+  // Extract stats with fallback to 0 for missing properties
+  const wins = gameType === 'singles' 
+    ? (player.winsSingles ?? 0) 
+    : (player.winsDoubles ?? 0);
+  const losses = gameType === 'singles' 
+    ? (player.lossesSingles ?? 0) 
+    : (player.lossesDoubles ?? 0);
+  const streak = gameType === 'singles' 
+    ? (player.streakSingles ?? 0) 
+    : (player.streakDoubles ?? 0);
+  const elo = gameType === 'singles' 
+    ? (player.eloSingles ?? 1200) 
+    : (player.eloDoubles ?? 1200);
+
+  // Log warning if any properties are missing
+  if (
+    player.winsSingles === undefined || 
+    player.winsDoubles === undefined ||
+    player.lossesSingles === undefined || 
+    player.lossesDoubles === undefined ||
+    player.streakSingles === undefined || 
+    player.streakDoubles === undefined ||
+    player.eloSingles === undefined || 
+    player.eloDoubles === undefined
+  ) {
+    console.warn(`Player "${player.name}" (${player.id}) has missing game-type-specific properties. Using default values.`);
+  }
+
+  return { wins, losses, streak, elo };
 }
 
 /**
@@ -40,10 +69,39 @@ export function getStatsForGameType(
   player: Player,
   gameType: GameType
 ): GameTypeStats {
-  const wins = gameType === 'singles' ? player.winsSingles : player.winsDoubles;
-  const losses = gameType === 'singles' ? player.lossesSingles : player.lossesDoubles;
-  const streak = gameType === 'singles' ? player.streakSingles : player.streakDoubles;
-  const elo = gameType === 'singles' ? player.eloSingles : player.eloDoubles;
+  // Validate game type and default to 'singles' if invalid
+  if (gameType !== 'singles' && gameType !== 'doubles') {
+    console.warn(`Invalid game type "${gameType}" provided. Defaulting to 'singles'.`);
+    gameType = 'singles';
+  }
+
+  // Extract stats with fallback to 0 for missing properties
+  const wins = gameType === 'singles' 
+    ? (player.winsSingles ?? 0) 
+    : (player.winsDoubles ?? 0);
+  const losses = gameType === 'singles' 
+    ? (player.lossesSingles ?? 0) 
+    : (player.lossesDoubles ?? 0);
+  const streak = gameType === 'singles' 
+    ? (player.streakSingles ?? 0) 
+    : (player.streakDoubles ?? 0);
+  const elo = gameType === 'singles' 
+    ? (player.eloSingles ?? 1200) 
+    : (player.eloDoubles ?? 1200);
+
+  // Log warning if any properties are missing
+  if (
+    player.winsSingles === undefined || 
+    player.winsDoubles === undefined ||
+    player.lossesSingles === undefined || 
+    player.lossesDoubles === undefined ||
+    player.streakSingles === undefined || 
+    player.streakDoubles === undefined ||
+    player.eloSingles === undefined || 
+    player.eloDoubles === undefined
+  ) {
+    console.warn(`Player "${player.name}" (${player.id}) has missing game-type-specific properties. Using default values.`);
+  }
 
   const totalGames = wins + losses;
   const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;

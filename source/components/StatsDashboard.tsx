@@ -178,6 +178,7 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ players, matches, histo
             history={history}
             matches={matches}
             rackets={rackets}
+            players={players}
             onUpdateRacket={onUpdateRacket}
         />
       )}

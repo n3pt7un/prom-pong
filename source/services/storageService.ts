@@ -378,3 +378,8 @@ export const approveCorrectionRequest = async (requestId: string): Promise<void>
 export const rejectCorrectionRequest = async (requestId: string): Promise<void> => {
   return apiRequest(`${API_URL}/corrections/${requestId}/reject`, { method: 'PATCH' });
 };
+
+// --- Insights ---
+export const fetchInsights = async (playerId: string) => {
+  return apiRequest(`${API_URL}/insights/${playerId}`);
+};

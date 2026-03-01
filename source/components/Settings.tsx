@@ -798,7 +798,7 @@ const Settings: React.FC<SettingsProps> = ({ isAdmin, currentUser, onResetSeason
                               <div className="flex items-center gap-2 text-xs text-gray-500">
                                 <span className="font-mono">ELO: {player.eloSingles}</span>
                                 <span>•</span>
-                                <span>{player.wins}W/{player.losses}L</span>
+                                <span>{player.winsSingles + player.winsDoubles}W/{player.lossesSingles + player.lossesDoubles}L</span>
                                 {player.leagueId && (
                                   <>
                                     <span>•</span>

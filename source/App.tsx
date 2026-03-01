@@ -14,11 +14,12 @@ import PlayerOfTheWeek from './components/PlayerOfTheWeek';
 import WeeklyChallenges from './components/WeeklyChallenges';
 import PendingMatches from './components/PendingMatches';
 import HallOfFame from './components/HallOfFame';
-import AdvancedStats from './components/AdvancedStats';
+
 import ChallengeBoard from './components/ChallengeBoard';
 import TournamentBracket from './components/TournamentBracket';
 import SeasonManager from './components/SeasonManager';
 import LeagueManager from './components/LeagueManager';
+import InsightsPage from './components/InsightsPage';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LeagueProvider, useLeague } from './context/LeagueContext';
@@ -63,7 +64,7 @@ function AppContent() {
   const VALID_TABS = new Set([
     'leaderboard', 'log', 'recent', 'players', 'matchmaker',
     'challenges', 'tournaments', 'seasons', 'settings', 'leagues',
-    'rackets', 'weekly', 'hof',
+    'rackets', 'weekly', 'hof', 'insights',
   ]);
 
   // On mount: restore tab from hash (supports bookmarks / hard refresh)
@@ -256,12 +257,6 @@ function AppContent() {
             activeLeagueId={activeLeagueId}
             leagues={leagues}
           />
-          <AdvancedStats 
-            players={players} 
-            matches={matches} 
-            history={history}
-            initialSelectedId={selectedPlayerId}
-          />
         </div>
       );
     }
@@ -341,6 +336,17 @@ function AppContent() {
           />
         </div>
       );
+    }
+
+    if (activeTab === 'insights') {
+      if (!currentUser?.player?.id) {
+        return (
+          <div className="text-center text-gray-500 mt-10">
+            You need a player profile to view insights.
+          </div>
+        );
+      }
+      return <InsightsPage playerId={currentUser.player.id} />;
     }
 
     return null;

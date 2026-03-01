@@ -175,8 +175,10 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...filteredPlayers].sort((a, b) => b.eloSingles - a.eloSingles).map(player => {
-              const totalGames = player.wins + player.losses;
-              const winRate = totalGames > 0 ? Math.round((player.wins / totalGames) * 100) : 0;
+              // Use combined stats for total games and win rate
+              const totalGames = (player.winsSingles + player.lossesSingles) + (player.winsDoubles + player.lossesDoubles);
+              const totalWins = player.winsSingles + player.winsDoubles;
+              const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
               const isEditingThis = editingNameId === player.id;
 
               return (
@@ -271,9 +273,9 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                       <div className="bg-black/20 rounded px-1 py-1.5">
                         <div className="text-[10px] text-gray-500 uppercase font-bold">W/L</div>
                         <div className="text-sm font-mono font-bold text-white">
-                          <span className="text-green-400">{player.wins}</span>
+                          <span className="text-green-400">{player.winsSingles + player.winsDoubles}</span>
                           <span className="text-gray-600">/</span>
-                          <span className="text-red-400">{player.losses}</span>
+                          <span className="text-red-400">{player.lossesSingles + player.lossesDoubles}</span>
                         </div>
                       </div>
                       <div className="bg-black/20 rounded px-1 py-1.5">
@@ -282,21 +284,34 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                       </div>
                     </div>
 
-                    {/* Streak */}
+                    {/* Streak - show the larger of singles or doubles streak */}
                     <div className="flex items-center justify-center gap-1 font-mono text-xs font-bold">
-                      {player.streak > 0 ? (
-                        <span className="flex items-center text-green-400">
-                          <TrendingUp size={12} className="mr-0.5" /> {player.streak}W streak
-                        </span>
-                      ) : player.streak < 0 ? (
-                        <span className="flex items-center text-red-400">
-                          <TrendingDown size={12} className="mr-0.5" /> {Math.abs(player.streak)}L streak
-                        </span>
-                      ) : (
-                        <span className="flex items-center text-gray-500">
-                          <Minus size={12} className="mr-0.5" /> No streak
-                        </span>
-                      )}
+                      {(() => {
+                        // Use the more significant streak (singles or doubles)
+                        const maxStreak = Math.abs(player.streakSingles) > Math.abs(player.streakDoubles) 
+                          ? player.streakSingles 
+                          : player.streakDoubles;
+                        
+                        if (maxStreak > 0) {
+                          return (
+                            <span className="flex items-center text-green-400">
+                              <TrendingUp size={12} className="mr-0.5" /> {maxStreak}W streak
+                            </span>
+                          );
+                        } else if (maxStreak < 0) {
+                          return (
+                            <span className="flex items-center text-red-400">
+                              <TrendingDown size={12} className="mr-0.5" /> {Math.abs(maxStreak)}L streak
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="flex items-center text-gray-500">
+                              <Minus size={12} className="mr-0.5" /> No streak
+                            </span>
+                          );
+                        }
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -371,6 +386,7 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
           history={history}
           matches={matches}
           rackets={rackets}
+          players={players}
           onUpdateRacket={onUpdateRacket}
           isAdmin={isAdmin}
           currentUserId={currentUserId}
@@ -429,19 +445,27 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                 />
                 <ComparisonRow
                   label="Win Rate"
-                  valA={`${selectedPlayer.wins + selectedPlayer.losses > 0 ? Math.round((selectedPlayer.wins / (selectedPlayer.wins + selectedPlayer.losses)) * 100) : 0}%`}
-                  valB={`${secondaryPlayer.wins + secondaryPlayer.losses > 0 ? Math.round((secondaryPlayer.wins / (secondaryPlayer.wins + secondaryPlayer.losses)) * 100) : 0}%`}
+                  valA={`${(() => {
+                    const totalGames = (selectedPlayer.winsSingles + selectedPlayer.lossesSingles) + (selectedPlayer.winsDoubles + selectedPlayer.lossesDoubles);
+                    const totalWins = selectedPlayer.winsSingles + selectedPlayer.winsDoubles;
+                    return totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+                  })()}%`}
+                  valB={`${(() => {
+                    const totalGames = (secondaryPlayer.winsSingles + secondaryPlayer.lossesSingles) + (secondaryPlayer.winsDoubles + secondaryPlayer.lossesDoubles);
+                    const totalWins = secondaryPlayer.winsSingles + secondaryPlayer.winsDoubles;
+                    return totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+                  })()}%`}
                   highlight
                 />
                 <ComparisonRow
                   label="Current Streak"
-                  valA={selectedPlayer.streak}
-                  valB={secondaryPlayer.streak}
+                  valA={Math.abs(selectedPlayer.streakSingles) > Math.abs(selectedPlayer.streakDoubles) ? selectedPlayer.streakSingles : selectedPlayer.streakDoubles}
+                  valB={Math.abs(secondaryPlayer.streakSingles) > Math.abs(secondaryPlayer.streakDoubles) ? secondaryPlayer.streakSingles : secondaryPlayer.streakDoubles}
                 />
                 <ComparisonRow
                   label="Total Wins"
-                  valA={selectedPlayer.wins}
-                  valB={secondaryPlayer.wins}
+                  valA={selectedPlayer.winsSingles + selectedPlayer.winsDoubles}
+                  valB={secondaryPlayer.winsSingles + secondaryPlayer.winsDoubles}
                 />
               </tbody>
             </table>

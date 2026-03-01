@@ -168,3 +168,314 @@ describe('gameTypeStats utility functions', () => {
     });
   });
 });
+
+describe('Error Handling', () => {
+  describe('Invalid game type handling', () => {
+    it('getPlayerStats defaults to singles for invalid game type', () => {
+      const player: Player = {
+        id: 'test',
+        name: 'Test Player',
+        avatar: 'avatar.png',
+        eloSingles: 1500,
+        eloDoubles: 1300,
+        winsSingles: 10,
+        lossesSingles: 5,
+        streakSingles: 3,
+        winsDoubles: 8,
+        lossesDoubles: 7,
+        streakDoubles: -2,
+        joinedAt: new Date().toISOString(),
+      };
+
+      // Mock console.warn to verify it's called
+      const originalWarn = console.warn;
+      const warnMock = jest.fn();
+      console.warn = warnMock;
+
+      const stats = getPlayerStats(player, 'invalid' as GameType);
+
+      // Should default to singles
+      expect(stats.wins).toBe(player.winsSingles);
+      expect(stats.losses).toBe(player.lossesSingles);
+      expect(stats.streak).toBe(player.streakSingles);
+      expect(stats.elo).toBe(player.eloSingles);
+
+      // Should log a warning
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid game type "invalid"')
+      );
+
+      console.warn = originalWarn;
+    });
+
+    it('getStatsForGameType defaults to singles for invalid game type', () => {
+      const player: Player = {
+        id: 'test',
+        name: 'Test Player',
+        avatar: 'avatar.png',
+        eloSingles: 1500,
+        eloDoubles: 1300,
+        winsSingles: 10,
+        lossesSingles: 5,
+        streakSingles: 3,
+        winsDoubles: 8,
+        lossesDoubles: 7,
+        streakDoubles: -2,
+        joinedAt: new Date().toISOString(),
+      };
+
+      const originalWarn = console.warn;
+      const warnMock = jest.fn();
+      console.warn = warnMock;
+
+      const stats = getStatsForGameType(player, 'invalid' as GameType);
+
+      // Should default to singles
+      expect(stats.wins).toBe(player.winsSingles);
+      expect(stats.losses).toBe(player.lossesSingles);
+      expect(stats.streak).toBe(player.streakSingles);
+      expect(stats.elo).toBe(player.eloSingles);
+
+      // Should log a warning
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid game type "invalid"')
+      );
+
+      console.warn = originalWarn;
+    });
+  });
+
+  describe('Missing properties handling', () => {
+    it('getPlayerStats uses default values for missing singles properties', () => {
+      const player = {
+        id: 'test',
+        name: 'Test Player',
+        avatar: 'avatar.png',
+        joinedAt: new Date().toISOString(),
+        // Missing all game-type-specific properties
+      } as Player;
+
+      const originalWarn = console.warn;
+      const warnMock = jest.fn();
+      console.warn = warnMock;
+
+      const stats = getPlayerStats(player, 'singles');
+
+      // Should use default values
+      expect(stats.wins).toBe(0);
+      expect(stats.losses).toBe(0);
+      expect(stats.streak).toBe(0);
+      expect(stats.elo).toBe(1200);
+
+      // Should log a warning
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringContaining('has missing game-type-specific properties')
+      );
+
+      console.warn = originalWarn;
+    });
+
+    it('getPlayerStats uses default values for missing doubles properties', () => {
+      const player = {
+        id: 'test',
+        name: 'Test Player',
+        avatar: 'avatar.png',
+        joinedAt: new Date().toISOString(),
+        // Missing all game-type-specific properties
+      } as Player;
+
+      const originalWarn = console.warn;
+      const warnMock = jest.fn();
+      console.warn = warnMock;
+
+      const stats = getPlayerStats(player, 'doubles');
+
+      // Should use default values
+      expect(stats.wins).toBe(0);
+      expect(stats.losses).toBe(0);
+      expect(stats.streak).toBe(0);
+      expect(stats.elo).toBe(1200);
+
+      // Should log a warning
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringContaining('has missing game-type-specific properties')
+      );
+
+      console.warn = originalWarn;
+    });
+
+    it('getStatsForGameType calculates correctly with missing properties', () => {
+      const player = {
+        id: 'test',
+        name: 'Test Player',
+        avatar: 'avatar.png',
+        joinedAt: new Date().toISOString(),
+        // Missing all game-type-specific properties
+      } as Player;
+
+      const originalWarn = console.warn;
+      const warnMock = jest.fn();
+      console.warn = warnMock;
+
+      const stats = getStatsForGameType(player, 'singles');
+
+      // Should use default values and calculate correctly
+      expect(stats.wins).toBe(0);
+      expect(stats.losses).toBe(0);
+      expect(stats.streak).toBe(0);
+      expect(stats.elo).toBe(1200);
+      expect(stats.totalGames).toBe(0);
+      expect(stats.winRate).toBe(0);
+
+      // Should log a warning
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringContaining('has missing game-type-specific properties')
+      );
+
+      console.warn = originalWarn;
+    });
+
+    it('getPlayerStats handles partially missing properties', () => {
+      const player = {
+        id: 'test',
+        name: 'Test Player',
+        avatar: 'avatar.png',
+        eloSingles: 1500,
+        winsSingles: 10,
+        // Missing lossesSingles, streakSingles, and all doubles properties
+        joinedAt: new Date().toISOString(),
+      } as Player;
+
+      const originalWarn = console.warn;
+      const warnMock = jest.fn();
+      console.warn = warnMock;
+
+      const stats = getPlayerStats(player, 'singles');
+
+      // Should use provided values and defaults for missing ones
+      expect(stats.wins).toBe(10);
+      expect(stats.losses).toBe(0);
+      expect(stats.streak).toBe(0);
+      expect(stats.elo).toBe(1500);
+
+      // Should log a warning
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringContaining('has missing game-type-specific properties')
+      );
+
+      console.warn = originalWarn;
+    });
+  });
+
+  describe('Empty history handling', () => {
+    it('getStatsForGameType handles player with no matches', () => {
+      const player: Player = {
+        id: 'test',
+        name: 'New Player',
+        avatar: 'avatar.png',
+        eloSingles: 1200,
+        eloDoubles: 1200,
+        winsSingles: 0,
+        lossesSingles: 0,
+        streakSingles: 0,
+        winsDoubles: 0,
+        lossesDoubles: 0,
+        streakDoubles: 0,
+        joinedAt: new Date().toISOString(),
+      };
+
+      const stats = getStatsForGameType(player, 'singles');
+
+      expect(stats.wins).toBe(0);
+      expect(stats.losses).toBe(0);
+      expect(stats.totalGames).toBe(0);
+      expect(stats.winRate).toBe(0);
+      expect(stats.elo).toBe(1200);
+    });
+
+    it('getStatsForGameType handles player with only singles matches', () => {
+      const player: Player = {
+        id: 'test',
+        name: 'Singles Player',
+        avatar: 'avatar.png',
+        eloSingles: 1400,
+        eloDoubles: 1200,
+        winsSingles: 15,
+        lossesSingles: 5,
+        streakSingles: 3,
+        winsDoubles: 0,
+        lossesDoubles: 0,
+        streakDoubles: 0,
+        joinedAt: new Date().toISOString(),
+      };
+
+      const singlesStats = getStatsForGameType(player, 'singles');
+      expect(singlesStats.totalGames).toBe(20);
+      expect(singlesStats.winRate).toBe(75);
+
+      const doublesStats = getStatsForGameType(player, 'doubles');
+      expect(doublesStats.totalGames).toBe(0);
+      expect(doublesStats.winRate).toBe(0);
+      expect(doublesStats.elo).toBe(1200);
+    });
+
+    it('getStatsForGameType handles player with only doubles matches', () => {
+      const player: Player = {
+        id: 'test',
+        name: 'Doubles Player',
+        avatar: 'avatar.png',
+        eloSingles: 1200,
+        eloDoubles: 1600,
+        winsSingles: 0,
+        lossesSingles: 0,
+        streakSingles: 0,
+        winsDoubles: 20,
+        lossesDoubles: 10,
+        streakDoubles: 5,
+        joinedAt: new Date().toISOString(),
+      };
+
+      const singlesStats = getStatsForGameType(player, 'singles');
+      expect(singlesStats.totalGames).toBe(0);
+      expect(singlesStats.winRate).toBe(0);
+      expect(singlesStats.elo).toBe(1200);
+
+      const doublesStats = getStatsForGameType(player, 'doubles');
+      expect(doublesStats.totalGames).toBe(30);
+      expect(doublesStats.winRate).toBe(67);
+    });
+  });
+
+  describe('Combined error scenarios', () => {
+    it('handles invalid game type with missing properties', () => {
+      const player = {
+        id: 'test',
+        name: 'Test Player',
+        avatar: 'avatar.png',
+        joinedAt: new Date().toISOString(),
+      } as Player;
+
+      const originalWarn = console.warn;
+      const warnMock = jest.fn();
+      console.warn = warnMock;
+
+      const stats = getPlayerStats(player, 'invalid' as GameType);
+
+      // Should default to singles with default values
+      expect(stats.wins).toBe(0);
+      expect(stats.losses).toBe(0);
+      expect(stats.streak).toBe(0);
+      expect(stats.elo).toBe(1200);
+
+      // Should log warnings for both issues
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid game type')
+      );
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringContaining('has missing game-type-specific properties')
+      );
+
+      console.warn = originalWarn;
+    });
+  });
+});

@@ -38,6 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Local dev bypass: skip Firebase, auto-login as dev user
+    if (import.meta.env.VITE_LOCAL_DEV === 'true') {
+      setFirebaseUser({ uid: 'dev-user-001', email: 'dev@local.test', displayName: 'Dev User', photoURL: '' });
+      setAuthLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged((user) => {
       setFirebaseUser(user);
       setAuthLoading(false);

@@ -110,7 +110,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
                     <div className="font-bold text-white text-sm truncate">{player.name}</div>
                     <div className="text-[10px] font-mono text-gray-500 flex gap-3 mt-1">
                       <span>ELO {player.eloSingles}</span>
-                      <span>{player.wins}W / {player.losses}L</span>
+                      <span>{player.winsSingles + player.winsDoubles}W / {player.lossesSingles + player.lossesDoubles}L</span>
                     </div>
                   </div>
                   <div className="flex-shrink-0">

@@ -207,3 +207,35 @@ export interface WeeklyChallenge {
   endsAt: string;
   completedBy: string[];
 }
+
+// --- ELO Insights and Teammate Statistics ---
+
+export interface HeadToHeadRecord {
+  wins: number;
+  losses: number;
+  totalMatches: number;
+}
+
+export interface SinglesInsight {
+  opponentId: string;
+  opponentName: string;
+  opponentElo: number;
+  playerElo: number;
+  winsNeeded: number | null; // null if unreachable within 20 wins
+  headToHead: HeadToHeadRecord;
+}
+
+export interface TeammateStatistics {
+  teammateId: string;
+  teammateName: string;
+  teammateElo: number;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number; // 0-100
+  avgEloChange: number; // Can be negative
+}
+
+export type SinglesSortBy = 'winsNeeded' | 'opponentElo';
+export type TeammateSortBy = 'winRate' | 'matchesPlayed' | 'avgEloChange';
+export type SortOrder = 'asc' | 'desc';

@@ -1,7 +1,7 @@
 /**
  * ELO calculation logic - shared with frontend eloService.ts
  */
-const K_FACTOR = 32;
+const K_FACTOR = 80;
 export const INITIAL_ELO = 1200;
 
 export const getExpectedScore = (ratingA, ratingB) =>

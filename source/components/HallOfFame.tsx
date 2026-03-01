@@ -122,8 +122,21 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history }) =>
 
     // ─── 6. Best Win Rate (min 20 matches) ──────────────────
     const winRates = players
-      .filter(p => p.wins + p.losses >= 20)
-      .map(p => ({ player: p, rate: p.wins / (p.wins + p.losses) }))
+      .filter(p => {
+        const totalGames = (p.winsSingles + p.lossesSingles) + (p.winsDoubles + p.lossesDoubles);
+        return totalGames >= 20;
+      })
+      .map(p => {
+        const totalWins = p.winsSingles + p.winsDoubles;
+        const totalLosses = p.lossesSingles + p.lossesDoubles;
+        const totalGames = totalWins + totalLosses;
+        return { 
+          player: p, 
+          rate: totalWins / totalGames,
+          wins: totalWins,
+          losses: totalLosses
+        };
+      })
       .sort((a, b) => b.rate - a.rate)
       .slice(0, 3);
 
@@ -212,7 +225,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history }) =>
         holders: winRates.map((h, i) => ({
           player: h.player,
           value: `${(h.rate * 100).toFixed(1)}%`,
-          detail: `${h.player.wins}W / ${h.player.losses}L (min 20 matches)`,
+          detail: `${h.wins}W / ${h.losses}L (min 20 matches)`,
           rank: i + 1,
         })),
         emptyMessage: 'No player with 20+ matches yet',

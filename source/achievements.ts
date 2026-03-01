@@ -22,20 +22,21 @@ export const ACHIEVEMENTS: Achievement[] = [
 
 export function getPlayerAchievements(player: Player, matches: Match[]): Achievement[] {
   const earned: Achievement[] = [];
-  const totalGames = player.wins + player.losses;
+  // Use combined stats for total games (singles + doubles)
+  const totalGames = (player.winsSingles + player.lossesSingles) + (player.winsDoubles + player.lossesDoubles);
 
   // First Blood - played at least 1 match
   if (totalGames >= 1) {
     earned.push(ACHIEVEMENTS.find(a => a.id === 'first_blood')!);
   }
 
-  // On Fire - current streak >= 5
-  if (player.streak >= 5) {
+  // On Fire - current streak >= 5 (use singles streak as primary)
+  if (player.streakSingles >= 5 || player.streakDoubles >= 5) {
     earned.push(ACHIEVEMENTS.find(a => a.id === 'on_fire')!);
   }
 
-  // Unstoppable - current streak >= 10
-  if (player.streak >= 10) {
+  // Unstoppable - current streak >= 10 (use singles streak as primary)
+  if (player.streakSingles >= 10 || player.streakDoubles >= 10) {
     earned.push(ACHIEVEMENTS.find(a => a.id === 'unstoppable')!);
   }
 

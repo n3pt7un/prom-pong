@@ -122,8 +122,8 @@ export const getScoreAnalysis = (
   playerId: string
 ): {
   avgWinMargin: number;
-  closestGame: { score: string; opponent: string };
-  biggestBlowout: { score: string; opponent: string };
+  closestGame: { score: string; opponents: string[] };
+  biggestBlowout: { score: string; opponents: string[] };
   totalEloGained: number;
 } => {
   const playerMatches = matches.filter(
@@ -135,16 +135,16 @@ export const getScoreAnalysis = (
   let totalEloGained = 0;
 
   let closestMargin = Infinity;
-  let closestGame = { score: 'N/A', opponent: 'N/A' };
+  let closestGame = { score: 'N/A', opponents: [] as string[] };
 
   let biggestMargin = -Infinity;
-  let biggestBlowout = { score: 'N/A', opponent: 'N/A' };
+  let biggestBlowout = { score: 'N/A', opponents: [] as string[] };
 
   for (const match of playerMatches) {
     const isWin = match.winners.includes(playerId);
     const margin = match.scoreWinner - match.scoreLoser;
     const opponents = isWin ? match.losers : match.winners;
-    const opponentId = opponents[0] || 'unknown';
+    const opponentIds = opponents.length > 0 ? opponents : [];
 
     if (isWin) {
       totalWinMargin += margin;
@@ -159,7 +159,7 @@ export const getScoreAnalysis = (
       closestMargin = margin;
       closestGame = {
         score: `${match.scoreWinner}-${match.scoreLoser}`,
-        opponent: opponentId,
+        opponents: opponentIds,
       };
     }
 
@@ -168,7 +168,7 @@ export const getScoreAnalysis = (
       biggestMargin = margin;
       biggestBlowout = {
         score: `${match.scoreWinner}-${match.scoreLoser}`,
-        opponent: opponentId,
+        opponents: opponentIds,
       };
     }
   }

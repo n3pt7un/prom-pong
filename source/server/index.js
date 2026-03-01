@@ -25,6 +25,7 @@ import adminRoutes from './routes/admin.js';
 import exportImportRoutes from './routes/export-import.js';
 import featuresRoutes from './routes/features.js';
 import correctionsRoutes from './routes/corrections.js';
+import insightsRoutes from './routes/insights.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -129,6 +130,7 @@ app.use('/api', adminRoutes);
 app.use('/api', exportImportRoutes);
 app.use('/api', featuresRoutes);
 app.use('/api', correctionsRoutes);
+app.use('/api', insightsRoutes);
 
 app.get('*', (req, res) => {
   const distIndex = path.join(__dirname, '..', 'dist', 'index.html');

@@ -1,8 +1,15 @@
 import admin from 'firebase-admin';
 import { dbOps } from '../db/operations.js';
-import { ADMIN_EMAILS } from '../config.js';
+import { ADMIN_EMAILS, GCS_BUCKET } from '../config.js';
 
 export const authMiddleware = async (req, res, next) => {
+  // LOCAL_DEV bypass: only active when LOCAL_DEV=true and no GCS_BUCKET (local dev only)
+  if (process.env.LOCAL_DEV === 'true' && !GCS_BUCKET) {
+    const devUid = process.env.DEV_USER_UID || 'dev-user-001';
+    req.user = { uid: devUid, email: 'dev@local.test', name: 'Dev User', picture: '' };
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentication required' });

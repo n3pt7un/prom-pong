@@ -23,6 +23,7 @@ export const onAuthStateChanged = (callback: (user: User | null) => void) => {
 };
 
 export const getIdToken = async (): Promise<string | null> => {
+  if (import.meta.env.VITE_LOCAL_DEV === 'true') return 'dev-token';
   const user = auth.currentUser;
   if (!user) return null;
   return user.getIdToken();

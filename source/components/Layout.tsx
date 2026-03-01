@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, PlusCircle, Users, Settings, Sword, LogOut, ShieldCheck, Swords, Building2, Github } from 'lucide-react';
+import { Trophy, PlusCircle, Users, Settings, Sword, LogOut, ShieldCheck, Swords, Building2, Github, TrendingUp } from 'lucide-react';
 import { AppUser, League } from '../types';
 
 interface LayoutProps {
@@ -70,6 +70,12 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, curre
               label="Players" 
               active={activeTab === 'players'} 
               onClick={() => onTabChange('players')} 
+            />
+            <NavButton 
+              icon={<TrendingUp size={20} />} 
+              label="Insights" 
+              active={activeTab === 'insights'} 
+              onClick={() => onTabChange('insights')} 
             />
             <NavButton 
               icon={<Swords size={20} />} 

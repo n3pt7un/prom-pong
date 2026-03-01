@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Player, Match, GameType, League } from '../types';
 import RankBadge from './RankBadge';
 import { TrendingUp, TrendingDown, Minus, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { RANKS } from '../constants';
 import { getPlayerStats } from '../utils/gameTypeStats';
+import { partitionPlayers, sortRankedPlayers, sortUnrankedPlayers } from '../utils/playerRanking';
 
 interface LeaderboardProps {
   players: Player[];
@@ -17,32 +18,41 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
   const [type, setType] = useState<GameType>('singles');
   const [showInfo, setShowInfo] = useState(false);
 
-  // Filter players by league if active
-  const filteredPlayers = activeLeagueId
-    ? players.filter(p => p.leagueId === activeLeagueId)
-    : players;
+  // Filter players by league if active (memoized)
+  const filteredPlayers = useMemo(() => 
+    activeLeagueId
+      ? players.filter(p => p.leagueId === activeLeagueId)
+      : players,
+    [players, activeLeagueId]
+  );
 
   const activeLeague = activeLeagueId ? leagues.find(l => l.id === activeLeagueId) : null;
 
-  const sortedPlayers = [...filteredPlayers].sort((a, b) => {
-    const eloA = type === 'singles' ? a.eloSingles : a.eloDoubles;
-    const eloB = type === 'singles' ? b.eloSingles : b.eloDoubles;
-    return eloB - eloA;
-  });
+  // Partition players into ranked and unranked, then sort each group (memoized)
+  const { sortedRanked, sortedUnranked } = useMemo(() => {
+    const { ranked, unranked } = partitionPlayers(filteredPlayers, type);
+    return {
+      sortedRanked: sortRankedPlayers(ranked, type),
+      sortedUnranked: sortUnrankedPlayers(unranked)
+    };
+  }, [filteredPlayers, type]);
 
-  // Find last ELO delta for each player from the most recent match they were in
-  const getLastDelta = (playerId: string, gameType: GameType): number | null => {
-    const sortedMatches = [...matches]
-      .filter(m => m.type === gameType)
-      .sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  // Find last ELO delta for each player from the most recent match they were in (memoized)
+  const getLastDelta = useMemo(() => {
+    // Pre-filter and sort matches by game type once
+    const sortedMatchesByType = [...matches]
+      .filter(m => m.type === type)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    // Return a function that looks up the delta for a specific player
+    return (playerId: string): number | null => {
+      const lastMatch = sortedMatchesByType.find(
+        m => m.winners.includes(playerId) || m.losers.includes(playerId)
       );
-    const lastMatch = sortedMatches.find(
-      m => m.winners.includes(playerId) || m.losers.includes(playerId)
-    );
-    if (!lastMatch) return null;
-    return lastMatch.winners.includes(playerId) ? lastMatch.eloChange : -lastMatch.eloChange;
-  };
+      if (!lastMatch) return null;
+      return lastMatch.winners.includes(playerId) ? lastMatch.eloChange : -lastMatch.eloChange;
+    };
+  }, [matches, type]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -98,7 +108,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
               <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-400">K-Factor</span>
-                  <span className="text-white font-mono font-bold">32</span>
+                  <span className="text-white font-mono font-bold">80</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-400">Starting Rating</span>
@@ -110,7 +120,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
                 </div>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Beating a higher-rated player gives more points. Beating a lower-rated player gives fewer. The K-factor of 32 means ratings shift quickly, ideal for small leagues.
+                Beating a higher-rated player gives more points. Beating a lower-rated player gives fewer. The K-factor of 80 means ratings shift aggressively, ideal for small leagues where a few matches matter a lot.
               </p>
             </div>
 
@@ -119,14 +129,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">How Points Are Calculated</h4>
               <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2 text-xs font-mono text-gray-300">
                 <p><span className="text-gray-500">Expected Score =</span> 1 / (1 + 10<sup>(opponent - you) / 400</sup>)</p>
-                <p><span className="text-gray-500">New Rating =</span> Old + 32 x (result - expected)</p>
+                <p><span className="text-gray-500">New Rating =</span> Old + 80 x (result - expected)</p>
                 <p className="text-gray-500 pt-1">result: 1 = win, 0 = loss</p>
               </div>
               <div className="bg-black/30 rounded-lg p-3 border border-white/5 text-xs space-y-1">
                 <p className="text-gray-400"><span className="text-green-400 font-bold">Example:</span> You (1200) beat someone at 1400</p>
-                <p className="text-gray-300">Expected win chance: ~24%. You gain <span className="text-green-400 font-bold">+24 pts</span></p>
+                <p className="text-gray-300">Expected win chance: ~24%. You gain <span className="text-green-400 font-bold">+61 pts</span></p>
                 <p className="text-gray-400 mt-1"><span className="text-red-400 font-bold">Example:</span> You (1400) lose to someone at 1200</p>
-                <p className="text-gray-300">Expected win chance: ~76%. You lose <span className="text-red-400 font-bold">-24 pts</span></p>
+                <p className="text-gray-300">Expected win chance: ~76%. You lose <span className="text-red-400 font-bold">-61 pts</span></p>
               </div>
             </div>
           </div>
@@ -175,9 +185,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {sortedPlayers.map((player, index) => {
+              {sortedRanked.map((player, index) => {
                 const elo = type === 'singles' ? player.eloSingles : player.eloDoubles;
-                const delta = getLastDelta(player.id, type);
+                const delta = getLastDelta(player.id);
                 const stats = getPlayerStats(player, type);
                 return (
                   <tr key={player.id} className={`hover:bg-white/5 transition-colors group ${onPlayerClick ? 'cursor-pointer' : ''}`} onClick={() => onPlayerClick?.(player.id)}>
@@ -243,6 +253,71 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, onPlayerCli
             </tbody>
           </table>
         </div>
+
+        {/* Unranked Section */}
+        {sortedUnranked.length > 0 && (
+          <>
+            <div className="bg-gradient-to-r from-white/5 to-transparent border-t border-white/10 px-6 py-4">
+              <h3 className="text-sm font-display font-bold text-gray-400 uppercase tracking-widest">
+                Unranked Players (No Games Played)
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <tbody className="divide-y divide-white/5">
+                  {sortedUnranked.map((player) => {
+                    const elo = type === 'singles' ? player.eloSingles : player.eloDoubles;
+                    return (
+                      <tr key={player.id} className={`hover:bg-white/5 transition-colors group ${onPlayerClick ? 'cursor-pointer' : ''}`} onClick={() => onPlayerClick?.(player.id)}>
+                        <td className="p-4 text-center font-mono text-gray-500 font-bold text-lg">
+                          —
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={player.avatar}
+                              alt={player.name}
+                              className="w-10 h-10 rounded-full border border-white/20"
+                            />
+                            <div>
+                              <div className="font-bold text-white tracking-wide flex items-center gap-2">
+                                {player.name}
+                                {!activeLeagueId && player.leagueId && (() => {
+                                  const league = leagues.find(l => l.id === player.leagueId);
+                                  return league ? (
+                                    <span className="text-[10px] font-mono font-bold text-cyber-purple bg-cyber-purple/10 border border-cyber-purple/30 px-1.5 py-0.5 rounded-full">
+                                      {league.name}
+                                    </span>
+                                  ) : null;
+                                })()}
+                              </div>
+                              <RankBadge elo={elo} />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 text-right">
+                          <span className="font-mono text-xl font-bold text-gray-500">
+                            {elo}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center hidden md:table-cell text-sm text-gray-500 font-mono">
+                          0 - 0
+                        </td>
+                        <td className="p-4 text-center hidden sm:table-cell">
+                          <div className="flex items-center justify-center gap-1 font-mono text-xs font-bold">
+                            <span className="flex items-center text-gray-500">
+                              <Minus size={14} className="mr-1" /> -
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

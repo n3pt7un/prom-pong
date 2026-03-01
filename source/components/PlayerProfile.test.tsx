@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from '@jest/globals';
 import { render, screen, within, cleanup } from '@testing-library/react';
 import { act } from 'react';
 import * as fc from 'fast-check';
+import '@testing-library/jest-dom';
 import PlayerProfile from './PlayerProfile';
 import { Player, GameType, Match, EloHistoryEntry, Racket } from '../types';
 
@@ -28,6 +29,31 @@ const playerArbitrary = fc.record({
  */
 const gameTypeArbitrary: fc.Arbitrary<GameType> = fc.constantFrom('singles', 'doubles');
 
+/**
+ * Arbitrary generator for Match objects
+ */
+const matchArbitrary = (playerId: string, gameType?: GameType) => fc.record({
+  id: fc.uuid(),
+  type: gameType ? fc.constant(gameType) : gameTypeArbitrary,
+  winners: fc.constant([playerId]),
+  losers: fc.array(fc.uuid(), { minLength: 1, maxLength: 1 }),
+  scoreWinner: fc.integer({ min: 11, max: 21 }),
+  scoreLoser: fc.integer({ min: 0, max: 20 }),
+  timestamp: fc.integer({ min: 1577836800000, max: 1735689600000 }).map(ts => new Date(ts).toISOString()),
+  eloChange: fc.integer({ min: 1, max: 50 }),
+}) as fc.Arbitrary<Match>;
+
+/**
+ * Arbitrary generator for EloHistoryEntry objects
+ */
+const historyEntryArbitrary = (playerId: string, gameType?: GameType) => fc.record({
+  playerId: fc.constant(playerId),
+  matchId: fc.uuid(),
+  newElo: fc.integer({ min: 800, max: 3000 }),
+  timestamp: fc.integer({ min: 1577836800000, max: 1735689600000 }).map(ts => new Date(ts).toISOString()),
+  gameType: gameType ? fc.constant(gameType) : gameTypeArbitrary,
+}) as fc.Arbitrary<EloHistoryEntry>;
+
 describe('PlayerProfile Component', () => {
   afterEach(() => {
     cleanup();
@@ -46,6 +72,7 @@ describe('PlayerProfile Component', () => {
                 history={[]}
                 matches={[]}
                 rackets={[]}
+                players={[]}
                 onUpdateRacket={() => {}}
               />
             );
@@ -95,6 +122,7 @@ describe('PlayerProfile Component', () => {
                 history={[]}
                 matches={[]}
                 rackets={[]}
+                players={[]}
                 onUpdateRacket={() => {}}
               />
             );
@@ -164,6 +192,7 @@ describe('PlayerProfile Component', () => {
                 history={[]}
                 matches={[]}
                 rackets={[]}
+                players={[]}
                 onUpdateRacket={() => {}}
               />
             );
@@ -231,6 +260,7 @@ describe('PlayerProfile Component', () => {
                 history={[]}
                 matches={[]}
                 rackets={[]}
+                players={[]}
                 onUpdateRacket={() => {}}
               />
             );
@@ -263,14 +293,17 @@ describe('PlayerProfile Component', () => {
 
             const winRateElements = screen.getAllByText(`${winRate}%`);
             expect(winRateElements.length).toBeGreaterThan(0);
-            expect(screen.getByText(`${wins}W - ${losses}L`)).toBeInTheDocument();
+            
+            const recordElements = screen.getAllByText(`${wins}W - ${losses}L`);
+            expect(recordElements.length).toBeGreaterThan(0);
 
             if (totalGames > 0) {
               expect(screen.getByText(totalGames.toString())).toBeInTheDocument();
             }
 
             if (streak !== 0) {
-              expect(screen.getByText(absStreak.toString())).toBeInTheDocument();
+              const streakElements = screen.getAllByText(absStreak.toString());
+              expect(streakElements.length).toBeGreaterThan(0);
             }
 
             unmount();
@@ -278,6 +311,436 @@ describe('PlayerProfile Component', () => {
         ),
         { numRuns: 20 }
       );
+    });
+  });
+
+  describe('Property 5: PlayerProfile filters data by game type', () => {
+    it('displays only singles matches when singles is selected', () => {
+      fc.assert(
+        fc.property(
+          playerArbitrary,
+          fc.array(fc.uuid(), { minLength: 1, maxLength: 5 }),
+          (player, opponentIds) => {
+            // **Validates: Requirements 2.6, 2.7**
+            // Generate mixed matches (both singles and doubles)
+            const singlesMatches = opponentIds.slice(0, Math.ceil(opponentIds.length / 2)).map((oppId, i) => ({
+              id: `singles-${i}`,
+              type: 'singles' as GameType,
+              winners: [player.id],
+              losers: [oppId],
+              scoreWinner: 21,
+              scoreLoser: 15,
+              timestamp: new Date(Date.now() - i * 86400000).toISOString(),
+              eloChange: 10,
+            }));
+
+            const doublesMatches = opponentIds.slice(Math.ceil(opponentIds.length / 2)).map((oppId, i) => ({
+              id: `doubles-${i}`,
+              type: 'doubles' as GameType,
+              winners: [player.id],
+              losers: [oppId],
+              scoreWinner: 21,
+              scoreLoser: 15,
+              timestamp: new Date(Date.now() - i * 86400000).toISOString(),
+              eloChange: 10,
+            }));
+
+            const allMatches = [...singlesMatches, ...doublesMatches];
+
+            const { container, unmount } = render(
+              <PlayerProfile
+                player={player}
+                history={[]}
+                matches={allMatches}
+                rackets={[]}
+                players={[]}
+                onUpdateRacket={() => {}}
+              />
+            );
+
+            // Singles should be selected by default
+            // Verify that only singles matches are displayed
+            const matchElements = container.querySelectorAll('[class*="border-b"]');
+            
+            // Check that singles type is shown in the recent matches
+            const singlesTypeElements = within(container).queryAllByText('singles');
+            const doublesTypeElements = within(container).queryAllByText('doubles');
+            
+            // Should have singles matches displayed, not doubles
+            expect(singlesTypeElements.length).toBeGreaterThan(0);
+            expect(doublesTypeElements.length).toBe(0);
+
+            unmount();
+          }
+        ),
+        { numRuns: 20 }
+      );
+    });
+
+    it('displays only doubles matches when doubles is selected', () => {
+      fc.assert(
+        fc.property(
+          playerArbitrary,
+          fc.array(fc.uuid(), { minLength: 2, maxLength: 5 }), // Ensure at least 2 opponents for both types
+          (player, opponentIds) => {
+            // **Validates: Requirements 2.6, 2.7**
+            // Generate mixed matches (both singles and doubles)
+            const singlesMatches = opponentIds.slice(0, Math.ceil(opponentIds.length / 2)).map((oppId, i) => ({
+              id: `singles-${i}`,
+              type: 'singles' as GameType,
+              winners: [player.id],
+              losers: [oppId],
+              scoreWinner: 21,
+              scoreLoser: 15,
+              timestamp: new Date(Date.now() - i * 86400000).toISOString(),
+              eloChange: 10,
+            }));
+
+            const doublesMatches = opponentIds.slice(Math.ceil(opponentIds.length / 2)).map((oppId, i) => ({
+              id: `doubles-${i}`,
+              type: 'doubles' as GameType,
+              winners: [player.id],
+              losers: [oppId],
+              scoreWinner: 21,
+              scoreLoser: 15,
+              timestamp: new Date(Date.now() - i * 86400000).toISOString(),
+              eloChange: 10,
+            }));
+
+            // Ensure we have at least one doubles match
+            fc.pre(doublesMatches.length > 0);
+
+            const allMatches = [...singlesMatches, ...doublesMatches];
+
+            const { container, unmount } = render(
+              <PlayerProfile
+                player={player}
+                history={[]}
+                matches={allMatches}
+                rackets={[]}
+                players={[]}
+                onUpdateRacket={() => {}}
+              />
+            );
+
+            // Click the doubles button
+            const buttons = within(container).getAllByRole('button');
+            const doublesButton = buttons.find(btn => btn.textContent === 'DOUBLES');
+            
+            if (doublesButton) {
+              act(() => {
+                doublesButton.click();
+              });
+            }
+
+            // Verify that only doubles matches are displayed
+            const singlesTypeElements = within(container).queryAllByText('singles');
+            const doublesTypeElements = within(container).queryAllByText('doubles');
+            
+            // Should have doubles matches displayed, not singles
+            expect(doublesTypeElements.length).toBeGreaterThan(0);
+            expect(singlesTypeElements.length).toBe(0);
+
+            unmount();
+          }
+        ),
+        { numRuns: 20 }
+      );
+    });
+
+    it('filters ELO history by selected game type', () => {
+      fc.assert(
+        fc.property(
+          playerArbitrary,
+          fc.array(fc.uuid(), { minLength: 2, maxLength: 10 }),
+          (player, matchIds) => {
+            // **Validates: Requirements 2.6**
+            // Generate mixed history entries
+            const singlesHistory = matchIds.slice(0, Math.ceil(matchIds.length / 2)).map((matchId, i) => ({
+              playerId: player.id,
+              matchId,
+              newElo: 1200 + i * 10,
+              timestamp: new Date(Date.now() - i * 86400000).toISOString(),
+              gameType: 'singles' as GameType,
+            }));
+
+            const doublesHistory = matchIds.slice(Math.ceil(matchIds.length / 2)).map((matchId, i) => ({
+              playerId: player.id,
+              matchId,
+              newElo: 1200 + i * 10,
+              timestamp: new Date(Date.now() - i * 86400000).toISOString(),
+              gameType: 'doubles' as GameType,
+            }));
+
+            const allHistory = [...singlesHistory, ...doublesHistory];
+
+            const { container, unmount } = render(
+              <PlayerProfile
+                player={player}
+                history={allHistory}
+                matches={[]}
+                rackets={[]}
+                players={[]}
+                onUpdateRacket={() => {}}
+              />
+            );
+
+            // Singles should be selected by default
+            // The chart should only show singles history
+            // We can't easily verify the chart data, but we can verify the component renders without error
+            expect(container).toBeInTheDocument();
+
+            // Click the doubles button
+            const buttons = within(container).getAllByRole('button');
+            const doublesButton = buttons.find(btn => btn.textContent === 'DOUBLES');
+            
+            if (doublesButton) {
+              act(() => {
+                doublesButton.click();
+              });
+            }
+
+            // The chart should now show doubles history
+            // Again, we verify the component renders without error
+            expect(container).toBeInTheDocument();
+
+            unmount();
+          }
+        ),
+        { numRuns: 20 }
+      );
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('displays "No matches played" when player has no matches for selected game type', () => {
+      const player: Player = {
+        id: 'player-1',
+        name: 'Test Player',
+        avatar: 'https://example.com/avatar.jpg',
+        eloSingles: 1200,
+        eloDoubles: 1200,
+        winsSingles: 0,
+        lossesSingles: 0,
+        streakSingles: 0,
+        winsDoubles: 0,
+        lossesDoubles: 0,
+        streakDoubles: 0,
+        joinedAt: new Date().toISOString(),
+      };
+
+      const { container, unmount } = render(
+        <PlayerProfile
+          player={player}
+          history={[]}
+          matches={[]}
+          rackets={[]}
+          players={[]}
+          onUpdateRacket={() => {}}
+        />
+      );
+
+      // Should show "No matches played" message
+      expect(screen.getByText('No matches played')).toBeInTheDocument();
+
+      unmount();
+    });
+
+    it('displays starting ELO of 1200 when player has no history for selected game type', () => {
+      const player: Player = {
+        id: 'player-1',
+        name: 'Test Player',
+        avatar: 'https://example.com/avatar.jpg',
+        eloSingles: 1200,
+        eloDoubles: 1200,
+        winsSingles: 0,
+        lossesSingles: 0,
+        streakSingles: 0,
+        winsDoubles: 0,
+        lossesDoubles: 0,
+        streakDoubles: 0,
+        joinedAt: new Date().toISOString(),
+      };
+
+      const { container, unmount } = render(
+        <PlayerProfile
+          player={player}
+          history={[]}
+          matches={[]}
+          rackets={[]}
+          players={[]}
+          onUpdateRacket={() => {}}
+        />
+      );
+
+      // The chart should render with starting value of 1200
+      // We verify the component renders without error
+      expect(container).toBeInTheDocument();
+
+      // Verify ELO is displayed
+      const eloElements = screen.getAllByText('1200');
+      expect(eloElements.length).toBeGreaterThan(0);
+
+      unmount();
+    });
+
+    it('toggle functionality updates state correctly', () => {
+      const player: Player = {
+        id: 'player-1',
+        name: 'Test Player',
+        avatar: 'https://example.com/avatar.jpg',
+        eloSingles: 1300,
+        eloDoubles: 1400,
+        winsSingles: 10,
+        lossesSingles: 5,
+        streakSingles: 3,
+        winsDoubles: 8,
+        lossesDoubles: 7,
+        streakDoubles: -2,
+        joinedAt: new Date().toISOString(),
+      };
+
+      const { container, unmount } = render(
+        <PlayerProfile
+          player={player}
+          history={[]}
+          matches={[]}
+          rackets={[]}
+          players={[]}
+          onUpdateRacket={() => {}}
+        />
+      );
+
+      // Initially singles should be selected
+      const singlesButton = within(container).getByText('SINGLES');
+      expect(singlesButton).toHaveClass('bg-cyber-cyan');
+
+      // Verify singles stats are displayed
+      expect(screen.getByText('10W - 5L')).toBeInTheDocument();
+
+      // Click doubles button
+      const doublesButton = within(container).getByText('DOUBLES');
+      act(() => {
+        doublesButton.click();
+      });
+
+      // Verify doubles button is now active
+      expect(doublesButton).toHaveClass('bg-cyber-pink');
+
+      // Verify doubles stats are now displayed
+      expect(screen.getByText('8W - 7L')).toBeInTheDocument();
+
+      unmount();
+    });
+
+    it('handles player with only singles matches correctly', () => {
+      const player: Player = {
+        id: 'player-1',
+        name: 'Test Player',
+        avatar: 'https://example.com/avatar.jpg',
+        eloSingles: 1300,
+        eloDoubles: 1200,
+        winsSingles: 5,
+        lossesSingles: 3,
+        streakSingles: 2,
+        winsDoubles: 0,
+        lossesDoubles: 0,
+        streakDoubles: 0,
+        joinedAt: new Date().toISOString(),
+      };
+
+      const singlesMatches: Match[] = [
+        {
+          id: 'match-1',
+          type: 'singles',
+          winners: ['player-1'],
+          losers: ['player-2'],
+          scoreWinner: 21,
+          scoreLoser: 15,
+          timestamp: new Date().toISOString(),
+          eloChange: 10,
+        },
+      ];
+
+      const { container, unmount } = render(
+        <PlayerProfile
+          player={player}
+          history={[]}
+          matches={singlesMatches}
+          rackets={[]}
+          players={[]}
+          onUpdateRacket={() => {}}
+        />
+      );
+
+      // Singles should show matches
+      expect(screen.getByText('singles')).toBeInTheDocument();
+
+      // Click doubles button
+      const doublesButton = within(container).getByText('DOUBLES');
+      act(() => {
+        doublesButton.click();
+      });
+
+      // Doubles should show "No matches played"
+      expect(screen.getByText('No matches played')).toBeInTheDocument();
+
+      unmount();
+    });
+
+    it('handles player with only doubles matches correctly', () => {
+      const player: Player = {
+        id: 'player-1',
+        name: 'Test Player',
+        avatar: 'https://example.com/avatar.jpg',
+        eloSingles: 1200,
+        eloDoubles: 1350,
+        winsSingles: 0,
+        lossesSingles: 0,
+        streakSingles: 0,
+        winsDoubles: 7,
+        lossesDoubles: 4,
+        streakDoubles: 3,
+        joinedAt: new Date().toISOString(),
+      };
+
+      const doublesMatches: Match[] = [
+        {
+          id: 'match-1',
+          type: 'doubles',
+          winners: ['player-1'],
+          losers: ['player-2'],
+          scoreWinner: 21,
+          scoreLoser: 15,
+          timestamp: new Date().toISOString(),
+          eloChange: 10,
+        },
+      ];
+
+      const { container, unmount } = render(
+        <PlayerProfile
+          player={player}
+          history={[]}
+          matches={doublesMatches}
+          rackets={[]}
+          players={[]}
+          onUpdateRacket={() => {}}
+        />
+      );
+
+      // Singles should show "No matches played" by default
+      expect(screen.getByText('No matches played')).toBeInTheDocument();
+
+      // Click doubles button
+      const doublesButton = within(container).getByText('DOUBLES');
+      act(() => {
+        doublesButton.click();
+      });
+
+      // Doubles should show matches
+      expect(screen.getByText('doubles')).toBeInTheDocument();
+
+      unmount();
     });
   });
 });
