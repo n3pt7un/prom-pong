@@ -13,7 +13,7 @@ import {
   getEloVolatility,
   getRecentForm,
 } from '../utils/statsUtils';
-import { computeSoS, computeAverageElo, computeSoSProgression } from '../utils/sosUtils';
+import { computeSoS, computeSoSProgression } from '../utils/sosUtils';
 
 interface PlayerProfileProps {
   player: Player;
@@ -108,10 +108,6 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
     return result.get(player.id)?.sos ?? null;
   }, [players, player, matches, history, selectedGameType]);
 
-  const leagueAvgElo = useMemo(
-    () => computeAverageElo(players, selectedGameType),
-    [players, selectedGameType]
-  );
 
   const sosProgression = useMemo(
     () => computeSoSProgression(player.id, players, matches, history, selectedGameType),
@@ -352,11 +348,12 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
            value={currentSoS !== null ? currentSoS : '—'}
            color={(() => {
              if (currentSoS === null) return 'text-gray-500';
-             const diff = currentSoS - leagueAvgElo;
-             return diff >= 30 ? 'text-green-400' : diff >= -30 ? 'text-yellow-400' : 'text-orange-400';
+             const playerElo = selectedGameType === 'singles' ? player.eloSingles : player.eloDoubles;
+             const gap = currentSoS - playerElo;
+             return gap >= -30 ? 'text-green-400' : gap >= -100 ? 'text-yellow-400' : 'text-orange-400';
            })()}
            icon={<Shield size={16} />}
-           tooltip={currentSoS !== null ? `Avg opponent ELO (league avg: ${leagueAvgElo})` : 'No qualifying matches'}
+           tooltip={currentSoS !== null ? `Avg opponent ELO (your ELO: ${selectedGameType === 'singles' ? player.eloSingles : player.eloDoubles})` : 'No qualifying matches'}
          />
       </div>
 
@@ -666,9 +663,9 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
                 </LineChart>
               </ResponsiveContainer>
               <div className="mt-2 flex items-center justify-center gap-4 text-[10px] font-mono">
-                <span className="text-green-400">● &ge; {leagueAvgElo + 30} tough</span>
-                <span className="text-yellow-400">● ~{leagueAvgElo} balanced</span>
-                <span className="text-orange-400">● &le; {leagueAvgElo - 30} easy</span>
+                <span className="text-green-400">● Near/above your ELO</span>
+                <span className="text-yellow-400">● Moderately below</span>
+                <span className="text-orange-400">● Well below your ELO</span>
               </div>
             </div>
           )}

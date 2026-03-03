@@ -5,7 +5,7 @@ import { TrendingUp, TrendingDown, Minus, Info, ChevronDown, ChevronUp, Target }
 import { RANKS } from '../constants';
 import { getPlayerStats } from '../utils/gameTypeStats';
 import { partitionPlayers, sortRankedPlayers, sortUnrankedPlayers } from '../utils/playerRanking';
-import { computeSoS, computeAverageElo } from '../utils/sosUtils';
+import { computeSoS } from '../utils/sosUtils';
 
 interface LeaderboardProps {
   players: Player[];
@@ -49,11 +49,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [
     return map;
   }, [players, filteredPlayers, matches, history, type, activeLeagueId]);
 
-  // League average Elo for SoS color coding
-  const leagueAvgElo = useMemo(
-    () => computeAverageElo(filteredPlayers, type),
-    [filteredPlayers, type]
-  );
 
   // Find last ELO delta for each player from the most recent match they were in (memoized)
   const getLastDelta = useMemo(() => {
@@ -169,13 +164,13 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [
               <Target size={12} className="text-cyber-yellow" /> Strength of Schedule (SoS)
             </h4>
             <p className="text-xs text-gray-300 leading-relaxed">
-              SoS shows the <span className="text-white font-bold">average ELO of your opponents</span>. A high SoS means you've been
-              playing strong opponents — your rating is battle-tested. A low SoS means your rating may be inflated from easier matchups.
+              SoS shows the <span className="text-white font-bold">average ELO of your opponents</span>. Color is relative to <span className="text-white font-bold">your own rating</span> —
+              green means your opponents are near or above your level, orange means you've been playing well below your level.
             </p>
             <div className="mt-2 flex gap-3 text-[10px] font-mono">
-              <span className="text-green-400">● Above avg = tough schedule</span>
-              <span className="text-yellow-400">● Near avg = balanced</span>
-              <span className="text-orange-400">● Below avg = easy schedule</span>
+              <span className="text-green-400">● Near your ELO or above</span>
+              <span className="text-yellow-400">● Moderately below your ELO</span>
+              <span className="text-orange-400">● Well below your ELO</span>
             </div>
           </div>
 
@@ -266,10 +261,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [
                         if (sos === null || sos === undefined) {
                           return <span className="text-gray-600 font-mono text-sm">—</span>;
                         }
-                        const diff = sos - leagueAvgElo;
-                        const color = diff >= 30 ? 'text-green-400' : diff >= -30 ? 'text-yellow-400' : 'text-orange-400';
+                        const gap = sos - elo;
+                        const color = gap >= -30 ? 'text-green-400' : gap >= -100 ? 'text-yellow-400' : 'text-orange-400';
                         return (
-                          <span className={`font-mono text-sm font-bold ${color}`} title={`Avg opponent ELO (league avg: ${leagueAvgElo})`}>
+                          <span className={`font-mono text-sm font-bold ${color}`} title={`Avg opponent ELO (your ELO: ${elo})`}>
                             {sos}
                           </span>
                         );

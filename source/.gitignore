@@ -26,3 +26,4 @@ dist-ssr
 # Local/dev data
 db.json
 source.zip
+.env
