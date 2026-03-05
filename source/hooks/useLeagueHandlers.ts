@@ -20,6 +20,7 @@ import {
   endSeason,
   createChallenge,
   respondToChallenge,
+  cancelChallenge,
   createTournament,
   submitTournamentResult,
   deleteTournament,
@@ -322,6 +323,19 @@ export function useLeagueHandlers() {
     [refreshData, showToast]
   );
 
+  const handleCancelChallenge = useCallback(
+    async (challengeId: string) => {
+      try {
+        await cancelChallenge(challengeId);
+        await refreshData();
+        showToast('Challenge withdrawn', 'success');
+      } catch (err: any) {
+        showToast(err.message || 'Failed to cancel challenge', 'error');
+      }
+    },
+    [refreshData, showToast]
+  );
+
   const handleCreateTournament = useCallback(
     async (name: string, format: Tournament['format'], gameType: GameType, playerIds: string[]) => {
       try {
@@ -457,6 +471,7 @@ export function useLeagueHandlers() {
     handleEndSeason,
     handleCreateChallenge,
     handleRespondChallenge,
+    handleCancelChallenge,
     handleCreateTournament,
     handleSubmitTournamentResult,
     handleDeleteTournament,
