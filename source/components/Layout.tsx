@@ -9,6 +9,7 @@ interface LayoutProps {
   currentUser: AppUser | null;
   onSignOut: () => void;
   onLogMatch: () => void;
+  onOpenChallenge?: () => void;
   pendingCount?: number;
   challengeCount?: number;
   leagues?: League[];
@@ -23,6 +24,7 @@ const Layout: React.FC<LayoutProps> = ({
   currentUser,
   onSignOut,
   onLogMatch,
+  onOpenChallenge,
   pendingCount = 0,
   challengeCount = 0,
   leagues = [],
@@ -237,7 +239,19 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
       </div>
 
-      {/* FAB — z-[60]: above nav, hidden behind menu overlay when open */}
+      {/* Challenge FAB — only shown when user has a player profile */}
+      {onOpenChallenge && currentUser?.player && (
+        <button
+          onClick={onOpenChallenge}
+          className="fixed bottom-24 right-6 z-[60] w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-cyber-cyan to-cyber-pink shadow-[0_0_20px_rgba(0,243,255,0.5)] hover:shadow-[0_0_30px_rgba(0,243,255,0.7)] hover:scale-110 transition-all duration-200 text-black"
+          aria-label="Issue a challenge"
+          title="Issue a challenge"
+        >
+          <Swords size={22} strokeWidth={2.5} />
+        </button>
+      )}
+
+      {/* Log Match FAB — z-[60]: above nav, hidden behind menu overlay when open */}
       <button
         onClick={onLogMatch}
         className="fixed bottom-6 right-6 z-[60] w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-cyber-cyan to-cyber-pink shadow-[0_0_20px_rgba(0,243,255,0.5)] hover:shadow-[0_0_30px_rgba(0,243,255,0.7)] hover:scale-110 transition-all duration-200 text-black"

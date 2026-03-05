@@ -14,6 +14,7 @@ import PlayerOfTheWeek from './components/PlayerOfTheWeek';
 import WeeklyChallenges from './components/WeeklyChallenges';
 import PendingMatches from './components/PendingMatches';
 import HallOfFame from './components/HallOfFame';
+import CreateChallengeModal from './components/CreateChallengeModal';
 
 import ChallengeBoard from './components/ChallengeBoard';
 import TournamentBracket from './components/TournamentBracket';
@@ -24,6 +25,7 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LeagueProvider, useLeague } from './context/LeagueContext';
 import { useLeagueHandlers } from './hooks/useLeagueHandlers';
+import { useChallengeToasts } from './hooks/useChallengeToasts';
 import { GameType, MatchFormat } from './types';
 import { createCorrectionRequest } from './services/storageService';
 import { WifiOff, CheckCircle, AlertCircle, X, Undo2, Loader2 } from 'lucide-react';
@@ -58,6 +60,14 @@ function AppContent() {
   } = useLeague();
   const { toasts, dismissToast, showToast } = useToast();
   const handlers = useLeagueHandlers();
+
+  useChallengeToasts({
+    matches,
+    players,
+    history,
+    currentPlayerId: currentUser?.player?.id,
+    showToast,
+  });
 
   const [activeTab, setActiveTab] = useState('leaderboard');
 
@@ -95,18 +105,9 @@ function AppContent() {
 
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
   const [showLogMatchModal, setShowLogMatchModal] = useState(false);
+  const [showChallengeModal, setShowChallengeModal] = useState(false);
 
-  // Announcement popup: show once per session until March 3 2026
-  const ANNOUNCE_EXPIRY = new Date('2026-03-04T00:00:00Z');
-  const [showAnnouncement, setShowAnnouncement] = useState(() => {
-    if (new Date() >= ANNOUNCE_EXPIRY) return false;
-    return !sessionStorage.getItem('announcement_v1_dismissed');
-  });
-  const dismissAnnouncement = () => {
-    sessionStorage.setItem('announcement_v1_dismissed', '1');
-    setShowAnnouncement(false);
-  };
-  const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string[]; team2: string[] } | null>(null);
+const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string[]; team2: string[] } | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   const currentPlayerIds = currentUser?.player ? [currentUser.player.id] : [];
@@ -187,7 +188,7 @@ function AppContent() {
     if (activeTab === 'leaderboard') {
       return (
         <div className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <PlayerOfTheWeek players={players} matches={matches} history={history} />
             <WeeklyChallenges matches={matches} players={players} history={history} currentPlayerId={currentUser?.player?.id} />
           </div>
@@ -286,26 +287,15 @@ function AppContent() {
 
     if (activeTab === 'events') {
       return (
-        <div className="space-y-8">
-          <TournamentBracket
-            tournaments={tournaments}
-            players={players}
-            isAdmin={isAdmin}
-            currentUserUid={currentUser?.uid}
-            onCreateTournament={handlers.handleCreateTournament}
-            onSubmitResult={handlers.handleSubmitTournamentResult}
-            onDeleteTournament={isAdmin ? handlers.handleDeleteTournament : undefined}
-          />
-          <ChallengeBoard
-            challenges={challenges}
-            players={players}
-            currentPlayerId={currentUser?.player?.id}
-            currentUserUid={currentUser?.uid}
-            onCreateChallenge={handlers.handleCreateChallenge}
-            onRespondChallenge={handlers.handleRespondChallenge}
-          />
-          <HallOfFame players={players} matches={matches} history={history} />
-        </div>
+        <TournamentBracket
+          tournaments={tournaments}
+          players={players}
+          isAdmin={isAdmin}
+          currentUserUid={currentUser?.uid}
+          onCreateTournament={handlers.handleCreateTournament}
+          onSubmitResult={handlers.handleSubmitTournamentResult}
+          onDeleteTournament={isAdmin ? handlers.handleDeleteTournament : undefined}
+        />
       );
     }
 
@@ -351,14 +341,27 @@ function AppContent() {
     }
 
     if (activeTab === 'insights') {
-      if (!currentUser?.player?.id) {
-        return (
-          <div className="text-center text-gray-500 mt-10">
-            You need a player profile to view insights.
-          </div>
-        );
-      }
-      return <InsightsPage playerId={currentUser.player.id} />;
+      return (
+        <div className="space-y-8">
+          {currentUser?.player?.id ? (
+            <InsightsPage playerId={currentUser.player.id} />
+          ) : (
+            <div className="text-center text-gray-500 py-8 font-mono text-sm">
+              Set up a player profile to see personal insights.
+            </div>
+          )}
+          <HallOfFame players={players} matches={matches} history={history} />
+          <ChallengeBoard
+            challenges={challenges}
+            players={players}
+            matches={matches}
+            currentPlayerId={currentUser?.player?.id}
+            currentUserUid={currentUser?.uid}
+            onRespondChallenge={handlers.handleRespondChallenge}
+            onCancelChallenge={handlers.handleCancelChallenge}
+          />
+        </div>
+      );
     }
 
     return null;
@@ -383,6 +386,7 @@ function AppContent() {
         currentUser={currentUser}
         onSignOut={handleSignOut}
         onLogMatch={() => setShowLogMatchModal(true)}
+        onOpenChallenge={currentUser?.player ? () => setShowChallengeModal(true) : undefined}
         leagues={leagues}
         activeLeagueId={activeLeagueId}
         onLeagueChange={setActiveLeagueId}
@@ -448,6 +452,17 @@ function AppContent() {
         </div>
       )}
 
+      {/* Challenge creation modal — z-[200] */}
+      {showChallengeModal && currentUser?.player && (
+        <CreateChallengeModal
+          players={players}
+          matches={matches}
+          currentPlayerId={currentUser.player.id}
+          onCreateChallenge={handlers.handleCreateChallenge}
+          onClose={() => setShowChallengeModal(false)}
+        />
+      )}
+
       {/* Toasts — z-[200] */}
       <div className="fixed bottom-24 right-4 z-[200] flex flex-col gap-2 max-w-sm">
         {toasts.map((toast) => (
@@ -479,54 +494,6 @@ function AppContent() {
         ))}
       </div>
 
-      {/* Announcement — z-[300] */}
-      {showAnnouncement && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
-          <div className="bg-cyber-bg border border-cyber-cyan/40 rounded-2xl shadow-[0_0_40px_rgba(0,255,255,0.15)] max-w-lg w-full p-6 relative">
-            <button
-              onClick={dismissAnnouncement}
-              className="absolute top-4 right-4 text-gray-500 hover:text-cyber-cyan transition-colors"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-2xl">📢</span>
-              <div>
-                <h2 className="text-cyber-cyan font-bold text-lg font-mono tracking-wide">What's New</h2>
-                <p className="text-gray-500 text-xs font-mono">Since February 25, 2026</p>
-              </div>
-            </div>
-
-            <div className="bg-yellow-900/40 border border-yellow-500/40 rounded-lg px-4 py-3 mb-5 flex items-start gap-3">
-              <span className="text-yellow-400 mt-0.5">⚠️</span>
-              <div>
-                <p className="text-yellow-300 font-bold text-sm">New Season Has Started</p>
-                <p className="text-yellow-200/80 text-xs mt-1 leading-relaxed">
-                  Match format rules have been updated (<span className="font-mono">Standard-11</span> &amp; <span className="font-mono">Vintage-21</span>) and the ELO K-factor has been tuned for more dynamic rankings. Previous records are preserved but ratings reset for the new season.
-                </p>
-              </div>
-            </div>
-
-            <ul className="space-y-2 text-sm text-gray-300">
-              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Match Formats</strong> — 3-step wizard when logging a match; choose Standard-11 or Vintage-21, scores validated per format.</span></li>
-              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Score Correction Requests</strong> — players can flag a match result; admins can approve or reject from the admin panel.</span></li>
-              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Insights Tab</strong> — ELO history charts, head-to-head stats, and best teammate analysis.</span></li>
-              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Back-button navigation</strong> — browser back/forward now works across tabs.</span></li>
-              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">Bug reporting</strong> — footer now has a direct link to the GitHub issues page.</span></li>
-              <li className="flex items-start gap-2"><span className="text-cyber-cyan mt-0.5">✦</span><span><strong className="text-white">ELO K-factor updated</strong> — bigger swings after each match for faster, more dynamic leaderboard movement.</span></li>
-            </ul>
-
-            <button
-              onClick={dismissAnnouncement}
-              className="mt-5 w-full py-2 rounded-lg bg-cyber-cyan/10 hover:bg-cyber-cyan/20 border border-cyber-cyan/30 text-cyber-cyan font-mono text-sm font-bold transition-colors"
-            >
-              Got it — let's play!
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }

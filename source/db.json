@@ -6,11 +6,11 @@
       "uid": "dev-user-001",
       "avatar": "https://picsum.photos/id/64/200/200",
       "bio": "There is no spoon.",
-      "eloSingles": 1358,
+      "eloSingles": 1364,
       "eloDoubles": 1288,
-      "winsSingles": 14,
+      "winsSingles": 17,
       "lossesSingles": 8,
-      "streakSingles": 2,
+      "streakSingles": -1,
       "winsDoubles": 8,
       "lossesDoubles": 4,
       "streakDoubles": -1,
@@ -27,13 +27,13 @@
       "uid": "uid-trinity",
       "avatar": "https://picsum.photos/id/65/200/200",
       "bio": "Dodge this.",
-      "eloSingles": 1330,
+      "eloSingles": 1293,
       "eloDoubles": 1208,
       "winsSingles": 9,
-      "lossesSingles": 4,
-      "streakSingles": -2,
-      "winsDoubles": 7,
-      "lossesDoubles": 3,
+      "lossesSingles": 5,
+      "streakSingles": -3,
+      "winsDoubles": 6,
+      "lossesDoubles": 4,
       "streakDoubles": -3,
       "wins": 16,
       "losses": 6,
@@ -48,11 +48,11 @@
       "uid": "uid-morpheus",
       "avatar": "https://picsum.photos/id/91/200/200",
       "bio": "Free your mind.",
-      "eloSingles": 1418,
+      "eloSingles": 1375,
       "eloDoubles": 1121,
       "winsSingles": 9,
-      "lossesSingles": 4,
-      "streakSingles": 1,
+      "lossesSingles": 5,
+      "streakSingles": -1,
       "winsDoubles": 3,
       "lossesDoubles": 6,
       "streakDoubles": -1,
@@ -94,7 +94,7 @@
       "eloDoubles": 1247,
       "winsSingles": 4,
       "lossesSingles": 6,
-      "streakSingles": -1,
+      "streakSingles": -2,
       "winsDoubles": 5,
       "lossesDoubles": 5,
       "streakDoubles": 3,
@@ -111,11 +111,11 @@
       "uid": "uid-seraph",
       "avatar": "https://picsum.photos/id/177/200/200",
       "bio": "I protect that which matters most.",
-      "eloSingles": 1000,
+      "eloSingles": 1074,
       "eloDoubles": 1263,
-      "winsSingles": 0,
+      "winsSingles": 1,
       "lossesSingles": 7,
-      "streakSingles": -7,
+      "streakSingles": 1,
       "winsDoubles": 4,
       "lossesDoubles": 3,
       "streakDoubles": 1,
@@ -191,6 +191,60 @@
     }
   ],
   "matches": [
+    {
+      "id": "1772724640806",
+      "type": "singles",
+      "winners": [
+        "p6"
+      ],
+      "losers": [
+        "p1"
+      ],
+      "scoreWinner": 21,
+      "scoreLoser": 0,
+      "timestamp": "2026-03-05T15:30:40.806Z",
+      "eloChange": 74,
+      "loggedBy": "dev-user-001",
+      "isFriendly": false,
+      "leagueId": null,
+      "matchFormat": "vintage21"
+    },
+    {
+      "id": "1772723355167",
+      "type": "singles",
+      "winners": [
+        "p1"
+      ],
+      "losers": [
+        "p3"
+      ],
+      "scoreWinner": 21,
+      "scoreLoser": 0,
+      "timestamp": "2026-03-05T15:09:15.167Z",
+      "eloChange": 43,
+      "loggedBy": "dev-user-001",
+      "isFriendly": false,
+      "leagueId": null,
+      "matchFormat": "vintage21"
+    },
+    {
+      "id": "1772723253034",
+      "type": "singles",
+      "winners": [
+        "p1"
+      ],
+      "losers": [
+        "p2"
+      ],
+      "scoreWinner": 21,
+      "scoreLoser": 0,
+      "timestamp": "2026-03-05T15:07:33.034Z",
+      "eloChange": 37,
+      "loggedBy": "dev-user-001",
+      "isFriendly": false,
+      "leagueId": null,
+      "matchFormat": "vintage21"
+    },
     {
       "id": "1772330186192",
       "type": "singles",
@@ -2223,6 +2277,48 @@
       "matchId": "1772330186192",
       "newElo": 1330,
       "timestamp": "2026-03-01T01:56:26.192Z",
+      "gameType": "singles"
+    },
+    {
+      "playerId": "p1",
+      "matchId": "1772723253034",
+      "newElo": 1395,
+      "timestamp": "2026-03-05T15:07:33.034Z",
+      "gameType": "singles"
+    },
+    {
+      "playerId": "p2",
+      "matchId": "1772723253034",
+      "newElo": 1293,
+      "timestamp": "2026-03-05T15:07:33.034Z",
+      "gameType": "singles"
+    },
+    {
+      "playerId": "p1",
+      "matchId": "1772723355167",
+      "newElo": 1438,
+      "timestamp": "2026-03-05T15:09:15.167Z",
+      "gameType": "singles"
+    },
+    {
+      "playerId": "p3",
+      "matchId": "1772723355167",
+      "newElo": 1375,
+      "timestamp": "2026-03-05T15:09:15.167Z",
+      "gameType": "singles"
+    },
+    {
+      "playerId": "p1",
+      "matchId": "1772724640806",
+      "newElo": 1364,
+      "timestamp": "2026-03-05T15:30:40.806Z",
+      "gameType": "singles"
+    },
+    {
+      "playerId": "p6",
+      "matchId": "1772724640806",
+      "newElo": 1074,
+      "timestamp": "2026-03-05T15:30:40.806Z",
       "gameType": "singles"
     }
   ],
