@@ -21,6 +21,7 @@ import {
   createChallenge,
   respondToChallenge,
   cancelChallenge,
+  completeChallenge,
   createTournament,
   submitTournamentResult,
   deleteTournament,
@@ -336,6 +337,20 @@ export function useLeagueHandlers() {
     [refreshData, showToast]
   );
 
+  const handleCompleteChallenge = useCallback(
+    async (challengeId: string, winnerId: string, loserId: string, scoreWinner: number, scoreLoser: number) => {
+      try {
+        const match = await recordMatch('singles', [winnerId], [loserId], scoreWinner, scoreLoser, false, activeLeagueId ?? undefined);
+        await completeChallenge(challengeId, match.id);
+        await refreshData();
+        showToast('Challenge completed & ELO updated!', 'success');
+      } catch (err: any) {
+        showToast(err.message || 'Failed to complete challenge', 'error');
+      }
+    },
+    [activeLeagueId, refreshData, showToast]
+  );
+
   const handleCreateTournament = useCallback(
     async (name: string, format: Tournament['format'], gameType: GameType, playerIds: string[]) => {
       try {
@@ -472,6 +487,7 @@ export function useLeagueHandlers() {
     handleCreateChallenge,
     handleRespondChallenge,
     handleCancelChallenge,
+    handleCompleteChallenge,
     handleCreateTournament,
     handleSubmitTournamentResult,
     handleDeleteTournament,

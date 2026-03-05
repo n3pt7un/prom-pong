@@ -5,7 +5,7 @@ import { K_FACTOR } from '../constants';
  * Returns a value between 0 and 1.
  */
 export const getExpectedScore = (ratingA: number, ratingB: number): number => {
-  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 200));
 };
 
 /**
@@ -41,5 +41,5 @@ export const calculateMatchDelta = (
  * Returns a value between 0 and 1.
  */
 export const predictWinProbability = (eloA: number, eloB: number): number => {
-  return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+  return 1 / (1 + Math.pow(10, (eloB - eloA) / 200));
 };

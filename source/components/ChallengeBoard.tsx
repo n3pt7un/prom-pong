@@ -25,7 +25,7 @@ interface ChallengeBoardProps {
   currentUserUid?: string;
   onRespondChallenge: (challengeId: string, accept: boolean) => void;
   onCancelChallenge?: (challengeId: string) => void;
-  onCompleteChallenge?: (challengeId: string, matchId: string) => void;
+  onCompleteChallenge?: (challengeId: string) => void;
 }
 
 // --- Helpers ---
@@ -301,7 +301,7 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
                   <div className="flex-1" />
                   {onCompleteChallenge && (
                     <button
-                      onClick={() => onCompleteChallenge(c.id, '')}
+                      onClick={() => onCompleteChallenge(c.id)}
                       className="flex items-center gap-1 bg-cyber-cyan/10 hover:bg-cyber-cyan/20 text-cyber-cyan border border-cyber-cyan/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
                     >
                       <Send size={14} /> LOG MATCH

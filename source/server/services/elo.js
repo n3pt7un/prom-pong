@@ -1,11 +1,11 @@
 /**
  * ELO calculation logic - shared with frontend eloService.ts
  */
-const K_FACTOR = 80;
+const K_FACTOR = 48;
 export const INITIAL_ELO = 1200;
 
 export const getExpectedScore = (ratingA, ratingB) =>
-  1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+  1 / (1 + Math.pow(10, (ratingB - ratingA) / 200));
 
 export const calculateNewRating = (currentRating, actualScore, expectedScore) =>
   Math.round(currentRating + K_FACTOR * (actualScore - expectedScore));

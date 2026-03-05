@@ -6,6 +6,7 @@ interface PlayerOfTheWeekProps {
   players: Player[];
   matches: Match[];
   history: EloHistoryEntry[];
+  onPlayerClick?: (playerId: string) => void;
 }
 
 interface WeeklyPerformance {
@@ -125,7 +126,7 @@ function pickWinner(performances: WeeklyPerformance[]): WeeklyPerformance | null
   return sorted[0];
 }
 
-const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, history }) => {
+const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, history, onPlayerClick }) => {
   const [showPrevious, setShowPrevious] = useState(false);
 
   const { currentWinner, previousWinners } = useMemo(() => {
@@ -189,8 +190,9 @@ const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, his
           <div className="flex flex-col items-center text-center mb-5">
             {/* Avatar */}
             <div
-              className="mb-3 w-20 h-20 rounded-full border-2 border-cyber-yellow shadow-[0_0_20px_rgba(252,238,10,0.3)] overflow-hidden"
+              className={`mb-3 w-20 h-20 rounded-full border-2 border-cyber-yellow shadow-[0_0_20px_rgba(252,238,10,0.3)] overflow-hidden ${onPlayerClick ? 'cursor-pointer' : ''}`}
               style={{ background: 'linear-gradient(135deg, rgba(252,238,10,0.1), rgba(252,238,10,0.02))' }}
+              onClick={() => onPlayerClick?.(currentWinner.player.id)}
             >
               <img
                 src={currentWinner.player.avatar}
@@ -201,7 +203,10 @@ const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, his
             </div>
 
             {/* Name */}
-            <h4 className="font-display text-2xl font-bold text-white mb-1">
+            <h4
+              className={`font-display text-2xl font-bold text-white mb-1 ${onPlayerClick ? 'cursor-pointer hover:text-cyber-yellow transition-colors' : ''}`}
+              onClick={() => onPlayerClick?.(currentWinner.player.id)}
+            >
               {currentWinner.player.name}
             </h4>
             <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-4">
@@ -257,7 +262,8 @@ const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, his
                   {previousWinners.map((w, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.03] border border-white/5"
+                      className={`flex items-center gap-3 p-2 rounded-lg bg-white/[0.03] border border-white/5 ${onPlayerClick ? 'cursor-pointer hover:bg-white/[0.06] transition-colors' : ''}`}
+                      onClick={() => onPlayerClick?.(w.player.id)}
                     >
                       <img src={w.player.avatar} alt={w.player.name} className="w-8 h-8 rounded-full object-cover border border-cyber-yellow/30" referrerPolicy="no-referrer" />
                       <div className="flex-1 min-w-0">

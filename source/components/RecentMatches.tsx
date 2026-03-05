@@ -320,7 +320,7 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
                 </div>
               </div>
 
-              {/* Match result: stacked layout for better readability */}
+              {/* Match result: winner left, score center, loser right */}
               <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center text-sm">
                 {/* Winner */}
                 <div className="text-left min-w-0">

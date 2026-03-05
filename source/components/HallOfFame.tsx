@@ -6,6 +6,7 @@ interface HallOfFameProps {
   players: Player[];
   matches: Match[];
   history: EloHistoryEntry[];
+  onPlayerClick?: (playerId: string) => void;
 }
 
 interface RecordEntry {
@@ -47,7 +48,7 @@ function rankLabel(rank: number): string {
   return `#${rank}`;
 }
 
-const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history }) => {
+const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history, onPlayerClick }) => {
   const records = useMemo<RecordEntry[]>(() => {
     const playerMap = new Map(players.map(p => [p.id, p]));
     const getPlayer = (id: string) => playerMap.get(id);
@@ -308,7 +309,9 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history }) =>
                         flex items-center gap-3 p-2.5 rounded-lg border
                         ${style.border} ${style.bg} ${style.glow}
                         transition-all
+                        ${onPlayerClick ? 'cursor-pointer hover:brightness-125' : ''}
                       `}
+                      onClick={() => onPlayerClick?.(h.player.id)}
                     >
                       {/* Rank */}
                       <span className="text-lg w-8 text-center shrink-0">{rankLabel(h.rank)}</span>

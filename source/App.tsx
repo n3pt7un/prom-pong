@@ -15,18 +15,20 @@ import WeeklyChallenges from './components/WeeklyChallenges';
 import PendingMatches from './components/PendingMatches';
 import HallOfFame from './components/HallOfFame';
 import CreateChallengeModal from './components/CreateChallengeModal';
+import LogChallengeMatchModal from './components/LogChallengeMatchModal';
 
 import ChallengeBoard from './components/ChallengeBoard';
 import TournamentBracket from './components/TournamentBracket';
 import SeasonManager from './components/SeasonManager';
 import LeagueManager from './components/LeagueManager';
 import InsightsPage from './components/InsightsPage';
+import MatchHistory from './components/MatchHistory';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LeagueProvider, useLeague } from './context/LeagueContext';
 import { useLeagueHandlers } from './hooks/useLeagueHandlers';
 import { useChallengeToasts } from './hooks/useChallengeToasts';
-import { GameType, MatchFormat } from './types';
+import { GameType, MatchFormat, Challenge } from './types';
 import { createCorrectionRequest } from './services/storageService';
 import { WifiOff, CheckCircle, AlertCircle, X, Undo2, Loader2 } from 'lucide-react';
 
@@ -74,7 +76,7 @@ function AppContent() {
   const VALID_TABS = new Set([
     'leaderboard', 'log', 'recent', 'players', 'matchmaker',
     'challenges', 'tournaments', 'seasons', 'settings', 'leagues',
-    'rackets', 'weekly', 'hof', 'insights',
+    'rackets', 'weekly', 'hof', 'insights', 'events', 'armory',
   ]);
 
   // On mount: restore tab from hash (supports bookmarks / hard refresh)
@@ -106,6 +108,7 @@ function AppContent() {
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
   const [showLogMatchModal, setShowLogMatchModal] = useState(false);
   const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [activeChallengeForLog, setActiveChallengeForLog] = useState<Challenge | null>(null);
 
 const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string[]; team2: string[] } | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -189,7 +192,7 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
       return (
         <div className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <PlayerOfTheWeek players={players} matches={matches} history={history} />
+            <PlayerOfTheWeek players={players} matches={matches} history={history} onPlayerClick={handleLeaderboardPlayerClick} />
             <WeeklyChallenges matches={matches} players={players} history={history} currentPlayerId={currentUser?.player?.id} />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -288,15 +291,22 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
 
     if (activeTab === 'events') {
       return (
-        <TournamentBracket
-          tournaments={tournaments}
-          players={players}
-          isAdmin={isAdmin}
-          currentUserUid={currentUser?.uid}
-          onCreateTournament={handlers.handleCreateTournament}
-          onSubmitResult={handlers.handleSubmitTournamentResult}
-          onDeleteTournament={isAdmin ? handlers.handleDeleteTournament : undefined}
-        />
+        <div className="space-y-10">
+          <MatchHistory
+            matches={matches}
+            players={players}
+            onPlayerClick={handleLeaderboardPlayerClick}
+          />
+          <TournamentBracket
+            tournaments={tournaments}
+            players={players}
+            isAdmin={isAdmin}
+            currentUserUid={currentUser?.uid}
+            onCreateTournament={handlers.handleCreateTournament}
+            onSubmitResult={handlers.handleSubmitTournamentResult}
+            onDeleteTournament={isAdmin ? handlers.handleDeleteTournament : undefined}
+          />
+        </div>
       );
     }
 
@@ -351,7 +361,7 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
               Set up a player profile to see personal insights.
             </div>
           )}
-          <HallOfFame players={players} matches={matches} history={history} />
+          <HallOfFame players={players} matches={matches} history={history} onPlayerClick={handleLeaderboardPlayerClick} />
           <ChallengeBoard
             challenges={challenges}
             players={players}
@@ -360,6 +370,10 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
             currentUserUid={currentUser?.uid}
             onRespondChallenge={handlers.handleRespondChallenge}
             onCancelChallenge={handlers.handleCancelChallenge}
+            onCompleteChallenge={(challengeId) => {
+              const c = challenges.find(ch => ch.id === challengeId);
+              if (c) setActiveChallengeForLog(c);
+            }}
           />
         </div>
       );
@@ -461,6 +475,16 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
           currentPlayerId={currentUser.player.id}
           onCreateChallenge={handlers.handleCreateChallenge}
           onClose={() => setShowChallengeModal(false)}
+        />
+      )}
+
+      {/* Log challenge match modal — z-[400] */}
+      {activeChallengeForLog && (
+        <LogChallengeMatchModal
+          challenge={activeChallengeForLog}
+          players={players}
+          onSubmit={handlers.handleCompleteChallenge}
+          onClose={() => setActiveChallengeForLog(null)}
         />
       )}
 

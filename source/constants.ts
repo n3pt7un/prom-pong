@@ -1,6 +1,6 @@
 import { RacketStats } from './types';
 
-export const K_FACTOR = 80;
+export const K_FACTOR = 48;
 export const INITIAL_ELO = 1200;
 
 export const RANKS = [
