@@ -1,5 +1,18 @@
 import { Match, Player, GameType, EloHistoryEntry } from '../types';
 
+/** SoS within 30 pts of player's own ELO → tough schedule (green) */
+export const SOS_THRESHOLD_TOUGH = -30;
+/** SoS within 100 pts of player's own ELO → balanced (yellow); below → easy (orange) */
+export const SOS_THRESHOLD_EASY = -100;
+
+export function getSoSColor(sos: number | null, playerElo: number): string {
+    if (sos === null) return 'text-gray-500';
+    const gap = sos - playerElo;
+    if (gap >= SOS_THRESHOLD_TOUGH) return 'text-green-400';
+    if (gap >= SOS_THRESHOLD_EASY) return 'text-yellow-400';
+    return 'text-orange-400';
+}
+
 /**
  * For a given match, find the opponent(s)' Elo at the time of that match.
  *
@@ -126,6 +139,7 @@ export function computeAverageElo(
 export interface SoSProgressionPoint {
     matchIndex: number;
     sos: number;
+    playerElo: number;
     matchId: string;
     timestamp: string;
 }
@@ -182,9 +196,13 @@ export function computeSoSProgression(
         }
 
         if (matchHadElo) {
+            const playerEloAtMatch = historyByPlayerAndMatch.get(`${playerId}:${m.id}`);
+            const fallbackElo = playerMap.get(playerId);
+            const pElo = playerEloAtMatch ?? (fallbackElo ? (gameType === 'singles' ? fallbackElo.eloSingles : fallbackElo.eloDoubles) : 1200);
             points.push({
                 matchIndex: points.length + 1,
                 sos: Math.round(cumulativeSum / cumulativeCount),
+                playerElo: pElo,
                 matchId: m.id,
                 timestamp: m.timestamp,
             });

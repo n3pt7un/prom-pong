@@ -13,7 +13,7 @@ import {
   getEloVolatility,
   getRecentForm,
 } from '../utils/statsUtils';
-import { computeSoS, computeSoSProgression } from '../utils/sosUtils';
+import { computeSoS, computeSoSProgression, getSoSColor, SOS_THRESHOLD_TOUGH, SOS_THRESHOLD_EASY } from '../utils/sosUtils';
 
 interface PlayerProfileProps {
   player: Player;
@@ -26,11 +26,13 @@ interface PlayerProfileProps {
   currentUserId?: string;
   onNavigateToArmory?: () => void;
   onUpdatePlayerName?: (playerId: string, newName: string) => void;
+  activeLeagueId?: string | null;
 }
 
 const PlayerProfile: React.FC<PlayerProfileProps> = ({
   player, history, matches, rackets, players, onUpdateRacket,
   isAdmin, currentUserId, onNavigateToArmory, onUpdatePlayerName,
+  activeLeagueId,
 }) => {
   const [selectedGameType, setSelectedGameType] = useState<GameType>('singles');
   const [editingName, setEditingName] = useState(false);
@@ -104,15 +106,37 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
 
   // Strength of Schedule: current value and progression
   const currentSoS = useMemo(() => {
-    const result = computeSoS(players, [player], matches, history, selectedGameType);
+    const result = computeSoS(players, [player], matches, history, selectedGameType, activeLeagueId);
     return result.get(player.id)?.sos ?? null;
-  }, [players, player, matches, history, selectedGameType]);
+  }, [players, player, matches, history, selectedGameType, activeLeagueId]);
 
 
   const sosProgression = useMemo(
-    () => computeSoSProgression(player.id, players, matches, history, selectedGameType),
-    [player.id, players, matches, history, selectedGameType]
+    () => computeSoSProgression(player.id, players, matches, history, selectedGameType, activeLeagueId),
+    [player.id, players, matches, history, selectedGameType, activeLeagueId]
   );
+
+  const sosGradientStops = useMemo(() => {
+    const n = sosProgression.length;
+    if (n < 2) return [];
+    const colorOf = (p: { sos: number; playerElo: number }) => {
+      const gap = p.sos - p.playerElo;
+      if (gap >= SOS_THRESHOLD_TOUGH) return '#4ade80';
+      if (gap >= SOS_THRESHOLD_EASY) return '#facc15';
+      return '#fb923c';
+    };
+    const stops: { offset: string; color: string }[] = [];
+    for (let i = 0; i < n; i++) {
+      const color = colorOf(sosProgression[i]);
+      const pct = `${((i / (n - 1)) * 100).toFixed(1)}%`;
+      if (i > 0) {
+        const prevColor = colorOf(sosProgression[i - 1]);
+        if (prevColor !== color) stops.push({ offset: pct, color: prevColor });
+      }
+      stops.push({ offset: pct, color });
+    }
+    return stops;
+  }, [sosProgression]);
 
   const playerMatchCount = filteredMatches.length;
 
@@ -346,12 +370,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
          <StatCard
            label="SoS"
            value={currentSoS !== null ? currentSoS : '—'}
-           color={(() => {
-             if (currentSoS === null) return 'text-gray-500';
-             const playerElo = selectedGameType === 'singles' ? player.eloSingles : player.eloDoubles;
-             const gap = currentSoS - playerElo;
-             return gap >= -30 ? 'text-green-400' : gap >= -100 ? 'text-yellow-400' : 'text-orange-400';
-           })()}
+           color={getSoSColor(currentSoS, selectedGameType === 'singles' ? player.eloSingles : player.eloDoubles)}
            icon={<Shield size={16} />}
            tooltip={currentSoS !== null ? `Avg opponent ELO (your ELO: ${selectedGameType === 'singles' ? player.eloSingles : player.eloDoubles})` : 'No qualifying matches'}
          />
@@ -634,6 +653,13 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
               </div>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={sosProgression} margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id={`sosGrad-${player.id}`} x1="0" y1="0" x2="1" y2="0">
+                      {sosGradientStops.map((stop, i) => (
+                        <stop key={i} offset={stop.offset} stopColor={stop.color} />
+                      ))}
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                   <XAxis
                     dataKey="matchIndex"
@@ -650,15 +676,28 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
                   <Tooltip
                     contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: 8, fontSize: 12 }}
                     labelFormatter={v => `Match #${v}`}
-                    formatter={(value: number) => [value, 'Avg Opp. ELO']}
+                    formatter={(value: number, _name: string, props: any) => {
+                      const point = props.payload as { sos: number; playerElo: number };
+                      return [value, `SoS (your ELO: ${point.playerElo})`];
+                    }}
                   />
                   <Line
                     type="monotone"
                     dataKey="sos"
-                    stroke="#fcee0a"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#fcee0a', stroke: '#000' }}
+                    stroke={`url(#sosGrad-${player.id})`}
+                    strokeWidth={2.5}
+                    dot={(dotProps: any) => {
+                      const point = dotProps.payload as { sos: number; playerElo: number };
+                      const gap = point.sos - point.playerElo;
+                      const fill = gap >= SOS_THRESHOLD_TOUGH ? '#4ade80' : gap >= SOS_THRESHOLD_EASY ? '#facc15' : '#fb923c';
+                      return <circle key={dotProps.key} cx={dotProps.cx} cy={dotProps.cy} r={3.5} fill={fill} stroke="#000" strokeWidth={1} />;
+                    }}
+                    activeDot={(dotProps: any) => {
+                      const point = dotProps.payload as { sos: number; playerElo: number };
+                      const gap = point.sos - point.playerElo;
+                      const fill = gap >= SOS_THRESHOLD_TOUGH ? '#4ade80' : gap >= SOS_THRESHOLD_EASY ? '#facc15' : '#fb923c';
+                      return <circle key={dotProps.key} cx={dotProps.cx} cy={dotProps.cy} r={6} fill={fill} stroke="#fff" strokeWidth={2} />;
+                    }}
                   />
                 </LineChart>
               </ResponsiveContainer>
