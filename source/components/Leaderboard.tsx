@@ -5,7 +5,7 @@ import { TrendingUp, TrendingDown, Minus, Info, ChevronDown, ChevronUp, Target }
 import { RANKS } from '../constants';
 import { getPlayerStats } from '../utils/gameTypeStats';
 import { partitionPlayers, sortRankedPlayers, sortUnrankedPlayers } from '../utils/playerRanking';
-import { computeSoS } from '../utils/sosUtils';
+import { computeSoS, getSoSColor } from '../utils/sosUtils';
 
 interface LeaderboardProps {
   players: Player[];
@@ -261,10 +261,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [
                         if (sos === null || sos === undefined) {
                           return <span className="text-gray-600 font-mono text-sm">—</span>;
                         }
-                        const gap = sos - elo;
-                        const color = gap >= -30 ? 'text-green-400' : gap >= -100 ? 'text-yellow-400' : 'text-orange-400';
                         return (
-                          <span className={`font-mono text-sm font-bold ${color}`} title={`Avg opponent ELO (your ELO: ${elo})`}>
+                          <span className={`font-mono text-sm font-bold ${getSoSColor(sos, elo)}`} title={`Avg opponent ELO (your ELO: ${elo})`}>
                             {sos}
                           </span>
                         );

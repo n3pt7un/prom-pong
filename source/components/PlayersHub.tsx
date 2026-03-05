@@ -392,6 +392,7 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
           currentUserId={currentUserId}
           onNavigateToArmory={onNavigateToArmory}
           onUpdatePlayerName={onUpdatePlayerName}
+          activeLeagueId={activeLeagueId}
         />
       )}
 
