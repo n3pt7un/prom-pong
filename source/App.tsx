@@ -169,7 +169,7 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
   }
 
   if (!firebaseUser) {
-    return <LoginScreen onLoginSuccess={() => {}} />;
+    return <LoginScreen onLoginSuccess={() => { }} />;
   }
 
   if (currentUser?.needsSetup) {
@@ -197,6 +197,7 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
               <Leaderboard
                 players={players}
                 matches={matches}
+                history={history}
                 onPlayerClick={handleLeaderboardPlayerClick}
                 activeLeagueId={activeLeagueId}
                 leagues={leagues}
@@ -468,11 +469,10 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-slideUp ${
-              toast.type === 'success'
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-slideUp ${toast.type === 'success'
                 ? 'bg-green-900/90 border-green-500/50 text-green-100'
                 : 'bg-red-900/90 border-red-500/50 text-red-100'
-            }`}
+              }`}
           >
             {toast.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
             <span className="text-sm font-medium flex-1">{toast.message}</span>

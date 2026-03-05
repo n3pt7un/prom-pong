@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Player, EloHistoryEntry, Racket, Match, GameType } from '../types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { RACKET_ICONS, formatRacketStats } from './RacketManager';
-import { Zap, TrendingUp, TrendingDown, Calendar, Sword, AlertTriangle, Pencil, Check, X, Activity, BarChart3, Target } from 'lucide-react';
+import { Zap, TrendingUp, TrendingDown, Calendar, Sword, AlertTriangle, Pencil, Check, X, Activity, BarChart3, Target, Shield } from 'lucide-react';
 import { getPlayerAchievements } from '../achievements';
 import { getStatsForGameType } from '../utils/gameTypeStats';
 import {
@@ -13,6 +13,7 @@ import {
   getEloVolatility,
   getRecentForm,
 } from '../utils/statsUtils';
+import { computeSoS, computeSoSProgression, getSoSColor, SOS_THRESHOLD_TOUGH, SOS_THRESHOLD_EASY } from '../utils/sosUtils';
 
 interface PlayerProfileProps {
   player: Player;
@@ -25,11 +26,13 @@ interface PlayerProfileProps {
   currentUserId?: string;
   onNavigateToArmory?: () => void;
   onUpdatePlayerName?: (playerId: string, newName: string) => void;
+  activeLeagueId?: string | null;
 }
 
 const PlayerProfile: React.FC<PlayerProfileProps> = ({
   player, history, matches, rackets, players, onUpdateRacket,
   isAdmin, currentUserId, onNavigateToArmory, onUpdatePlayerName,
+  activeLeagueId,
 }) => {
   const [selectedGameType, setSelectedGameType] = useState<GameType>('singles');
   const [editingName, setEditingName] = useState(false);
@@ -100,6 +103,40 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
     getRecentForm(filteredMatches, player.id, 10),
     [filteredMatches, player.id]
   );
+
+  // Strength of Schedule: current value and progression
+  const currentSoS = useMemo(() => {
+    const result = computeSoS(players, [player], matches, history, selectedGameType, activeLeagueId);
+    return result.get(player.id)?.sos ?? null;
+  }, [players, player, matches, history, selectedGameType, activeLeagueId]);
+
+
+  const sosProgression = useMemo(
+    () => computeSoSProgression(player.id, players, matches, history, selectedGameType, activeLeagueId),
+    [player.id, players, matches, history, selectedGameType, activeLeagueId]
+  );
+
+  const sosGradientStops = useMemo(() => {
+    const n = sosProgression.length;
+    if (n < 2) return [];
+    const colorOf = (p: { sos: number; playerElo: number }) => {
+      const gap = p.sos - p.playerElo;
+      if (gap >= SOS_THRESHOLD_TOUGH) return '#4ade80';
+      if (gap >= SOS_THRESHOLD_EASY) return '#facc15';
+      return '#fb923c';
+    };
+    const stops: { offset: string; color: string }[] = [];
+    for (let i = 0; i < n; i++) {
+      const color = colorOf(sosProgression[i]);
+      const pct = `${((i / (n - 1)) * 100).toFixed(1)}%`;
+      if (i > 0) {
+        const prevColor = colorOf(sosProgression[i - 1]);
+        if (prevColor !== color) stops.push({ offset: pct, color: prevColor });
+      }
+      stops.push({ offset: pct, color });
+    }
+    return stops;
+  }, [sosProgression]);
 
   const playerMatchCount = filteredMatches.length;
 
@@ -325,11 +362,18 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
          <StatCard label="Matches" value={totalGames} color="text-white" icon={<Calendar size={16} />} />
          <StatCard label="Win Rate" value={`${winRate}%`} color="text-cyber-yellow" />
          <StatCard label="Record" value={`${wins}W - ${losses}L`} color="text-cyber-cyan" />
          <StatCard label={`${selectedGameType === 'singles' ? 'Singles' : 'Doubles'} Streak`} value={Math.abs(streak)} color={streak >= 0 ? 'text-green-400' : 'text-red-400'} icon={streak >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />} />
+         <StatCard
+           label="SoS"
+           value={currentSoS !== null ? currentSoS : '—'}
+           color={getSoSColor(currentSoS, selectedGameType === 'singles' ? player.eloSingles : player.eloDoubles)}
+           icon={<Shield size={16} />}
+           tooltip={currentSoS !== null ? `Avg opponent ELO (your ELO: ${selectedGameType === 'singles' ? player.eloSingles : player.eloDoubles})` : 'No qualifying matches'}
+         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -597,6 +641,74 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
             </div>
           </div>
 
+          {/* SoS Progression */}
+          {sosProgression.length >= 2 && (
+            <div className="glass-panel rounded-xl border border-white/5 p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Shield size={16} className="text-cyber-yellow" />
+                <h3 className="font-display text-sm text-white tracking-wider">STRENGTH OF SCHEDULE</h3>
+                <span className="text-[10px] font-mono text-gray-500 ml-auto">
+                  Running avg opponent ELO
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={sosProgression} margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id={`sosGrad-${player.id}`} x1="0" y1="0" x2="1" y2="0">
+                      {sosGradientStops.map((stop, i) => (
+                        <stop key={i} offset={stop.offset} stopColor={stop.color} />
+                      ))}
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                  <XAxis
+                    dataKey="matchIndex"
+                    stroke="#555"
+                    fontSize={10}
+                    label={{ value: 'Match #', position: 'insideBottom', offset: -2, fill: '#666', fontSize: 10 }}
+                  />
+                  <YAxis
+                    stroke="#444"
+                    domain={['auto', 'auto']}
+                    tick={{ fill: '#666', fontSize: 10 }}
+                    width={40}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: 8, fontSize: 12 }}
+                    labelFormatter={v => `Match #${v}`}
+                    formatter={(value: number, _name: string, props: any) => {
+                      const point = props.payload as { sos: number; playerElo: number };
+                      return [value, `SoS (your ELO: ${point.playerElo})`];
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="sos"
+                    stroke={`url(#sosGrad-${player.id})`}
+                    strokeWidth={2.5}
+                    dot={(dotProps: any) => {
+                      const point = dotProps.payload as { sos: number; playerElo: number };
+                      const gap = point.sos - point.playerElo;
+                      const fill = gap >= SOS_THRESHOLD_TOUGH ? '#4ade80' : gap >= SOS_THRESHOLD_EASY ? '#facc15' : '#fb923c';
+                      return <circle key={dotProps.key} cx={dotProps.cx} cy={dotProps.cy} r={3.5} fill={fill} stroke="#000" strokeWidth={1} />;
+                    }}
+                    activeDot={(dotProps: any) => {
+                      const point = dotProps.payload as { sos: number; playerElo: number };
+                      const gap = point.sos - point.playerElo;
+                      const fill = gap >= SOS_THRESHOLD_TOUGH ? '#4ade80' : gap >= SOS_THRESHOLD_EASY ? '#facc15' : '#fb923c';
+                      return <circle key={dotProps.key} cx={dotProps.cx} cy={dotProps.cy} r={6} fill={fill} stroke="#fff" strokeWidth={2} />;
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="mt-2 flex items-center justify-center gap-4 text-[10px] font-mono">
+                <span className="text-green-400">● Near/above your ELO</span>
+                <span className="text-yellow-400">● Moderately below</span>
+                <span className="text-orange-400">● Well below your ELO</span>
+              </div>
+            </div>
+          )}
+
           {/* ELO Volatility Gauge */}
           <div className="glass-panel rounded-xl border border-white/5 p-4">
             <div className="flex items-center gap-2 mb-4">
@@ -644,8 +756,8 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
   );
 };
 
-const StatCard = ({ label, value, color, icon }: any) => (
-  <div className="glass-panel p-4 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-colors">
+const StatCard = ({ label, value, color, icon, tooltip }: any) => (
+  <div className="glass-panel p-4 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-colors" title={tooltip}>
     <div className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
         {icon} {label}
     </div>
