@@ -42,6 +42,7 @@ export interface Player {
   mainRacketId?: string;
   uid?: string; // Firebase UID — links player to a logged-in user
   leagueId?: string; // League/group the player belongs to
+  isAdmin?: boolean; // Populated by /api/admin/users endpoint
 }
 
 export interface Match {
@@ -57,6 +58,10 @@ export interface Match {
   isFriendly?: boolean; // Friendly matches skip ELO but still count in stats
   leagueId?: string; // League context the match was played in (null = global/cross-league)
   matchFormat?: MatchFormat; // undefined = legacy match, treat as standard11
+  seasonId?: string; // Season the match belongs to
+  // Populated by /api/admin/matches endpoint for display purposes
+  winnerNames?: string[];
+  loserNames?: string[];
 }
 
 export interface EloHistoryEntry {
@@ -125,6 +130,29 @@ export interface Season {
   championId?: string;
 }
 
+// --- Admin Dashboard ---
+export interface AdminStats {
+  totalPlayers: number;
+  totalMatches: number;
+  activeSeasons: number;
+  completedSeasons: number;
+  totalLeagues: number;
+  pendingMatches: number;
+  pendingCorrections: number;
+  totalAdmins: number;
+}
+
+export interface AdminUser {
+  id: string;
+  firebaseUid: string;
+  email?: string;
+  displayName?: string;
+  createdAt: string;
+  // Enriched by /api/admin/admins endpoint via player lookup
+  playerName?: string;
+  playerAvatar?: string;
+}
+
 // --- Challenges ---
 export interface Challenge {
   id: string;
@@ -190,6 +218,18 @@ export interface League {
   description?: string;
   createdBy: string;
   createdAt: string;
+  // Enriched by /api/admin/leagues endpoint
+  playerCount?: number;
+}
+
+// --- ELO Configuration ---
+export interface EloConfig {
+  kFactor: number;
+  initialElo: number;
+  dFactor: number;
+  formulaPreset: 'standard' | 'score_weighted' | 'custom';
+  customFormula: string;
+  customConstants: Record<string, number>;
 }
 
 // --- Weekly Challenges ---

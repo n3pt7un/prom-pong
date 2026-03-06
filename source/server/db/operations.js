@@ -1,11 +1,23 @@
 import { supabase, isSupabaseEnabled } from '../../lib/supabase.js';
 import { getDB, saveDB, seedData } from './persistence.js';
+import { INITIAL_ELO, calculateMatchDelta } from '../services/elo.js';
+
+const DEFAULT_ELO_CONFIG = {
+  kFactor: 32,
+  initialElo: 1200,
+  dFactor: 200,
+  formulaPreset: 'standard',
+  customFormula: 'Math.round(kFactor * (1 - expectedScore(winnerElo, loserElo)))',
+  customConstants: {},
+};
 import {
   toLegacyPlayer,
   toLegacyRacket,
   toLegacyMatch,
+  batchToLegacyMatch,
   toLegacyEloHistory,
   toLegacyPendingMatch,
+  batchToLegacyPendingMatch,
   toLegacySeason,
   toLegacyChallenge,
   toLegacyTournament,
@@ -184,11 +196,11 @@ export const dbOps = {
     if (isSupabaseEnabled()) {
       const { data, error } = await supabase
         .from('matches')
-        .select('*')
+        .select('*, match_players(player_id, is_winner)')
         .order('timestamp', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return Promise.all(data.map(toLegacyMatch));
+      return data.map(batchToLegacyMatch);
     }
     return db().matches.slice(0, limit);
   },
@@ -197,11 +209,11 @@ export const dbOps = {
     if (isSupabaseEnabled()) {
       const { data, error } = await supabase
         .from('matches')
-        .select('*')
+        .select('*, match_players(player_id, is_winner)')
         .gt('timestamp', timestamp)
         .order('timestamp', { ascending: false });
       if (error) throw error;
-      return Promise.all(data.map(toLegacyMatch));
+      return data.map(batchToLegacyMatch);
     }
     return db().matches.filter((m) => new Date(m.timestamp) > new Date(timestamp));
   },
@@ -221,6 +233,7 @@ export const dbOps = {
           is_friendly: match.isFriendly || false,
           league_id: match.leagueId || null,
           match_format: match.matchFormat || 'vintage21',
+          season_id: match.seasonId || null,
         })
         .select()
         .single();
@@ -263,7 +276,7 @@ export const dbOps = {
     const match = db().matches.find((m) => m.id === id);
     if (match) {
       db().matches = db().matches.filter((m) => m.id !== id);
-      db().history = db().history.filter((h) => h.matchId !== match.timestamp);
+      db().history = db().history.filter((h) => h.matchId !== match.id);
       await saveDB();
     }
     return true;
@@ -297,24 +310,36 @@ export const dbOps = {
 
   async getAdmins() {
     if (isSupabaseEnabled()) {
-      const { data, error } = await supabase.from('admins').select('firebase_uid');
+      const { data, error } = await supabase.from('admins').select('*');
       if (error) throw error;
-      return data.map((a) => a.firebase_uid);
+      return data.map((a) => ({
+        id: a.id,
+        firebaseUid: a.firebase_uid,
+        createdAt: a.created_at,
+      }));
     }
-    return db().admins;
+    return db().admins.map((uid, idx) => ({
+      id: `admin-${idx}`,
+      firebaseUid: uid,
+      createdAt: new Date().toISOString(),
+    }));
   },
 
   async addAdmin(uid) {
     if (isSupabaseEnabled()) {
-      const { error } = await supabase.from('admins').insert({ firebase_uid: uid });
+      const { data, error } = await supabase.from('admins').insert({ firebase_uid: uid }).select().single();
       if (error && !error.message.includes('duplicate')) throw error;
-      return true;
+      return data ? {
+        id: data.id,
+        firebaseUid: data.firebase_uid,
+        createdAt: data.created_at,
+      } : null;
     }
     if (!db().admins.includes(uid)) {
       db().admins.push(uid);
       await saveDB();
     }
-    return true;
+    return { id: `admin-${db().admins.length}`, firebaseUid: uid, createdAt: new Date().toISOString() };
   },
 
   async removeAdmin(uid) {
@@ -328,11 +353,254 @@ export const dbOps = {
     return true;
   },
 
+  async getEloConfig() {
+    if (isSupabaseEnabled()) {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'elo_config')
+        .single();
+      if (error || !data) return { ...DEFAULT_ELO_CONFIG };
+      return { ...DEFAULT_ELO_CONFIG, ...data.value };
+    }
+    return { ...DEFAULT_ELO_CONFIG, ...(db().eloConfig || {}) };
+  },
+
+  async saveEloConfig(config) {
+    const validPresets = ['standard', 'score_weighted', 'custom'];
+
+    // Validate customConstants: keys must be safe identifiers, values must be numbers
+    const rawConstants = config.customConstants ?? {};
+    const safeConstants = {};
+    const identifierRe = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+    for (const [k, v] of Object.entries(rawConstants)) {
+      if (!identifierRe.test(k)) throw new Error(`Invalid constant name: "${k}"`);
+      const num = Number(v);
+      if (!isFinite(num)) throw new Error(`Constant "${k}" must be a finite number`);
+      safeConstants[k] = num;
+    }
+
+    const safeConfig = {
+      kFactor: Math.max(1, Math.min(200, Number(config.kFactor) || 32)),
+      initialElo: Math.max(100, Math.min(5000, Number(config.initialElo) || 1200)),
+      dFactor: Math.max(50, Math.min(2000, Number(config.dFactor) || 200)),
+      formulaPreset: validPresets.includes(config.formulaPreset) ? config.formulaPreset : 'standard',
+      customFormula: typeof config.customFormula === 'string' ? config.customFormula.trim() : DEFAULT_ELO_CONFIG.customFormula,
+      customConstants: safeConstants,
+    };
+
+    // Validate the custom formula with a dry-run if preset is 'custom'
+    if (safeConfig.formulaPreset === 'custom') {
+      const { validateCustomFormula } = await import('../services/elo.js');
+      const err = validateCustomFormula(safeConfig.customFormula, safeConfig.customConstants);
+      if (err) throw new Error(`Formula error: ${err}`);
+    }
+    if (isSupabaseEnabled()) {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: 'elo_config', value: safeConfig, updated_at: new Date().toISOString() });
+      if (error) throw error;
+    } else {
+      db().eloConfig = safeConfig;
+      await saveDB();
+    }
+    return safeConfig;
+  },
+
+  async recalculateElo() {
+    const eloConfig = await this.getEloConfig();
+    const startingElo = eloConfig.initialElo;
+
+    const players = await this.getPlayers();
+    const allMatches = await this.getMatches(999999);
+
+    // Sort chronologically (oldest first)
+    const sortedMatches = [...allMatches].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    // Initialize player state
+    const playerMap = {};
+    for (const p of players) {
+      playerMap[p.id] = {
+        id: p.id,
+        eloSingles: startingElo,
+        eloDoubles: startingElo,
+        winsSingles: 0, lossesSingles: 0, streakSingles: 0,
+        winsDoubles: 0, lossesDoubles: 0, streakDoubles: 0,
+      };
+    }
+
+    const newHistoryEntries = [];
+    const matchDeltas = {};
+
+    for (const match of sortedMatches) {
+      if (match.isFriendly) continue;
+
+      const { winners, losers, type, id: matchId, timestamp, scoreWinner, scoreLoser } = match;
+      const isSingles = type === 'singles';
+
+      let wElo, lElo;
+      if (isSingles) {
+        wElo = playerMap[winners[0]]?.eloSingles ?? startingElo;
+        lElo = playerMap[losers[0]]?.eloSingles ?? startingElo;
+      } else {
+        wElo = ((playerMap[winners[0]]?.eloDoubles ?? startingElo) + (playerMap[winners[1]]?.eloDoubles ?? startingElo)) / 2;
+        lElo = ((playerMap[losers[0]]?.eloDoubles ?? startingElo) + (playerMap[losers[1]]?.eloDoubles ?? startingElo)) / 2;
+      }
+
+      const delta = Math.round(calculateMatchDelta(wElo, lElo, { ...eloConfig, scoreWinner, scoreLoser }));
+      matchDeltas[matchId] = delta;
+
+      for (const winnerId of winners) {
+        const p = playerMap[winnerId];
+        if (!p) continue;
+        const eloKey = isSingles ? 'eloSingles' : 'eloDoubles';
+        const streakKey = isSingles ? 'streakSingles' : 'streakDoubles';
+        const winsKey = isSingles ? 'winsSingles' : 'winsDoubles';
+        p[eloKey] += delta;
+        p[winsKey]++;
+        p[streakKey] = p[streakKey] >= 0 ? p[streakKey] + 1 : 1;
+        newHistoryEntries.push({ playerId: winnerId, matchId, newElo: p[eloKey], timestamp, gameType: type });
+      }
+
+      for (const loserId of losers) {
+        const p = playerMap[loserId];
+        if (!p) continue;
+        const eloKey = isSingles ? 'eloSingles' : 'eloDoubles';
+        const streakKey = isSingles ? 'streakSingles' : 'streakDoubles';
+        const lossesKey = isSingles ? 'lossesSingles' : 'lossesDoubles';
+        p[eloKey] -= delta;
+        p[lossesKey]++;
+        p[streakKey] = p[streakKey] <= 0 ? p[streakKey] - 1 : -1;
+        newHistoryEntries.push({ playerId: loserId, matchId, newElo: p[eloKey], timestamp, gameType: type });
+      }
+    }
+
+    const matchesReplayed = Object.keys(matchDeltas).length;
+
+    if (isSupabaseEnabled()) {
+      for (const p of Object.values(playerMap)) {
+        const { error } = await supabase.from('players').update({
+          elo_singles: p.eloSingles,
+          elo_doubles: p.eloDoubles,
+          wins_singles: p.winsSingles,
+          losses_singles: p.lossesSingles,
+          streak_singles: p.streakSingles,
+          wins_doubles: p.winsDoubles,
+          losses_doubles: p.lossesDoubles,
+          streak_doubles: p.streakDoubles,
+        }).eq('id', p.id);
+        if (error) throw error;
+      }
+
+      for (const [matchId, delta] of Object.entries(matchDeltas)) {
+        await supabase.from('matches').update({ elo_change: delta }).eq('id', matchId);
+      }
+
+      await supabase.from('elo_history').delete().gte('timestamp', '1900-01-01T00:00:00Z');
+      if (newHistoryEntries.length > 0) {
+        const { error } = await supabase.from('elo_history').insert(
+          newHistoryEntries.map(h => ({
+            player_id: h.playerId,
+            match_id: h.matchId,
+            new_elo: h.newElo,
+            timestamp: h.timestamp,
+            game_type: h.gameType,
+          }))
+        );
+        if (error) throw error;
+      }
+    } else {
+      for (const p of Object.values(playerMap)) {
+        const idx = db().players.findIndex(pl => pl.id === p.id);
+        if (idx !== -1) db().players[idx] = { ...db().players[idx], ...p };
+      }
+      for (const [matchId, delta] of Object.entries(matchDeltas)) {
+        const mIdx = db().matches.findIndex(m => m.id === matchId);
+        if (mIdx !== -1) db().matches[mIdx].eloChange = delta;
+      }
+      db().history = newHistoryEntries;
+      await saveDB();
+    }
+
+    return { playersUpdated: Object.keys(playerMap).length, matchesReplayed };
+  },
+
+  async getAdminStats() {
+    if (isSupabaseEnabled()) {
+      const { data, error } = await supabase.from('admin_stats').select('*').single();
+      if (error) {
+        // Fallback: calculate manually
+        const [players, matches, seasons, leagues, pendingMatches, admins] = await Promise.all([
+          this.getPlayers(),
+          this.getMatches(999999),
+          this.getSeasons(),
+          this.getLeagues(),
+          this.getPendingMatches(),
+          this.getAdmins(),
+        ]);
+        return {
+          totalPlayers: players.length,
+          totalMatches: matches.length,
+          activeSeasons: seasons.filter(s => s.status === 'active').length,
+          completedSeasons: seasons.filter(s => s.status === 'completed').length,
+          totalLeagues: leagues.length,
+          pendingMatches: pendingMatches.filter(pm => pm.status === 'pending').length,
+          pendingCorrections: 0, // TODO: implement correction requests
+          totalAdmins: admins.length,
+        };
+      }
+      return {
+        totalPlayers: data.total_players,
+        totalMatches: data.total_matches,
+        activeSeasons: data.active_seasons,
+        completedSeasons: data.completed_seasons,
+        totalLeagues: data.total_leagues,
+        pendingMatches: data.pending_matches,
+        pendingCorrections: data.pending_corrections,
+        totalAdmins: data.total_admins,
+      };
+    }
+    return {
+      totalPlayers: db().players.length,
+      totalMatches: db().matches.length,
+      activeSeasons: db().seasons.filter(s => s.status === 'active').length,
+      completedSeasons: db().seasons.filter(s => s.status === 'completed').length,
+      totalLeagues: (db().leagues || []).length,
+      pendingMatches: db().pendingMatches.filter(pm => pm.status === 'pending').length,
+      pendingCorrections: 0,
+      totalAdmins: db().admins.length,
+    };
+  },
+
+  async archiveSeasonMatches(seasonId) {
+    if (isSupabaseEnabled()) {
+      const { error } = await supabase.rpc('archive_season_matches', { p_season_id: seasonId });
+      if (error) throw error;
+      return true;
+    }
+    // For local JSON, we don't archive - just keep matches
+    return true;
+  },
+
+  async deleteSeason(id) {
+    if (isSupabaseEnabled()) {
+      const { error } = await supabase.from('seasons').delete().eq('id', id);
+      if (error) throw error;
+      return true;
+    }
+    db().seasons = db().seasons.filter((s) => s.id !== id);
+    await saveDB();
+    return true;
+  },
+
   async getPendingMatches() {
     if (isSupabaseEnabled()) {
-      const { data, error } = await supabase.from('pending_matches').select('*').neq('status', 'confirmed');
+      const { data, error } = await supabase
+        .from('pending_matches')
+        .select('*, pending_match_players(player_id, is_winner)')
+        .neq('status', 'confirmed');
       if (error) throw error;
-      return Promise.all(data.map(toLegacyPendingMatch));
+      return data.map(batchToLegacyPendingMatch);
     }
     return db().pendingMatches;
   },

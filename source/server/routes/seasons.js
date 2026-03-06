@@ -23,8 +23,9 @@ router.post('/seasons/start', authMiddleware, adminMiddleware, async (req, res) 
 
     const seasonNumber = seasons.length + 1;
     const name = (req.body.name || '').trim() || `Season ${seasonNumber}`;
+    const seasonId = Date.now().toString();
     const season = {
-      id: Date.now().toString(),
+      id: seasonId,
       name,
       number: seasonNumber,
       status: 'active',
@@ -33,6 +34,10 @@ router.post('/seasons/start', authMiddleware, adminMiddleware, async (req, res) 
       matchCount: 0,
     };
 
+    // Create the season first
+    const created = await dbOps.createSeason(season);
+
+    // Then reset players and clear matches
     await dbOps.resetPlayers({
       eloSingles: INITIAL_ELO,
       eloDoubles: INITIAL_ELO,
@@ -41,7 +46,6 @@ router.post('/seasons/start', authMiddleware, adminMiddleware, async (req, res) 
     });
     await dbOps.clearMatches();
 
-    const created = await dbOps.createSeason(season);
     res.json(created);
   } catch (err) {
     console.error('Error in POST /api/seasons/start:', err);
@@ -55,21 +59,31 @@ router.post('/seasons/end', authMiddleware, adminMiddleware, async (req, res) =>
     const idx = seasons.findIndex((s) => s.status === 'active');
     if (idx === -1) return res.status(400).json({ error: 'No active season to end' });
 
+    const activeSeason = seasons[idx];
     const players = await dbOps.getPlayers();
     const standings = [...players]
       .sort((a, b) => b.eloSingles - a.eloSingles)
       .map((p, i) => ({
         playerId: p.id, playerName: p.name, rank: i + 1,
         eloSingles: p.eloSingles, eloDoubles: p.eloDoubles,
-        wins: p.wins, losses: p.losses,
+        wins: (p.winsSingles || 0) + (p.winsDoubles || 0),
+        losses: (p.lossesSingles || 0) + (p.lossesDoubles || 0),
       }));
 
+    // Get matches for THIS season only
     const matches = await dbOps.getMatches();
-    const updated = await dbOps.updateSeason(seasons[idx].id, {
+    const seasonMatches = matches.filter(m => m.seasonId === activeSeason.id || !m.seasonId);
+
+    // Archive matches before updating season
+    if (typeof dbOps.archiveSeasonMatches === 'function') {
+      await dbOps.archiveSeasonMatches(activeSeason.id);
+    }
+
+    const updated = await dbOps.updateSeason(activeSeason.id, {
       status: 'completed',
       endedAt: new Date().toISOString(),
       finalStandings: standings,
-      matchCount: matches.length,
+      matchCount: seasonMatches.length,
       championId: standings.length > 0 ? standings[0].playerId : undefined,
     });
 

@@ -48,7 +48,7 @@ router.post('/matches', authMiddleware, async (req, res) => {
     const getP = (id) => players.find((p) => p.id === id);
 
     const admins = await dbOps.getAdmins();
-    const isAdmin = admins.includes(req.user.uid);
+    const isAdmin = admins.some(a => a.firebaseUid === req.user.uid);
     if (!isAdmin) {
       const callerPlayer = players.find((p) => p.uid === req.user.uid);
       if (!callerPlayer) {
@@ -92,7 +92,8 @@ router.post('/matches', authMiddleware, async (req, res) => {
         wElo = ((w0.eloDoubles ?? INITIAL_ELO) + (w1.eloDoubles ?? INITIAL_ELO)) / 2;
         lElo = ((l0.eloDoubles ?? INITIAL_ELO) + (l1.eloDoubles ?? INITIAL_ELO)) / 2;
       }
-      delta = Math.round(calculateMatchDelta(wElo, lElo));
+      const eloConfig = await dbOps.getEloConfig();
+      delta = Math.round(calculateMatchDelta(wElo, lElo, { ...eloConfig, scoreWinner, scoreLoser }));
 
       for (const p of players) {
         if (winners.includes(p.id)) {
@@ -143,15 +144,30 @@ router.post('/matches', authMiddleware, async (req, res) => {
     }
 
     const leagueId = req.body.leagueId || null;
+    
+    // Get current active season
+    const seasons = await dbOps.getSeasons();
+    const activeSeason = seasons.find(s => s.status === 'active');
+    const seasonId = activeSeason ? activeSeason.id : null;
+    
     const newMatch = {
       id: matchId, type, winners, losers,
       scoreWinner, scoreLoser, timestamp, eloChange: delta, loggedBy: req.user.uid,
       isFriendly: friendly,
       leagueId,
       matchFormat,
+      seasonId,
     };
 
     const created = await dbOps.createMatch(newMatch, winners, losers, historyEntries);
+
+    // Increment match count on active season
+    if (activeSeason) {
+      await dbOps.updateSeason(activeSeason.id, {
+        matchCount: (activeSeason.matchCount || 0) + 1,
+      });
+    }
+
     res.json(created);
   } catch (err) {
     console.error('Error in POST /api/matches:', err);
@@ -166,7 +182,7 @@ router.put('/matches/:id', authMiddleware, async (req, res) => {
     if (!match) return res.status(404).json({ error: 'Match not found' });
 
     const admins = await dbOps.getAdmins();
-    const isAdmin = admins.includes(req.user.uid);
+    const isAdmin = admins.some(a => a.firebaseUid === req.user.uid);
     const isCreator = match.loggedBy && match.loggedBy === req.user.uid;
     const matchAge = Date.now() - new Date(match.timestamp).getTime();
     const withinWindow = matchAge < 60000;
@@ -251,7 +267,8 @@ router.put('/matches/:id', authMiddleware, async (req, res) => {
       lElo = (l0.eloDoubles + l1.eloDoubles) / 2;
     }
 
-    const newDelta = calculateMatchDelta(wElo, lElo);
+    const eloConfig = await dbOps.getEloConfig();
+    const newDelta = calculateMatchDelta(wElo, lElo, { ...eloConfig, scoreWinner, scoreLoser });
     const newTimestamp = new Date().toISOString();
     const newHistoryEntries = [];
 
@@ -330,7 +347,7 @@ router.delete('/matches/:id', authMiddleware, async (req, res) => {
     if (!match) return res.status(404).json({ error: 'Match not found' });
 
     const admins = await dbOps.getAdmins();
-    const isAdmin = admins.includes(req.user.uid);
+    const isAdmin = admins.some(a => a.firebaseUid === req.user.uid);
     const isCreator = match.loggedBy && match.loggedBy === req.user.uid;
     const matchAge = Date.now() - new Date(match.timestamp).getTime();
     const withinWindow = matchAge < 60000;

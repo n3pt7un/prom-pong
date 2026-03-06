@@ -10,6 +10,7 @@ interface LayoutProps {
   onSignOut: () => void;
   onLogMatch: () => void;
   onOpenChallenge?: () => void;
+  onOpenAdminPanel?: () => void;
   pendingCount?: number;
   challengeCount?: number;
   leagues?: League[];
@@ -25,6 +26,7 @@ const Layout: React.FC<LayoutProps> = ({
   onSignOut,
   onLogMatch,
   onOpenChallenge,
+  onOpenAdminPanel,
   pendingCount = 0,
   challengeCount = 0,
   leagues = [],
@@ -116,9 +118,18 @@ const Layout: React.FC<LayoutProps> = ({
           {currentUser && (
             <div className="flex items-center gap-2">
               {currentUser.isAdmin && (
-                <span className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-cyber-yellow bg-cyber-yellow/10 border border-cyber-yellow/30 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                  <ShieldCheck size={10} /> Admin
-                </span>
+                <>
+                  <button
+                    onClick={onOpenAdminPanel}
+                    className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-cyber-purple bg-cyber-purple/10 border border-cyber-purple/30 px-2 py-1 rounded-lg uppercase tracking-widest hover:bg-cyber-purple/20 transition-colors"
+                    title="Open Admin Panel"
+                  >
+                    <ShieldCheck size={12} /> Admin Panel
+                  </button>
+                  <span className="sm:hidden flex items-center gap-1 text-[10px] font-bold text-cyber-yellow bg-cyber-yellow/10 border border-cyber-yellow/30 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                    <ShieldCheck size={10} /> Admin
+                  </span>
+                </>
               )}
               <img
                 src={currentUser.photoURL || ''}

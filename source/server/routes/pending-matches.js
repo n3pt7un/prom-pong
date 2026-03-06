@@ -15,7 +15,7 @@ router.post('/pending-matches', authMiddleware, async (req, res) => {
     const players = await dbOps.getPlayers();
 
     const admins = await dbOps.getAdmins();
-    const isAdmin = admins.includes(req.user.uid);
+    const isAdmin = admins.some(a => a.firebaseUid === req.user.uid);
     if (!isAdmin) {
       const callerPlayer = players.find((p) => p.uid === req.user.uid);
       if (!callerPlayer) return res.status(403).json({ error: 'You need a player profile to log matches' });

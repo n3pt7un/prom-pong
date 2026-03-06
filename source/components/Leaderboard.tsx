@@ -119,7 +119,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [
               <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-400">K-Factor</span>
-                  <span className="text-white font-mono font-bold">80</span>
+                  <span className="text-white font-mono font-bold">32</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-400">Starting Rating</span>
@@ -131,7 +131,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [
                 </div>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Beating a higher-rated player gives more points. Beating a lower-rated player gives fewer. The K-factor of 80 means ratings shift aggressively, ideal for small leagues where a few matches matter a lot.
+                Beating a higher-rated player gives more points. Beating a lower-rated player gives fewer. The K-factor of 32 is the standard competitive ELO setting, balancing responsiveness with stability.
               </p>
             </div>
 
@@ -139,15 +139,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">How Points Are Calculated</h4>
               <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2 text-xs font-mono text-gray-300">
-                <p><span className="text-gray-500">Expected Score =</span> 1 / (1 + 10<sup>(opponent - you) / 400</sup>)</p>
-                <p><span className="text-gray-500">New Rating =</span> Old + 80 x (result - expected)</p>
+                <p><span className="text-gray-500">Expected Score =</span> 1 / (1 + 10<sup>(opponent - you) / 200</sup>)</p>
+                <p><span className="text-gray-500">New Rating =</span> Old + 32 x (result - expected)</p>
                 <p className="text-gray-500 pt-1">result: 1 = win, 0 = loss</p>
               </div>
               <div className="bg-black/30 rounded-lg p-3 border border-white/5 text-xs space-y-1">
                 <p className="text-gray-400"><span className="text-green-400 font-bold">Example:</span> You (1200) beat someone at 1400</p>
-                <p className="text-gray-300">Expected win chance: ~24%. You gain <span className="text-green-400 font-bold">+61 pts</span></p>
+                <p className="text-gray-300">Expected win chance: ~9%. You gain <span className="text-green-400 font-bold">+29 pts</span></p>
                 <p className="text-gray-400 mt-1"><span className="text-red-400 font-bold">Example:</span> You (1400) lose to someone at 1200</p>
-                <p className="text-gray-300">Expected win chance: ~76%. You lose <span className="text-red-400 font-bold">-61 pts</span></p>
+                <p className="text-gray-300">Expected win chance: ~91%. You lose <span className="text-red-400 font-bold">-29 pts</span></p>
               </div>
             </div>
           </div>

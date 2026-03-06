@@ -108,7 +108,7 @@ router.delete('/challenges/:id', authMiddleware, async (req, res) => {
 
     const userPlayer = await dbOps.getPlayerByUid(req.user.uid);
     const admins = await dbOps.getAdmins();
-    const isAdmin = admins.includes(req.user.uid);
+    const isAdmin = admins.some(a => a.firebaseUid === req.user.uid);
 
     if (!isAdmin && (!userPlayer || userPlayer.id !== challenge.challengerId)) {
       return res.status(403).json({ error: 'Only the challenger or admin can cancel' });

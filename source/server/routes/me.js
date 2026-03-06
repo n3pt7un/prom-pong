@@ -22,14 +22,14 @@ router.get('/me', authMiddleware, async (req, res) => {
 
     if (shouldAutoPromote(email)) {
       const admins = await dbOps.getAdmins();
-      if (!admins.includes(uid)) {
+      if (!admins.some(a => a.firebaseUid === uid)) {
         await dbOps.addAdmin(uid);
         console.log(`👑 Auto-promoted admin: ${email}`);
       }
     }
 
     const admins = await dbOps.getAdmins();
-    const isAdmin = admins.includes(uid);
+    const isAdmin = admins.some(a => a.firebaseUid === uid);
     const player = await dbOps.getPlayerByUid(uid);
     const players = await dbOps.getPlayers();
 
@@ -88,7 +88,7 @@ router.post('/me/setup', authMiddleware, async (req, res) => {
     console.log(`🆕 Profile created for ${req.user.email}: "${player.name}"`);
 
     const admins = await dbOps.getAdmins();
-    const isAdmin = admins.includes(uid);
+    const isAdmin = admins.some(a => a.firebaseUid === uid);
 
     res.json({
       uid,
@@ -125,7 +125,7 @@ router.post('/me/claim', authMiddleware, async (req, res) => {
     console.log(`🔗 Player "${player.name}" claimed by ${req.user.email}`);
 
     const admins = await dbOps.getAdmins();
-    const isAdmin = admins.includes(uid);
+    const isAdmin = admins.some(a => a.firebaseUid === uid);
     const updatedPlayer = await dbOps.getPlayerById(playerId);
 
     res.json({

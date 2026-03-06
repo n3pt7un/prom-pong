@@ -114,34 +114,48 @@ function computePerformances(
   }).filter(p => p.weeklyMatches > 0);
 }
 
-function pickWinner(performances: WeeklyPerformance[]): WeeklyPerformance | null {
-  if (performances.length === 0) return null;
-
-  const sorted = [...performances].sort((a, b) => {
+function sortByPerformance(performances: WeeklyPerformance[]): WeeklyPerformance[] {
+  return [...performances].sort((a, b) => {
     if (b.performanceScore !== a.performanceScore) return b.performanceScore - a.performanceScore;
     if (b.winRate !== a.winRate) return b.winRate - a.winRate;
     return b.weeklyMatches - a.weeklyMatches;
   });
+}
 
-  return sorted[0];
+function pickWinner(performances: WeeklyPerformance[]): WeeklyPerformance | null {
+  if (performances.length === 0) return null;
+  return sortByPerformance(performances)[0];
+}
+
+interface RunnerUp {
+  player: Player;
+  performance: WeeklyPerformance;
+  deltaToP1: number;
 }
 
 const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, history, onPlayerClick }) => {
   const [showPrevious, setShowPrevious] = useState(false);
 
-  const { currentWinner, previousWinners } = useMemo(() => {
+  const { currentWinner, previousWinners, currentRunnerUps } = useMemo(() => {
     const now = new Date();
     const currentWeekStart = getWeekStart(now);
     const currentWeekEnd = getWeekEnd(currentWeekStart);
 
     // Current week
     const currentPerfs = computePerformances(players, matches, history, currentWeekStart, currentWeekEnd);
-    const currentBest = pickWinner(currentPerfs);
+    const sortedPerfs = sortByPerformance(currentPerfs);
+    const currentBest = sortedPerfs[0] ?? null;
     const currentPlayer = currentBest ? players.find(p => p.id === currentBest.playerId) : null;
 
     const currentWinner: WeekWinner | null = currentBest && currentPlayer
       ? { player: currentPlayer, performance: currentBest, weekLabel: formatWeekLabel(currentWeekStart), weekStart: currentWeekStart }
       : null;
+
+    const p1Score = currentBest?.performanceScore ?? 0;
+    const currentRunnerUps: RunnerUp[] = sortedPerfs.slice(1, 4).map((perf) => {
+      const p = players.find(pl => pl.id === perf.playerId);
+      return p ? { player: p, performance: perf, deltaToP1: perf.performanceScore - p1Score } : null;
+    }).filter((r): r is RunnerUp => r !== null);
 
     // Previous 4 weeks
     const prevWinners: WeekWinner[] = [];
@@ -157,7 +171,7 @@ const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, his
       }
     }
 
-    return { currentWinner, previousWinners: prevWinners };
+    return { currentWinner, previousWinners: prevWinners, currentRunnerUps };
   }, [players, matches, history]);
 
   return (
@@ -245,6 +259,30 @@ const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, his
               />
             </div>
           </div>
+
+          {/* Runner-ups - visible when 3+ players have a valid score this week */}
+          {currentRunnerUps.length > 0 && (
+            <div className="border-t border-white/10 pt-4 mb-4">
+              <div className="text-xs font-mono text-gray-500 uppercase tracking-widest mb-3">Runner-ups</div>
+              <div className="space-y-2">
+                {currentRunnerUps.map((r, i) => (
+                  <div
+                    key={r.player.id}
+                    className={`flex items-center gap-3 p-2 rounded-lg bg-white/[0.03] border border-white/5 ${onPlayerClick ? 'cursor-pointer hover:bg-white/[0.06] transition-colors' : ''}`}
+                    onClick={() => onPlayerClick?.(r.player.id)}
+                  >
+                    <span className="w-6 text-center font-mono text-gray-500 font-bold text-sm">{i + 2}</span>
+                    <img src={r.player.avatar} alt={r.player.name} className="w-8 h-8 rounded-full object-cover border border-white/20" referrerPolicy="no-referrer" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-white truncate">{r.player.name}</div>
+                    </div>
+                    <span className="text-sm font-mono font-bold text-cyber-cyan w-12 text-right">{r.performance.performanceScore.toFixed(1)}</span>
+                    <span className="text-sm font-mono text-gray-400 w-14 text-right" title="Delta to P1">{r.deltaToP1.toFixed(1)} pts</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Previous Winners */}
           {previousWinners.length > 0 && (

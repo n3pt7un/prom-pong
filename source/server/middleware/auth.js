@@ -36,7 +36,7 @@ export const adminMiddleware = async (req, res, next) => {
     return res.status(401).json({ error: 'Authentication required' });
   }
   const admins = await dbOps.getAdmins();
-  const isAdmin = admins.includes(req.user.uid);
+  const isAdmin = admins.some(a => a.firebaseUid === req.user.uid);
   if (!isAdmin) {
     return res.status(403).json({ error: 'Admin access required' });
   }

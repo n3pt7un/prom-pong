@@ -53,6 +53,51 @@ export const toLegacyMatch = async (m) => {
     isFriendly: m.is_friendly || false,
     leagueId: m.league_id || null,
     matchFormat: m.match_format || 'vintage21',
+    seasonId: m.season_id || null,
+  };
+};
+
+// Sync mapper for use with Supabase relational joins (avoids N+1 queries).
+// Expects m.match_players to be pre-fetched via select('*, match_players(player_id, is_winner)').
+export const batchToLegacyMatch = (m) => {
+  const players = m.match_players || [];
+  const winners = players.filter((p) => p.is_winner).map((p) => p.player_id);
+  const losers = players.filter((p) => !p.is_winner).map((p) => p.player_id);
+  return {
+    id: m.id,
+    type: m.type,
+    winners,
+    losers,
+    scoreWinner: m.score_winner,
+    scoreLoser: m.score_loser,
+    timestamp: m.timestamp,
+    eloChange: m.elo_change,
+    loggedBy: m.logged_by,
+    isFriendly: m.is_friendly || false,
+    leagueId: m.league_id || null,
+    matchFormat: m.match_format || 'vintage21',
+    seasonId: m.season_id || null,
+  };
+};
+
+// Sync mapper for pending matches with relational join.
+// Expects pm.pending_match_players to be pre-fetched via select('*, pending_match_players(player_id, is_winner)').
+export const batchToLegacyPendingMatch = (pm) => {
+  const players = pm.pending_match_players || [];
+  const winners = players.filter((p) => p.is_winner).map((p) => p.player_id);
+  const losers = players.filter((p) => !p.is_winner).map((p) => p.player_id);
+  return {
+    id: pm.id,
+    type: pm.type,
+    winners,
+    losers,
+    scoreWinner: pm.score_winner,
+    scoreLoser: pm.score_loser,
+    loggedBy: pm.logged_by,
+    status: pm.status,
+    confirmations: pm.confirmations || [],
+    createdAt: pm.created_at,
+    expiresAt: pm.expires_at,
   };
 };
 

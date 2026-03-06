@@ -16,6 +16,7 @@ import PendingMatches from './components/PendingMatches';
 import HallOfFame from './components/HallOfFame';
 import CreateChallengeModal from './components/CreateChallengeModal';
 import LogChallengeMatchModal from './components/LogChallengeMatchModal';
+import AdminPanel from './components/AdminPanel';
 
 import ChallengeBoard from './components/ChallengeBoard';
 import TournamentBracket from './components/TournamentBracket';
@@ -72,6 +73,7 @@ function AppContent() {
   });
 
   const [activeTab, setActiveTab] = useState('leaderboard');
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   const VALID_TABS = new Set([
     'leaderboard', 'log', 'recent', 'players', 'matchmaker',
@@ -314,39 +316,31 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
       return (
         <div className="space-y-8">
           <Settings
-            isAdmin={isAdmin}
             currentUser={currentUser}
-            onResetSeason={handlers.handleSeasonReset}
-            onFactoryReset={handlers.handleFactoryReset}
-            onStartFresh={handlers.handleStartFresh}
             onExport={handlers.handleExport}
-            onImport={handlers.handleImport}
             onUpdateProfile={handleUpdateProfile}
-            players={players}
-            matches={matches}
-            leagues={leagues}
-            correctionRequests={correctionRequests}
-            onRefreshData={refreshData}
-            onApproveCorrection={handlers.handleApproveCorrection}
-            onRejectCorrection={handlers.handleRejectCorrection}
           />
-          <LeagueManager
-            leagues={leagues}
-            players={players}
-            isAdmin={isAdmin}
-            onCreateLeague={handlers.handleCreateLeague}
-            onUpdateLeague={handlers.handleUpdateLeague}
-            onDeleteLeague={handlers.handleDeleteLeague}
-            onAssignPlayer={handlers.handleAssignPlayerLeague}
-          />
-          <SeasonManager
-            seasons={seasons}
-            players={players}
-            currentSeason={currentSeason}
-            isAdmin={isAdmin}
-            onStartSeason={handlers.handleStartSeason}
-            onEndSeason={handlers.handleEndSeason}
-          />
+          {isAdmin && (
+            <>
+              <LeagueManager
+                leagues={leagues}
+                players={players}
+                isAdmin={isAdmin}
+                onCreateLeague={handlers.handleCreateLeague}
+                onUpdateLeague={handlers.handleUpdateLeague}
+                onDeleteLeague={handlers.handleDeleteLeague}
+                onAssignPlayer={handlers.handleAssignPlayerLeague}
+              />
+              <SeasonManager
+                seasons={seasons}
+                players={players}
+                currentSeason={currentSeason}
+                isAdmin={isAdmin}
+                onStartSeason={handlers.handleStartSeason}
+                onEndSeason={handlers.handleEndSeason}
+              />
+            </>
+          )}
         </div>
       );
     }
@@ -402,6 +396,7 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
         onSignOut={handleSignOut}
         onLogMatch={() => setShowLogMatchModal(true)}
         onOpenChallenge={currentUser?.player ? () => setShowChallengeModal(true) : undefined}
+        onOpenAdminPanel={isAdmin ? () => setShowAdminPanel(true) : undefined}
         leagues={leagues}
         activeLeagueId={activeLeagueId}
         onLeagueChange={setActiveLeagueId}
@@ -421,6 +416,11 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
           />
         )}
       </Layout>
+
+      {/* Admin Panel */}
+      {showAdminPanel && isAdmin && (
+        <AdminPanel onClose={() => setShowAdminPanel(false)} />
+      )}
 
       {/* Connection lost — z-[150]: above hamburger overlay (z-[100]) */}
       {!isConnected && (
