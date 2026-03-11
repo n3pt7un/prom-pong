@@ -1,3 +1,115 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── shadcn/ui CSS variables — dark-only theme ───────────────────────────── */
+@layer base {
+  :root {
+    /* Map to cyber palette */
+    --background: 0 0% 2%;          /* #050505 cyber-bg */
+    --foreground: 0 0% 90%;         /* #e5e5e5 */
+    --card: 0 0% 4%;                /* #0a0a0a cyber-panel */
+    --card-foreground: 0 0% 90%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 90%;
+    --primary: 183 100% 50%;        /* #00f3ff cyber-cyan */
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 0 0% 70%;
+    --muted: 0 0% 7%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 183 100% 50%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 350 89% 60%;     /* red */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 100% / 0.08;
+    --input: 0 0% 100% / 0.06;
+    --ring: 183 100% 50%;           /* cyber-cyan focus ring */
+    --radius: 0.75rem;
+  }
+}
+
+/* ─── Base resets ─────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+    touch-action: manipulation;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans, Inter, sans-serif);
+    overflow-x: hidden;
+  }
+
+  input, select, textarea, button {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* ─── Glass panel utility ─────────────────────────────────────────────────── */
+@layer utilities {
+  .glass-panel {
+    background: rgba(20, 20, 20, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-card {
+    background: rgba(10, 10, 10, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: var(--radius);
+  }
+
+  .neon-text-cyan {
+    text-shadow: 0 0 5px rgba(0, 243, 255, 0.8);
+  }
+
+  .neon-text-pink {
+    text-shadow: 0 0 5px rgba(255, 0, 255, 0.8);
+  }
+
+  .cyber-glow-cyan {
+    box-shadow: 0 0 0 1px rgba(0, 243, 255, 0.3), 0 0 20px rgba(0, 243, 255, 0.15);
+  }
+
+  .cyber-glow-pink {
+    box-shadow: 0 0 0 1px rgba(255, 0, 255, 0.3), 0 0 20px rgba(255, 0, 255, 0.15);
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0a0a0a; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+
+/* ─── Mobile app-like viewport lock + safe area classes ──────────────────── */
+@media (max-width: 767px) {
+  html {
+    overflow: hidden;
+    height: 100%;
+  }
+
+  .app-main {
+    padding-top: calc(60px + env(safe-area-inset-top));
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .fab-stack {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
