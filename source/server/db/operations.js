@@ -676,6 +676,37 @@ export const dbOps = {
     return db().seasons;
   },
 
+  async getArchivedMatches(seasonId) {
+    if (isSupabaseEnabled()) {
+      const { data, error } = await supabase
+        .from('archived_matches')
+        .select('*, archived_match_players(player_id, is_winner)')
+        .eq('season_id', seasonId)
+        .order('timestamp', { ascending: true });
+      if (error) throw error;
+      return data.map(m => {
+        const players = m.archived_match_players || [];
+        return {
+          id: m.id,
+          type: m.type,
+          winners: players.filter(p => p.is_winner).map(p => p.player_id),
+          losers: players.filter(p => !p.is_winner).map(p => p.player_id),
+          scoreWinner: m.score_winner,
+          scoreLoser: m.score_loser,
+          timestamp: m.timestamp,
+          eloChange: m.elo_change,
+          loggedBy: m.logged_by,
+          isFriendly: m.is_friendly || false,
+          leagueId: m.league_id || null,
+          matchFormat: m.match_format || 'vintage21',
+          seasonId: m.season_id,
+        };
+      });
+    }
+    // Local JSON fallback: filter matches by seasonId
+    return (db().matches || []).filter(m => m.seasonId === seasonId);
+  },
+
   async createSeason(season) {
     if (isSupabaseEnabled()) {
       const { data, error } = await supabase
@@ -748,6 +779,16 @@ export const dbOps = {
           message: challenge.message,
           match_id: challenge.matchId,
           created_at: challenge.createdAt,
+          source: challenge.source,
+          game_type: challenge.gameType,
+          league_id: challenge.leagueId,
+          generated_at: challenge.generatedAt,
+          expires_at: challenge.expiresAt,
+          generation_reason: challenge.generationReason,
+          responded_at: challenge.respondedAt,
+          completed_at: challenge.completedAt,
+          challenger_accepted_at: challenge.challengerAcceptedAt,
+          challenged_accepted_at: challenge.challengedAcceptedAt,
         })
         .select()
         .single();
@@ -761,9 +802,25 @@ export const dbOps = {
 
   async updateChallenge(id, updates) {
     if (isSupabaseEnabled()) {
-      const dbUpdates = {};
-      if (updates.status !== undefined) dbUpdates.status = updates.status;
-      if (updates.matchId !== undefined) dbUpdates.match_id = updates.matchId;
+      const CHALLENGE_FIELD_MAP = {
+        status: 'status',
+        matchId: 'match_id',
+        source: 'source',
+        gameType: 'game_type',
+        leagueId: 'league_id',
+        generatedAt: 'generated_at',
+        expiresAt: 'expires_at',
+        generationReason: 'generation_reason',
+        respondedAt: 'responded_at',
+        completedAt: 'completed_at',
+        challengerAcceptedAt: 'challenger_accepted_at',
+        challengedAcceptedAt: 'challenged_accepted_at',
+      };
+      const dbUpdates = Object.fromEntries(
+        Object.entries(CHALLENGE_FIELD_MAP)
+          .filter(([jsKey]) => updates[jsKey] !== undefined)
+          .map(([jsKey, dbKey]) => [dbKey, updates[jsKey]])
+      );
 
       const { data, error } = await supabase.from('challenges').update(dbUpdates).eq('id', id).select().single();
       if (error) throw error;
@@ -1082,5 +1139,51 @@ export const dbOps = {
     db().players[idx].leagueId = leagueId;
     await saveDB();
     return true;
+  },
+
+  async getChallengeScheduleSettings() {
+    const defaults = {
+      enabled: false,
+      frequency: 'daily',
+      intervalHours: 24,
+      gameType: 'singles',
+      maxPerPlayer: 1,
+      leagueId: null,
+      lastRunAt: null,
+      nextRunAt: null,
+    };
+    if (isSupabaseEnabled()) {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'challenge_generation_schedule')
+        .single();
+      return (error || !data) ? defaults : data.value;
+    }
+    return db().challengeScheduleSettings || defaults;
+  },
+
+  async saveChallengeScheduleSettings(settings) {
+    const safeSettings = {
+      enabled: Boolean(settings.enabled),
+      frequency: ['daily', 'every_3_days', 'weekly'].includes(settings.frequency) ? settings.frequency : 'daily',
+      intervalHours: Math.max(1, Math.min(168, Number(settings.intervalHours) || 24)),
+      gameType: ['singles', 'doubles'].includes(settings.gameType) ? settings.gameType : 'singles',
+      maxPerPlayer: Math.max(1, Math.min(3, Number(settings.maxPerPlayer) || 1)),
+      leagueId: settings.leagueId || null,
+      lastRunAt: settings.lastRunAt || null,
+      nextRunAt: settings.nextRunAt || null,
+    };
+
+    if (isSupabaseEnabled()) {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: 'challenge_generation_schedule', value: safeSettings, updated_at: new Date().toISOString() });
+      if (error) throw error;
+    } else {
+      db().challengeScheduleSettings = safeSettings;
+      await saveDB();
+    }
+    return safeSettings;
   },
 };

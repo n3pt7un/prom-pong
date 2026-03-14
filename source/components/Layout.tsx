@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Settings, Sword, LogOut, ShieldCheck, Swords, Building2, Github, TrendingUp, Menu, X, PlusCircle } from 'lucide-react';
+import {
+  Trophy, Users, Settings, Sword, LogOut, ShieldCheck, Swords, Building2,
+  TrendingUp, PlusCircle, ChevronLeft, ChevronRight, Zap,
+  LayoutDashboard, History, Star, Calendar, MoreHorizontal, X,
+} from 'lucide-react';
 import { AppUser, League } from '../types';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { thumbUrl } from '../utils/imageUtils';
+import { cn } from '../lib/utils';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,6 +25,55 @@ interface LayoutProps {
   onLeagueChange?: (leagueId: string | null) => void;
 }
 
+const NAV_GROUPS = [
+  {
+    label: 'Play',
+    items: [
+      { tab: 'leaderboard', icon: Trophy, label: 'Rankings' },
+      { tab: 'log', icon: PlusCircle, label: 'Log Match' },
+    ],
+  },
+  {
+    label: 'Community',
+    items: [
+      { tab: 'players', icon: Users, label: 'Players' },
+      { tab: 'recent', icon: History, label: 'Recent' },
+      { tab: 'hof', icon: Star, label: 'Hall of Fame' },
+    ],
+  },
+  {
+    label: 'Compete',
+    items: [
+      { tab: 'challenges', icon: Swords, label: 'Challenges' },
+      { tab: 'weekly', icon: Calendar, label: 'Weekly' },
+      { tab: 'tournaments', icon: Trophy, label: 'Tournaments' },
+    ],
+  },
+  {
+    label: 'Stats',
+    items: [
+      { tab: 'insights', icon: TrendingUp, label: 'Insights' },
+      { tab: 'seasons', icon: LayoutDashboard, label: 'Seasons' },
+    ],
+  },
+  {
+    label: 'Profile',
+    items: [
+      { tab: 'armory', icon: Sword, label: 'Armory' },
+      { tab: 'leagues', icon: Building2, label: 'Leagues' },
+      { tab: 'settings', icon: Settings, label: 'Settings' },
+    ],
+  },
+];
+
+const BOTTOM_TABS = [
+  { tab: 'leaderboard', icon: Trophy, label: 'Ranks', badge: false },
+  { tab: 'players', icon: Users, label: 'Players', badge: false },
+  { tab: 'challenges', icon: Swords, label: 'Compete', badge: true },
+  { tab: 'insights', icon: TrendingUp, label: 'Stats', badge: false },
+  { tab: '_more', icon: MoreHorizontal, label: 'More', badge: false },
+];
+
 const Layout: React.FC<LayoutProps> = ({
   children,
   activeTab,
@@ -33,265 +89,334 @@ const Layout: React.FC<LayoutProps> = ({
   activeLeagueId,
   onLeagueChange,
 }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebar-collapsed') === 'true'; } catch { return false; }
+  });
+  const [moreOpen, setMoreOpen] = useState(false);
   const eventsBadge = pendingCount + challengeCount;
 
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsMenuOpen(false);
-    };
+    try { localStorage.setItem('sidebar-collapsed', String(collapsed)); } catch {}
+  }, [collapsed]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMoreOpen(false); };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  // Prevent body scroll when menu is open
   useEffect(() => {
-    document.body.style.overflow = isMenuOpen ? 'hidden' : '';
+    document.body.style.overflow = moreOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
-  }, [isMenuOpen]);
+  }, [moreOpen]);
 
-  const handleNavClick = (tab: string) => {
+  const handleNav = (tab: string) => {
+    if (tab === '_more') { setMoreOpen(true); return; }
     onTabChange(tab);
-    setIsMenuOpen(false);
+    setMoreOpen(false);
   };
 
-  const navItems = [
-    { tab: 'leaderboard', icon: <Trophy size={20} />, label: 'Rankings' },
-    { tab: 'players', icon: <Users size={20} />, label: 'Players' },
-    { tab: 'insights', icon: <TrendingUp size={20} />, label: 'Insights' },
-    { tab: 'events', icon: <Swords size={20} />, label: 'Events', badge: eventsBadge > 0 ? eventsBadge : undefined },
-    { tab: 'armory', icon: <Sword size={20} />, label: 'Armory' },
-    { tab: 'settings', icon: <Settings size={20} />, label: 'Settings' },
-  ];
+  const initials = currentUser?.displayName
+    ? currentUser.displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : '??';
 
   return (
     <div className="min-h-screen bg-cyber-bg text-gray-200 font-sans selection:bg-cyber-cyan selection:text-black">
-      {/* Background Ambience */}
+      {/* Background ambience */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-cyber-purple/20 blur-[120px] rounded-full animate-pulse" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-cyber-cyan/10 blur-[120px] rounded-full" />
       </div>
 
-      {/* Top Bar — z-50 */}
-      <nav className="fixed top-0 w-full z-50 glass-panel border-b border-white/10 px-4 md:px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          {/* Hamburger button — left */}
-          <button
-            onClick={() => setIsMenuOpen(true)}
-            className="text-gray-300 hover:text-cyber-cyan transition-colors p-2 rounded-lg hover:bg-white/5 flex-shrink-0"
-            aria-label="Open menu"
-          >
-            <Menu size={22} />
-          </button>
-
-          {/* Logo — clicking goes home */}
-          <button
-            onClick={() => onTabChange('leaderboard')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0"
-            aria-label="Go to rankings"
-          >
-            <Trophy className="text-cyber-cyan w-7 h-7" />
-            <span className="font-display font-bold text-xl tracking-wider text-white">
+      {/* ── DESKTOP SIDEBAR ─────────────────────────────────── */}
+      <aside
+        className={cn(
+          'hidden md:flex fixed top-0 left-0 h-full z-40 flex-col',
+          'bg-black/80 backdrop-blur-xl border-r border-white/8 transition-all duration-300',
+          collapsed ? 'w-[60px]' : 'w-56'
+        )}
+      >
+        {/* Logo */}
+        <div className={cn(
+          'flex items-center gap-2 px-4 py-4 border-b border-white/8 flex-shrink-0',
+          collapsed && 'justify-center px-0'
+        )}>
+          <Trophy className="text-cyber-cyan w-6 h-6 flex-shrink-0" />
+          {!collapsed && (
+            <span className="font-display font-bold text-lg tracking-wider text-white leading-none">
               CYBER<span className="text-cyber-cyan">PONG</span>
             </span>
+          )}
+        </div>
+
+        {/* League selector */}
+        {!collapsed && leagues.length > 0 && onLeagueChange && (
+          <div className="px-3 py-2 border-b border-white/8 flex-shrink-0">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Building2 size={11} className="text-gray-500" />
+              <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">League</span>
+            </div>
+            <select
+              value={activeLeagueId || ''}
+              onChange={e => onLeagueChange(e.target.value || null)}
+              className="w-full bg-black/50 border border-white/10 text-gray-300 text-xs p-1.5 rounded-lg font-mono focus:border-cyber-cyan outline-none"
+            >
+              <option value="">🌐 Global</option>
+              {leagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+        )}
+
+        {/* Nav groups */}
+        <nav className="flex-1 overflow-y-auto py-3 space-y-4">
+          {NAV_GROUPS.map(group => (
+            <div key={group.label}>
+              {!collapsed && (
+                <p className="px-4 mb-1 text-[10px] font-mono text-gray-600 uppercase tracking-widest">{group.label}</p>
+              )}
+              <div className="space-y-0.5 px-2">
+                {group.items.map(({ tab, icon: Icon, label, badge }) => {
+                  const badgeCount = badge ? eventsBadge : 0;
+                  const isActive = activeTab === tab;
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => onTabChange(tab)}
+                      title={collapsed ? label : undefined}
+                      className={cn(
+                        'relative w-full flex items-center gap-3 rounded-lg transition-all duration-200 text-left',
+                        collapsed ? 'justify-center p-3' : 'px-3 py-2',
+                        isActive
+                          ? 'text-cyber-cyan bg-cyber-cyan/10'
+                          : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      )}
+                    >
+                      {isActive && !collapsed && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-cyber-cyan rounded-full" />
+                      )}
+                      <Icon size={16} className="flex-shrink-0" />
+                      {!collapsed && <span className="text-sm font-medium">{label}</span>}
+                      {!collapsed && badgeCount > 0 && (
+                        <span className="ml-auto bg-cyber-pink text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">
+                          {badgeCount > 9 ? '9+' : badgeCount}
+                        </span>
+                      )}
+                      {collapsed && badgeCount > 0 && (
+                        <span className="absolute top-1 right-1 w-2 h-2 bg-cyber-pink rounded-full" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* Bottom: admin + user + collapse toggle */}
+        <div className="flex-shrink-0 border-t border-white/8 p-2 space-y-1">
+          {currentUser?.isAdmin && (
+            <button
+              onClick={onOpenAdminPanel}
+              title={collapsed ? 'Admin Panel' : undefined}
+              className={cn(
+                'w-full flex items-center gap-2 rounded-lg text-cyber-purple hover:bg-cyber-purple/10 transition-colors',
+                collapsed ? 'justify-center p-2.5' : 'px-3 py-2'
+              )}
+            >
+              <ShieldCheck size={16} className="flex-shrink-0" />
+              {!collapsed && <span className="text-xs font-bold">Admin Panel</span>}
+            </button>
+          )}
+
+          <button
+            onClick={onSignOut}
+            title={collapsed ? 'Sign Out' : undefined}
+            className={cn(
+              'w-full flex items-center gap-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors',
+              collapsed ? 'justify-center p-2.5' : 'px-3 py-2'
+            )}
+          >
+            <LogOut size={16} className="flex-shrink-0" />
+            {!collapsed && <span className="text-xs font-medium">Sign Out</span>}
           </button>
 
-          {/* Spacer */}
-          <div className="flex-1" />
+          {!collapsed && currentUser && (
+            <div className="flex items-center gap-2 px-3 py-2">
+              <Avatar className="w-7 h-7">
+                <AvatarImage src={thumbUrl(currentUser.photoURL || '', 48)} referrerPolicy="no-referrer" />
+                <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+              </Avatar>
+              <span className="text-xs text-gray-400 font-medium truncate">{currentUser.displayName}</span>
+            </div>
+          )}
 
-          {/* League Selector — desktop */}
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className={cn(
+              'w-full flex items-center gap-2 rounded-lg text-gray-600 hover:text-gray-300 hover:bg-white/5 transition-colors',
+              collapsed ? 'justify-center p-2.5' : 'px-3 py-2'
+            )}
+          >
+            {collapsed
+              ? <ChevronRight size={14} />
+              : <><ChevronLeft size={14} /><span className="text-xs">Collapse</span></>
+            }
+          </button>
+        </div>
+      </aside>
+
+      {/* ── MOBILE TOP BAR ──────────────────────────────────── */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-[calc(52px+env(safe-area-inset-top))] bg-black/80 backdrop-blur-xl border-b border-white/8 flex items-end justify-between px-4 pb-2 pt-[env(safe-area-inset-top)]">
+        <button onClick={() => onTabChange('leaderboard')} className="flex items-center gap-2">
+          <Trophy className="text-cyber-cyan w-5 h-5" />
+          <span className="font-display font-bold text-base tracking-wider text-white">
+            CYBER<span className="text-cyber-cyan">PONG</span>
+          </span>
+        </button>
+        <div className="flex items-center gap-2">
           {leagues.length > 0 && onLeagueChange && (
-            <div className="hidden sm:flex items-center gap-1.5">
-              <Building2 size={13} className="text-gray-500" />
-              <select
-                value={activeLeagueId || ''}
-                onChange={e => onLeagueChange(e.target.value || null)}
-                className="bg-black/50 border border-white/10 text-gray-300 text-xs p-1.5 rounded-lg font-mono focus:border-cyber-cyan outline-none cursor-pointer hover:border-white/30 transition-colors"
-              >
-                <option value="">🌐 Global</option>
-                {leagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </div>
+            <select
+              value={activeLeagueId || ''}
+              onChange={e => onLeagueChange(e.target.value || null)}
+              className="bg-black/50 border border-white/10 text-gray-300 text-[11px] p-1 rounded-md font-mono focus:border-cyber-cyan outline-none max-w-[100px]"
+            >
+              <option value="">🌐 Global</option>
+              {leagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
           )}
-
-          {/* User avatar */}
           {currentUser && (
-            <div className="flex items-center gap-2">
-              {currentUser.isAdmin && (
-                <>
-                  <button
-                    onClick={onOpenAdminPanel}
-                    className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-cyber-purple bg-cyber-purple/10 border border-cyber-purple/30 px-2 py-1 rounded-lg uppercase tracking-widest hover:bg-cyber-purple/20 transition-colors"
-                    title="Open Admin Panel"
-                  >
-                    <ShieldCheck size={12} /> Admin Panel
-                  </button>
-                  <span className="sm:hidden flex items-center gap-1 text-[10px] font-bold text-cyber-yellow bg-cyber-yellow/10 border border-cyber-yellow/30 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                    <ShieldCheck size={10} /> Admin
-                  </span>
-                </>
-              )}
-              <img
-                src={currentUser.photoURL || ''}
-                alt={currentUser.displayName}
-                className="w-8 h-8 rounded-full border border-white/20 object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <span className="hidden md:block text-sm text-gray-300 font-bold max-w-[100px] truncate">
-                {currentUser.displayName}
-              </span>
-            </div>
+            <Avatar className="w-7 h-7">
+              <AvatarImage src={thumbUrl(currentUser.photoURL || '', 48)} referrerPolicy="no-referrer" />
+              <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+            </Avatar>
           )}
+        </div>
+      </header>
+
+      {/* ── MOBILE BOTTOM NAV ───────────────────────────────── */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/90 backdrop-blur-xl border-t border-white/8" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="h-[60px] flex items-stretch">
+        {BOTTOM_TABS.map(({ tab, icon: Icon, label, badge }) => {
+          const badgeCount = badge ? eventsBadge : 0;
+          const isActive = activeTab === tab || (tab === '_more' && moreOpen);
+          return (
+            <button
+              key={tab}
+              onClick={() => handleNav(tab)}
+              className={cn(
+                'flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors relative',
+                isActive ? 'text-cyber-cyan' : 'text-gray-500 hover:text-gray-300'
+              )}
+            >
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-cyber-cyan rounded-full" />
+              )}
+              <Icon size={18} />
+              <span className="text-[10px] font-medium">{label}</span>
+              {badgeCount > 0 && (
+                <span className="absolute top-2 right-[calc(50%-18px)] w-2 h-2 bg-cyber-pink rounded-full" />
+              )}
+            </button>
+          );
+        })}
         </div>
       </nav>
 
-      {/*
-        Hamburger menu drawer — always in the DOM so CSS transitions work.
-        z-[100] places it above the nav (z-50) and FAB (z-[60]).
-        When closed: opacity-0 + pointer-events-none = invisible & non-interactive.
-        Drawer slides in from right via translate-x.
-      */}
+      {/* ── MOBILE MORE SHEET ───────────────────────────────── */}
       <div
-        className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-        onClick={() => setIsMenuOpen(false)}
+        className={cn(
+          'md:hidden fixed inset-0 z-50 transition-opacity duration-300',
+          moreOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )}
+        onClick={() => setMoreOpen(false)}
       >
-        {/* Backdrop */}
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-
-        {/* Drawer panel — slides in from left */}
         <div
-          className={`absolute top-0 left-0 h-full w-72 glass-panel border-r border-white/10 flex flex-col shadow-2xl transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          className={cn(
+            'absolute left-0 right-0 bg-[#0a0a0a] border-t border-white/10 rounded-t-2xl transition-transform duration-300 max-h-[75vh] overflow-y-auto',
+            moreOpen ? 'translate-y-0' : 'translate-y-full'
+          )}
+          style={{ bottom: 'calc(60px + env(safe-area-inset-bottom))' }}
           onClick={e => e.stopPropagation()}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <Trophy className="text-cyber-cyan w-6 h-6" />
-              <span className="font-display font-bold text-lg tracking-wider text-white">
-                CYBER<span className="text-cyber-cyan">PONG</span>
-              </span>
-            </div>
-            <button
-              onClick={() => setIsMenuOpen(false)}
-              className="text-gray-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5"
-            >
-              <X size={20} />
+          <div className="flex items-center justify-between px-5 py-3 border-b border-white/8">
+            <span className="text-xs font-mono text-gray-500 uppercase tracking-widest">All Sections</span>
+            <button onClick={() => setMoreOpen(false)} className="text-gray-400 hover:text-white p-1">
+              <X size={18} />
             </button>
           </div>
-
-          {/* User info */}
-          {currentUser && (
-            <div className="px-5 py-4 border-b border-white/10 flex items-center gap-3 flex-shrink-0">
-              <img
-                src={currentUser.photoURL || ''}
-                alt={currentUser.displayName}
-                className="w-10 h-10 rounded-full border border-white/20 object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate">{currentUser.displayName}</p>
-                {currentUser.isAdmin && (
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-cyber-yellow mt-0.5">
-                    <ShieldCheck size={9} /> Admin
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* League selector — mobile only */}
-          {leagues.length > 0 && onLeagueChange && (
-            <div className="sm:hidden px-5 py-3 border-b border-white/10 flex items-center gap-2 flex-shrink-0">
-              <Building2 size={14} className="text-gray-500" />
-              <select
-                value={activeLeagueId || ''}
-                onChange={e => onLeagueChange(e.target.value || null)}
-                className="bg-black/50 border border-white/10 text-gray-300 text-xs p-1.5 rounded-lg font-mono focus:border-cyber-cyan outline-none flex-1"
-              >
-                <option value="">🌐 Global</option>
-                {leagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Nav items */}
-          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-            {navItems.map(({ tab, icon, label, badge }) => (
+          <div className="grid grid-cols-4 gap-1 p-3">
+            {NAV_GROUPS.flatMap(g => g.items)
+              .filter(item => !BOTTOM_TABS.some(b => b.tab === item.tab))
+              .map(({ tab, icon: Icon, label }) => (
+                <button
+                  key={tab}
+                  onClick={() => handleNav(tab)}
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 rounded-xl py-3 px-1 transition-colors',
+                    activeTab === tab
+                      ? 'bg-cyber-cyan/10 text-cyber-cyan'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                  )}
+                >
+                  <Icon size={20} />
+                  <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
+                </button>
+              ))}
+            {currentUser?.isAdmin && (
               <button
-                key={tab}
-                onClick={() => handleNavClick(tab)}
-                className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left ${
-                  activeTab === tab
-                    ? 'text-cyber-cyan bg-cyber-cyan/10 shadow-[0_0_12px_rgba(0,243,255,0.15)]'
-                    : 'text-gray-300 hover:text-white hover:bg-white/5'
-                }`}
+                onClick={() => { setMoreOpen(false); onOpenAdminPanel?.(); }}
+                className="flex flex-col items-center gap-1.5 rounded-xl py-3 px-1 text-cyber-purple hover:bg-cyber-purple/10 transition-colors"
               >
-                {icon}
-                <span className="font-bold tracking-wide text-sm">{label}</span>
-                {badge !== undefined && (
-                  <span className="ml-auto bg-cyber-pink text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-neon-pink">
-                    {badge > 9 ? '9+' : badge}
-                  </span>
-                )}
+                <ShieldCheck size={20} />
+                <span className="text-[10px] font-medium text-center leading-tight">Admin</span>
               </button>
-            ))}
-          </nav>
-
-          {/* Sign out */}
-          <div className="px-3 py-3 border-t border-white/10 flex-shrink-0">
+            )}
             <button
-              onClick={() => { onSignOut(); setIsMenuOpen(false); }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+              onClick={() => { setMoreOpen(false); onSignOut(); }}
+              className="flex flex-col items-center gap-1.5 rounded-xl py-3 px-1 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
             >
               <LogOut size={20} />
-              <span className="font-bold tracking-wide text-sm">Sign Out</span>
+              <span className="text-[10px] font-medium text-center leading-tight">Sign Out</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Challenge FAB — only shown when user has a player profile */}
-      {onOpenChallenge && currentUser?.player && (
+      {/* ── FABs ────────────────────────────────────────────── */}
+      {/* FAB stack — bottom-right, above mobile bottom nav */}
+      <div className="fab-stack fixed md:bottom-8 right-5 z-[45] flex flex-col items-center gap-3">
+        {onOpenChallenge && currentUser?.player && (
+          <button
+            onClick={onOpenChallenge}
+            className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-cyber-purple to-cyber-pink shadow-[0_0_20px_rgba(180,0,255,0.4)] hover:scale-110 transition-all text-white"
+            aria-label="Issue a challenge"
+            title="Issue a challenge"
+          >
+            <Zap size={20} strokeWidth={2.5} />
+          </button>
+        )}
         <button
-          onClick={onOpenChallenge}
-          className="fixed bottom-24 right-6 z-[60] w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-cyber-cyan to-cyber-pink shadow-[0_0_20px_rgba(0,243,255,0.5)] hover:shadow-[0_0_30px_rgba(0,243,255,0.7)] hover:scale-110 transition-all duration-200 text-black"
-          aria-label="Issue a challenge"
-          title="Issue a challenge"
+          onClick={onLogMatch}
+          className="w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-cyber-cyan to-cyber-purple shadow-[0_0_24px_rgba(0,243,255,0.5)] hover:scale-110 transition-all text-black"
+          aria-label="Log a match"
+          title="Log a match"
         >
-          <Swords size={22} strokeWidth={2.5} />
+          <PlusCircle size={24} strokeWidth={2.5} />
         </button>
-      )}
+      </div>
 
-      {/* Log Match FAB — z-[60]: above nav, hidden behind menu overlay when open */}
-      <button
-        onClick={onLogMatch}
-        className="fixed bottom-6 right-6 z-[60] w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-cyber-cyan to-cyber-pink shadow-[0_0_20px_rgba(0,243,255,0.5)] hover:shadow-[0_0_30px_rgba(0,243,255,0.7)] hover:scale-110 transition-all duration-200 text-black"
-        aria-label="Log a match"
-        title="Log a match"
+      {/* ── MAIN CONTENT ────────────────────────────────────── */}
+      <main
+        className={cn(
+          'app-main relative z-10 px-4 md:pt-8 md:pb-8 transition-all duration-300',
+          collapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'
+        )}
       >
-        <PlusCircle size={26} strokeWidth={2.5} />
-      </button>
-
-      {/*
-        Main content — NO z-index here.
-        Adding z-index would create a stacking context that traps child modals,
-        preventing them from layering correctly above the nav.
-      */}
-      <main className="max-w-7xl mx-auto px-4 pb-12 pt-20">
-        {children}
+        <div className="w-full max-w-[1600px] mx-auto">
+          {children}
+        </div>
       </main>
-
-      <footer className="py-6 text-center border-t border-white/10 mt-8">
-        <a
-          href="https://github.com/n3pt7un/prom-pong/issues"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-cyber-cyan transition-colors text-sm"
-        >
-          <Github size={16} />
-          <span>Report an Issue</span>
-        </a>
-      </footer>
     </div>
   );
 };

@@ -1,29 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Layout from './components/Layout';
 import Leaderboard from './components/Leaderboard';
 import MatchLogger from './components/MatchLogger';
 import RecentMatches from './components/RecentMatches';
 import CreatePlayerForm from './components/CreatePlayerForm';
 import Settings from './components/Settings';
-import RacketManager from './components/RacketManager';
-import MatchMaker from './components/MatchMaker';
-import PlayersHub from './components/PlayersHub';
 import LoginScreen from './components/LoginScreen';
 import ProfileSetup from './components/ProfileSetup';
 import PlayerOfTheWeek from './components/PlayerOfTheWeek';
-import WeeklyChallenges from './components/WeeklyChallenges';
-import PendingMatches from './components/PendingMatches';
-import HallOfFame from './components/HallOfFame';
 import CreateChallengeModal from './components/CreateChallengeModal';
 import LogChallengeMatchModal from './components/LogChallengeMatchModal';
-import AdminPanel from './components/AdminPanel';
+import ChallengeNotificationModal from './components/ChallengeNotificationModal';
+import InstallPrompt from './components/InstallPrompt';
 
-import ChallengeBoard from './components/ChallengeBoard';
-import TournamentBracket from './components/TournamentBracket';
-import SeasonManager from './components/SeasonManager';
-import LeagueManager from './components/LeagueManager';
-import InsightsPage from './components/InsightsPage';
-import MatchHistory from './components/MatchHistory';
+const PlayersHub = lazy(() => import('./components/PlayersHub'));
+const RacketManager = lazy(() => import('./components/RacketManager'));
+const HallOfFame = lazy(() => import('./components/HallOfFame'));
+const WeeklyChallenges = lazy(() => import('./components/WeeklyChallenges'));
+const ChallengeBoard = lazy(() => import('./components/ChallengeBoard'));
+const MatchupsHub = lazy(() => import('./components/MatchupsHub'));
+const TournamentBracket = lazy(() => import('./components/TournamentBracket'));
+const SeasonManager = lazy(() => import('./components/SeasonManager'));
+const LeagueManager = lazy(() => import('./components/LeagueManager'));
+const InsightsPage = lazy(() => import('./components/InsightsPage'));
+const SeasonArchive = lazy(() => import('./components/SeasonArchive'));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
 import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LeagueProvider, useLeague } from './context/LeagueContext';
@@ -31,7 +32,9 @@ import { useLeagueHandlers } from './hooks/useLeagueHandlers';
 import { useChallengeToasts } from './hooks/useChallengeToasts';
 import { GameType, MatchFormat, Challenge } from './types';
 import { createCorrectionRequest } from './services/storageService';
-import { WifiOff, CheckCircle, AlertCircle, X, Undo2, Loader2 } from 'lucide-react';
+import { WifiOff, CheckCircle, AlertCircle, X, Undo2, Loader2, Building2 } from 'lucide-react';
+import { Skeleton } from './components/ui/skeleton';
+import { Button } from './components/ui/button';
 
 function AppContent() {
   const {
@@ -59,6 +62,7 @@ function AppContent() {
     activeLeagueId,
     setActiveLeagueId,
     isConnected,
+    dataLoading,
     refreshData,
   } = useLeague();
   const { toasts, dismissToast, showToast } = useToast();
@@ -74,18 +78,29 @@ function AppContent() {
 
   const [activeTab, setActiveTab] = useState('leaderboard');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [newChallenges, setNewChallenges] = useState<Challenge[]>([]);
+  const [showChallengeNotification, setShowChallengeNotification] = useState(false);
+  const [hasCheckedChallenges, setHasCheckedChallenges] = useState(false);
+
+  const normalizeTab = (tab: string) => (tab === 'matchmaker' ? 'challenges' : tab);
 
   const VALID_TABS = new Set([
     'leaderboard', 'log', 'recent', 'players', 'matchmaker',
     'challenges', 'tournaments', 'seasons', 'settings', 'leagues',
     'rackets', 'weekly', 'hof', 'insights', 'events', 'armory',
+    // nav group primary tabs
+    'home', 'play', 'stats', 'league', 'more',
   ]);
 
   // On mount: restore tab from hash (supports bookmarks / hard refresh)
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
     if (hash && VALID_TABS.has(hash)) {
-      setActiveTab(hash);
+      const normalized = normalizeTab(hash);
+      setActiveTab(normalized);
+      if (normalized !== hash) {
+        window.history.replaceState({ tab: normalized }, '', `#${normalized}`);
+      }
     } else {
       window.history.replaceState({ tab: 'leaderboard' }, '', '#leaderboard');
     }
@@ -95,7 +110,13 @@ function AppContent() {
   useEffect(() => {
     const handlePop = (e: PopStateEvent) => {
       const tab = e.state?.tab;
-      if (tab && VALID_TABS.has(tab)) setActiveTab(tab);
+      if (tab && VALID_TABS.has(tab)) {
+        const normalized = normalizeTab(tab);
+        setActiveTab(normalized);
+        if (normalized !== tab) {
+          window.history.replaceState({ tab: normalized }, '', `#${normalized}`);
+        }
+      }
     };
     window.addEventListener('popstate', handlePop);
     return () => window.removeEventListener('popstate', handlePop);
@@ -103,9 +124,44 @@ function AppContent() {
 
   // Replace setActiveTab calls with navigateTo
   const navigateTo = (tab: string) => {
-    window.history.pushState({ tab }, '', `#${tab}`);
-    setActiveTab(tab);
+    const nextTab = normalizeTab(tab);
+    window.history.pushState({ tab: nextTab }, '', `#${nextTab}`);
+    setActiveTab(nextTab);
   };
+
+  // Check for new auto-generated challenges on load
+  useEffect(() => {
+    if (!currentUser?.player?.id || dataLoading || hasCheckedChallenges) return;
+
+    const checkForNewChallenges = () => {
+      const lastCheckKey = `challenge_last_check_${currentUser.player.id}`;
+      const lastCheckStr = localStorage.getItem(lastCheckKey);
+      const lastCheck = lastCheckStr ? parseInt(lastCheckStr, 10) : 0;
+
+      // Find new auto-generated pending challenges for this user
+      const newAutoChals = challenges.filter((c) => {
+        if (c.status !== 'pending') return false;
+        if (c.source !== 'auto_generated') return false;
+        
+        const isForMe = c.challengerId === currentUser.player.id || c.challengedId === currentUser.player.id;
+        if (!isForMe) return false;
+
+        const createdAt = new Date(c.createdAt).getTime();
+        return createdAt > lastCheck;
+      });
+
+      if (newAutoChals.length > 0) {
+        setNewChallenges(newAutoChals);
+        setShowChallengeNotification(true);
+      }
+
+      // Update last check timestamp
+      localStorage.setItem(lastCheckKey, Date.now().toString());
+      setHasCheckedChallenges(true);
+    };
+
+    checkForNewChallenges();
+  }, [currentUser, challenges, dataLoading, hasCheckedChallenges]);
 
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
   const [showLogMatchModal, setShowLogMatchModal] = useState(false);
@@ -190,15 +246,29 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
   }
 
   const renderContent = () => {
+    if (dataLoading) {
+      return (
+        <div className="space-y-6 animate-pulse">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Skeleton className="h-48 rounded-xl" />
+            <Skeleton className="h-48 rounded-xl" />
+          </div>
+          <Skeleton className="h-96 rounded-xl" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton className="h-24 rounded-xl" />
+            <Skeleton className="h-24 rounded-xl" />
+            <Skeleton className="h-24 rounded-xl" />
+          </div>
+        </div>
+      );
+    }
+
     if (activeTab === 'leaderboard') {
       return (
         <div className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <PlayerOfTheWeek players={players} matches={matches} history={history} onPlayerClick={handleLeaderboardPlayerClick} />
-            <WeeklyChallenges matches={matches} players={players} history={history} currentPlayerId={currentUser?.player?.id} />
-          </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
+              <PlayerOfTheWeek players={players} matches={matches} history={history} onPlayerClick={handleLeaderboardPlayerClick} />
               <Leaderboard
                 players={players}
                 matches={matches}
@@ -209,21 +279,10 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
               />
             </div>
             <div className="lg:col-span-1 space-y-6">
-              {pendingMatches.length > 0 && (
-                <PendingMatches
-                  pendingMatches={pendingMatches}
-                  players={players}
-                  currentUserUid={currentUser?.uid}
-                  isAdmin={isAdmin}
-                  onConfirm={handlers.handleConfirmPending}
-                  onDispute={handlers.handleDisputePending}
-                  onForceConfirm={isAdmin ? handlers.handleForceConfirmPending : undefined}
-                  onReject={isAdmin ? handlers.handleRejectPending : undefined}
-                />
-              )}
               <RecentMatches
                 matches={matches}
                 players={players}
+                history={history}
                 isAdmin={isAdmin}
                 currentUserUid={currentUser?.uid}
                 currentPlayerIds={currentPlayerIds}
@@ -240,8 +299,7 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
     if (activeTab === 'log') {
       if (players.length < 2) return <div className="text-center text-gray-500 mt-10">Add at least 2 players to log matches.</div>;
       return (
-        <div className="max-w-2xl mx-auto space-y-6">
-          <MatchMaker players={players} onSelectMatch={handleMatchmakerSelect} activeLeagueId={activeLeagueId} />
+        <div className="max-w-2xl mx-auto">
           <MatchLogger
             players={players}
             onSubmit={handleMatchSubmitWithTab}
@@ -288,27 +346,6 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
           onDeleteRacket={isAdmin ? handlers.handleDeleteRacket : undefined}
           onUpdateRacket={handlers.handleUpdateRacket}
         />
-      );
-    }
-
-    if (activeTab === 'events') {
-      return (
-        <div className="space-y-10">
-          <MatchHistory
-            matches={matches}
-            players={players}
-            onPlayerClick={handleLeaderboardPlayerClick}
-          />
-          <TournamentBracket
-            tournaments={tournaments}
-            players={players}
-            isAdmin={isAdmin}
-            currentUserUid={currentUser?.uid}
-            onCreateTournament={handlers.handleCreateTournament}
-            onSubmitResult={handlers.handleSubmitTournamentResult}
-            onDeleteTournament={isAdmin ? handlers.handleDeleteTournament : undefined}
-          />
-        </div>
       );
     }
 
@@ -373,6 +410,124 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
       );
     }
 
+    if (activeTab === 'recent') {
+      return (
+        <div className="w-full max-w-[1500px] mx-auto">
+          <RecentMatches
+            matches={matches}
+            players={players}
+            history={history}
+            isAdmin={isAdmin}
+            currentUserUid={currentUser?.uid}
+            currentPlayerIds={currentPlayerIds}
+            onDeleteMatch={handlers.handleDeleteMatch}
+            onEditMatch={handlers.handleEditMatch}
+            onRequestCorrection={handleRequestCorrection}
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === 'hof') {
+      return (
+        <HallOfFame
+          players={players}
+          matches={matches}
+          history={history}
+          onPlayerClick={handleLeaderboardPlayerClick}
+        />
+      );
+    }
+
+    if (activeTab === 'challenges') {
+      return (
+        <MatchupsHub
+          challenges={challenges}
+          players={players}
+          matches={matches}
+          isAdmin={isAdmin}
+          activeLeagueId={activeLeagueId}
+          currentPlayerId={currentUser?.player?.id}
+          onSelectMatch={handleMatchmakerSelect}
+          onGenerateChallenges={handlers.handleGenerateChallenges}
+          onRespondChallenge={handlers.handleRespondChallenge}
+          onOpenChallengeLog={(challengeId) => {
+            const c = challenges.find(ch => ch.id === challengeId);
+            if (c) setActiveChallengeForLog(c);
+          }}
+        />
+      );
+    }
+
+    if (activeTab === 'weekly') {
+      return (
+        <WeeklyChallenges
+          matches={matches}
+          players={players}
+          history={history}
+          currentPlayerId={currentUser?.player?.id}
+        />
+      );
+    }
+
+    if (activeTab === 'tournaments') {
+      return (
+        <TournamentBracket
+          tournaments={tournaments}
+          players={players}
+          isAdmin={isAdmin}
+          currentUserUid={currentUser?.uid}
+          onCreateTournament={handlers.handleCreateTournament}
+          onSubmitResult={handlers.handleSubmitTournamentResult}
+          onDeleteTournament={isAdmin ? handlers.handleDeleteTournament : undefined}
+        />
+      );
+    }
+
+    if (activeTab === 'seasons') {
+      return (
+        <div className="space-y-8">
+          <SeasonArchive
+            seasons={seasons}
+            players={players}
+            onPlayerClick={handleLeaderboardPlayerClick}
+          />
+          {isAdmin && (
+            <SeasonManager
+              seasons={seasons}
+              players={players}
+              currentSeason={currentSeason}
+              isAdmin={isAdmin}
+              onStartSeason={handlers.handleStartSeason}
+              onEndSeason={handlers.handleEndSeason}
+            />
+          )}
+        </div>
+      );
+    }
+
+    if (activeTab === 'leagues') {
+      if (!isAdmin) {
+        return (
+          <div className="flex flex-col items-center justify-center py-24 text-center space-y-3">
+            <Building2 className="text-gray-600" size={40} />
+            <p className="text-gray-400 font-mono text-sm">League management is available to admins only.</p>
+          </div>
+        );
+      }
+      return (
+        <LeagueManager
+          leagues={leagues}
+          players={players}
+          isAdmin={isAdmin}
+          onCreateLeague={handlers.handleCreateLeague}
+          onUpdateLeague={handlers.handleUpdateLeague}
+          onDeleteLeague={handlers.handleDeleteLeague}
+          onAssignPlayer={handlers.handleAssignPlayerLeague}
+        />
+      );
+    }
+
     return null;
   };
 
@@ -403,7 +558,15 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
         pendingCount={pendingCount}
         challengeCount={challengeCount}
       >
-        {renderContent()}
+        <Suspense fallback={
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="text-cyber-cyan animate-spin" size={32} />
+          </div>
+        }>
+          <div key={activeTab} className="animate-fade-in">
+            {renderContent()}
+          </div>
+        </Suspense>
 
         {showCreatePlayerModal && (
           <CreatePlayerForm
@@ -419,8 +582,13 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
 
       {/* Admin Panel */}
       {showAdminPanel && isAdmin && (
-        <AdminPanel onClose={() => setShowAdminPanel(false)} />
+        <Suspense fallback={null}>
+          <AdminPanel onClose={() => setShowAdminPanel(false)} />
+        </Suspense>
       )}
+
+      {/* Install Prompt */}
+      <InstallPrompt />
 
       {/* Connection lost — z-[150]: above hamburger overlay (z-[100]) */}
       {!isConnected && (
@@ -488,32 +656,65 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
         />
       )}
 
-      {/* Toasts — z-[200] */}
-      <div className="fixed bottom-24 right-4 z-[200] flex flex-col gap-2 max-w-sm">
+      {/* Challenge notification modal — z-[400] */}
+      {showChallengeNotification && currentUser?.player && newChallenges.length > 0 && (
+        <ChallengeNotificationModal
+          challenges={newChallenges}
+          players={players}
+          currentPlayerId={currentUser.player.id}
+          onAccept={(challengeId) => {
+            handlers.handleRespondChallenge(challengeId, 'accepted');
+            setNewChallenges(prev => {
+              const next = prev.filter(c => c.id !== challengeId);
+              if (next.length === 0) setShowChallengeNotification(false);
+              return next;
+            });
+          }}
+          onDecline={(challengeId) => {
+            handlers.handleRespondChallenge(challengeId, 'declined');
+            setNewChallenges(prev => {
+              const next = prev.filter(c => c.id !== challengeId);
+              if (next.length === 0) setShowChallengeNotification(false);
+              return next;
+            });
+          }}
+          onClose={() => setShowChallengeNotification(false)}
+        />
+      )}
+
+      {/* Toasts — z-[200], above mobile bottom nav */}
+      <div className="fixed bottom-[80px] md:bottom-6 right-4 z-[200] flex flex-col gap-2 max-w-sm w-[calc(100vw-2rem)] md:w-auto">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-slideUp ${toast.type === 'success'
-                ? 'bg-green-900/90 border-green-500/50 text-green-100'
-                : 'bg-red-900/90 border-red-500/50 text-red-100'
-              }`}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border animate-fade-in backdrop-blur-sm ${
+              toast.type === 'success'
+                ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-100'
+                : toast.type === 'error'
+                ? 'bg-red-950/90 border-red-500/40 text-red-100'
+                : 'bg-black/90 border-white/15 text-gray-100'
+            }`}
           >
-            {toast.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-            <span className="text-sm font-medium flex-1">{toast.message}</span>
+            {toast.type === 'success'
+              ? <CheckCircle size={15} className="text-emerald-400 flex-shrink-0" />
+              : toast.type === 'error'
+              ? <AlertCircle size={15} className="text-red-400 flex-shrink-0" />
+              : <AlertCircle size={15} className="text-cyber-cyan flex-shrink-0" />
+            }
+            <span className="text-sm font-medium flex-1 leading-snug">{toast.message}</span>
             {toast.action && (
-              <button
-                onClick={() => {
-                  toast.action!.onClick();
-                  dismissToast(toast.id);
-                }}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold transition-colors"
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { toast.action!.onClick(); dismissToast(toast.id); }}
+                className="flex items-center gap-1 px-2.5 bg-white/10 hover:bg-white/20 flex-shrink-0"
               >
-                <Undo2 size={12} /> {toast.action.label}
-              </button>
+                <Undo2 size={11} /> {toast.action.label}
+              </Button>
             )}
-            <button onClick={() => dismissToast(toast.id)} className="text-white/50 hover:text-white">
-              <X size={14} />
-            </button>
+            <Button variant="ghost" size="icon-sm" onClick={() => dismissToast(toast.id)} className="text-white/40 hover:text-white flex-shrink-0 ml-1">
+              <X size={13} />
+            </Button>
           </div>
         ))}
       </div>

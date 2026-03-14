@@ -2,7 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Download, Upload, Camera, Check, X, User } from 'lucide-react';
 import { AppUser } from '../types';
 import { AVATARS } from '../constants';
-import { resizeImage } from '../utils/imageUtils';
+import { resizeImage, thumbUrl } from '../utils/imageUtils';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 
 interface SettingsProps {
   currentUser: AppUser | null;
@@ -50,7 +54,7 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const resized = await resizeImage(file, 200, 200);
+      const resized = await resizeImage(file);
       setEditAvatar(resized);
       setShowAvatarPicker(false);
     } catch (err) {
@@ -59,7 +63,7 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3">
         <h2 className="text-2xl font-display font-bold text-white border-l-4 border-cyber-cyan pl-3">
@@ -69,7 +73,7 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
 
       {/* Profile Section */}
       {currentUser?.player && (
-        <div className="glass-panel p-6 rounded-xl border-l-4 border-l-cyber-pink">
+        <Card className="p-6 border-l-4 border-l-cyber-pink">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -79,19 +83,16 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
               <p className="text-gray-400 mt-1 text-sm">Customize your player profile</p>
             </div>
             {!editingProfile && (
-              <button
-                onClick={() => setEditingProfile(true)}
-                className="flex items-center gap-2 bg-cyber-pink/10 border border-cyber-pink text-cyber-pink hover:bg-cyber-pink hover:text-black px-4 py-2 rounded font-bold transition-all text-sm"
-              >
-                <Camera size={16} /> Edit Profile
-              </button>
+              <Button size="sm" variant="cyber-pink" onClick={() => setEditingProfile(true)}>
+                <Camera size={14} className="mr-1" /> Edit Profile
+              </Button>
             )}
           </div>
 
           {!editingProfile ? (
             <div className="flex items-start gap-4">
               <img
-                src={currentUser.player.avatar}
+                src={thumbUrl(currentUser.player.avatar, 80)}
                 alt={currentUser.player.name}
                 className="w-20 h-20 rounded-full border-2 border-cyber-pink object-cover"
               />
@@ -109,19 +110,12 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
           ) : (
             <div className="space-y-4">
               <div className="flex items-center justify-end gap-2 mb-4">
-                <button
-                  onClick={() => setEditingProfile(false)}
-                  className="flex items-center gap-1 bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10 px-3 py-1.5 rounded font-bold transition-all text-sm"
-                >
-                  <X size={14} /> Cancel
-                </button>
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={profileSaving}
-                  className="flex items-center gap-1 bg-cyber-pink/20 border border-cyber-pink text-cyber-pink hover:bg-cyber-pink hover:text-black px-3 py-1.5 rounded font-bold transition-all text-sm disabled:opacity-50"
-                >
-                  <Check size={14} /> {profileSaving ? 'Saving...' : 'Save'}
-                </button>
+                <Button size="sm" variant="outline" onClick={() => setEditingProfile(false)}>
+                  <X size={13} className="mr-1" /> Cancel
+                </Button>
+                <Button size="sm" variant="cyber-pink" onClick={handleSaveProfile} disabled={profileSaving}>
+                  <Check size={13} className="mr-1" /> {profileSaving ? 'Saving...' : 'Save'}
+                </Button>
               </div>
 
               {/* Avatar */}
@@ -186,35 +180,34 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
 
               {/* Username */}
               <div>
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 block">Username</label>
-                <input
-                  type="text"
+                <Label className="text-gray-400 mb-1 block">Username</Label>
+                <Input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value.substring(0, 20))}
-                  className="w-full bg-black/50 border border-white/10 text-white p-2.5 rounded font-mono focus:border-cyber-pink outline-none"
+                  className="border-cyber-pink/30 focus:border-cyber-pink"
                 />
                 <span className={`text-[10px] font-mono ${editName.length >= 18 ? 'text-cyber-yellow' : 'text-gray-600'}`}>{editName.length}/20</span>
               </div>
 
               {/* Bio */}
               <div>
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 block">Bio</label>
+                <Label className="text-gray-400 mb-1 block">Bio</Label>
                 <textarea
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value.substring(0, 150))}
                   placeholder="Tell the league about yourself..."
                   rows={2}
-                  className="w-full bg-black/50 border border-white/10 text-white p-2.5 rounded font-mono text-sm focus:border-cyber-pink outline-none resize-none"
+                  className="w-full bg-black/50 border border-white/10 text-white p-2.5 rounded font-mono text-sm focus:border-cyber-pink outline-none resize-none focus:ring-1 focus:ring-cyber-pink focus:border-cyber-pink transition-colors"
                 />
                 <span className={`text-[10px] font-mono ${editBio.length >= 130 ? 'text-cyber-yellow' : 'text-gray-600'}`}>{editBio.length}/150</span>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       )}
 
       {/* Export Data */}
-      <div className="glass-panel p-6 rounded-xl border-l-4 border-l-cyber-cyan">
+      <Card className="p-6 border-l-4 border-l-cyber-cyan">
         <div className="flex flex-col md:flex-row items-start justify-between gap-4">
           <div>
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -225,14 +218,11 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
               Download your league data as JSON for backup purposes.
             </p>
           </div>
-          <button
-            onClick={onExport}
-            className="flex items-center justify-center gap-2 bg-cyber-cyan/10 border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black px-4 py-2 rounded font-bold transition-all text-sm"
-          >
-            <Download size={16} /> EXPORT
-          </button>
+          <Button variant="cyber" onClick={onExport}>
+            <Download size={14} className="mr-1" /> EXPORT
+          </Button>
         </div>
-      </div>
+      </Card>
 
       {/* Info Note */}
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
