@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Trophy, Upload, Camera, User, Loader2, Sparkles, UserCheck, ArrowRight } from 'lucide-react';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
 import { AVATARS } from '../constants';
-import { resizeImage } from '../utils/imageUtils';
+import { resizeImage, thumbUrl } from '../utils/imageUtils';
 import { Player } from '../types';
 
 interface ProfileSetupProps {
@@ -71,7 +73,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
         <div className="absolute top-[30%] right-[15%] w-[25%] h-[25%] bg-cyber-pink/10 blur-[100px] rounded-full animate-pulse" />
       </div>
 
-      <div className="relative z-10 glass-panel p-8 md:p-10 rounded-2xl border border-white/10 max-w-lg w-full mx-4">
+      <Card className="relative z-10 p-8 md:p-10 rounded-2xl max-w-lg w-full mx-4">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -87,7 +89,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
 
         {/* Claim existing account section */}
         {mode === 'choose' && unclaimedPlayers.length > 0 && (
-          <div className="space-y-6 animate-fadeIn">
+          <div className="space-y-6 animate-fade-in">
             <div className="text-center">
               <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Claim Your Account</h3>
               <p className="text-xs text-gray-500 font-mono">An admin already created a player for you? Claim it to keep your stats.</p>
@@ -99,10 +101,10 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
                   key={player.id}
                   onClick={() => handleClaim(player.id)}
                   disabled={claimingId !== null}
-                  className="glass-panel p-4 rounded-lg border border-white/10 hover:border-cyber-cyan/50 transition-all flex items-center gap-4 text-left group disabled:opacity-50"
+                  className="glass-card p-4 rounded-lg border border-white/10 hover:border-cyber-cyan/50 transition-all flex items-center gap-4 text-left group disabled:opacity-50 w-full bg-transparent cursor-pointer"
                 >
                   <img
-                    src={player.avatar || 'https://picsum.photos/id/64/200/200'}
+                    src={thumbUrl(player.avatar || 'https://picsum.photos/id/64/200/200', 48)}
                     className="w-12 h-12 rounded-full border-2 border-white/20 object-cover group-hover:border-cyber-cyan transition-colors flex-shrink-0"
                     referrerPolicy="no-referrer"
                   />
@@ -130,22 +132,23 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
 
             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-            <button
+            <Button
+              variant="outline"
               onClick={() => { setMode('create'); setError(null); }}
-              className="w-full bg-white/5 border border-white/20 text-gray-300 hover:bg-white/10 hover:text-white px-4 py-3 rounded-lg font-bold transition-all text-sm flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center gap-2"
             >
               <User size={16} /> Create New Profile Instead <ArrowRight size={14} />
-            </button>
+            </Button>
           </div>
         )}
 
         {(mode === 'create' || unclaimedPlayers.length === 0) && step === 'profile' && (
-          <div className="space-y-6 animate-fadeIn">
+          <div className="space-y-6 animate-fade-in">
             {/* Avatar Preview + Change */}
             <div className="flex flex-col items-center gap-3">
               <div className="relative group cursor-pointer" onClick={() => setStep('avatar')}>
                 <img
-                  src={avatar || 'https://picsum.photos/id/64/200/200'}
+                  src={thumbUrl(avatar || 'https://picsum.photos/id/64/200/200', 96)}
                   className="w-24 h-24 rounded-full border-2 border-white/20 object-cover group-hover:border-cyber-cyan transition-colors"
                   referrerPolicy="no-referrer"
                 />
@@ -153,12 +156,14 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
                   <Camera size={20} className="text-cyber-cyan" />
                 </div>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setStep('avatar')}
-                className="text-xs text-cyber-cyan hover:text-white transition-colors font-bold"
+                className="text-cyber-cyan hover:text-white"
               >
                 Change Avatar
-              </button>
+              </Button>
             </div>
 
             {/* Username */}
@@ -202,10 +207,11 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
             )}
 
             {/* Submit */}
-            <button
+            <Button
+              size="lg"
               onClick={handleSubmit}
               disabled={!name.trim() || loading}
-              className="w-full bg-cyber-cyan text-black font-bold px-6 py-4 rounded-xl text-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-cyber-cyan text-black hover:bg-white flex items-center justify-center gap-2"
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={22} />
@@ -214,27 +220,28 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
                   <User size={20} /> JOIN THE LEAGUE
                 </>
               )}
-            </button>
+            </Button>
 
             {unclaimedPlayers.length > 0 && mode === 'create' && (
-              <button
+              <Button
+                variant="outline"
                 onClick={() => { setMode('choose'); setError(null); }}
-                className="w-full bg-white/5 border border-white/20 text-gray-300 hover:bg-white/10 hover:text-white px-4 py-3 rounded-lg font-bold transition-all text-sm flex items-center justify-center gap-2"
+                className="w-full flex items-center justify-center gap-2"
               >
                 <UserCheck size={16} /> Claim Existing Account Instead
-              </button>
+              </Button>
             )}
           </div>
         )}
 
         {step === 'avatar' && (
-          <div className="space-y-6 animate-fadeIn">
+          <div className="space-y-6 animate-fade-in">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest text-center">Choose Your Avatar</h3>
 
             {/* Current avatar */}
             <div className="flex justify-center">
               <img
-                src={avatar || 'https://picsum.photos/id/64/200/200'}
+                src={thumbUrl(avatar || 'https://picsum.photos/id/64/200/200', 80)}
                 className="w-20 h-20 rounded-full border-2 border-cyber-cyan object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -258,12 +265,14 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
             {/* Upload */}
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 block">Upload Custom</label>
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 bg-white/5 border border-white/20 text-gray-300 hover:bg-white/10 hover:text-white px-4 py-2 rounded-lg font-bold transition-all text-sm"
+                className="flex items-center gap-2"
               >
                 <Upload size={14} /> Upload Image
-              </button>
+              </Button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -292,15 +301,16 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ googleName, googlePhoto, on
             </div>
 
             {/* Back */}
-            <button
+            <Button
+              variant="outline"
               onClick={() => setStep('profile')}
-              className="w-full bg-white/5 border border-white/20 text-gray-300 hover:bg-white/10 hover:text-white px-4 py-3 rounded-lg font-bold transition-all text-sm"
+              className="w-full"
             >
               Done
-            </button>
+            </Button>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 };
