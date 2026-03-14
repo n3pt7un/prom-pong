@@ -99,11 +99,6 @@
 
 /* ─── Mobile app-like viewport lock + safe area classes ──────────────────── */
 @media (max-width: 767px) {
-  html {
-    overflow: hidden;
-    height: 100%;
-  }
-
   .app-main {
     padding-top: calc(60px + env(safe-area-inset-top));
     padding-bottom: calc(80px + env(safe-area-inset-bottom));
