@@ -5,6 +5,8 @@ import { calculateMatchDelta } from '../services/elo.js';
 import { INITIAL_ELO } from '../services/elo.js';
 import { isSupabaseEnabled } from '../../lib/supabase.js';
 import { supabase } from '../../lib/supabase.js';
+import { validateRequest } from '../middleware/validate-request.js';
+import { schemas } from '../validation/schemas.js';
 
 const router = Router();
 
@@ -21,24 +23,13 @@ function validateMatchScore(scoreWinner, scoreLoser, format = 'vintage21') {
   return null;
 }
 
-router.post('/matches', authMiddleware, async (req, res) => {
+router.post('/matches', authMiddleware, validateRequest(schemas.postMatch), async (req, res) => {
   try {
     const { type, winners, losers, scoreWinner, scoreLoser, isFriendly } = req.body;
-
-    if (!type || !['singles', 'doubles'].includes(type)) {
-      return res.status(400).json({ error: 'Invalid game type' });
-    }
-    if (!Array.isArray(winners) || !Array.isArray(losers)) {
-      return res.status(400).json({ error: 'Winners and losers must be arrays' });
-    }
-    if (typeof scoreWinner !== 'number' || typeof scoreLoser !== 'number' || scoreWinner < 0 || scoreLoser < 0) {
-      return res.status(400).json({ error: 'Scores must be non-negative numbers' });
-    }
+    // Schema handles: type required + enum, winners/losers array types, scoreWinner/scoreLoser number types,
+    // matchFormat enum, 0-0 draw check, unknown keys rejected.
 
     const matchFormat = req.body.matchFormat || 'vintage21';
-    if (!['standard11', 'vintage21'].includes(matchFormat)) {
-      return res.status(400).json({ error: 'Invalid match format' });
-    }
     const scoreError = validateMatchScore(scoreWinner, scoreLoser, matchFormat);
     if (scoreError) {
       return res.status(400).json({ error: scoreError });
@@ -175,7 +166,7 @@ router.post('/matches', authMiddleware, async (req, res) => {
   }
 });
 
-router.put('/matches/:id', authMiddleware, async (req, res) => {
+router.put('/matches/:id', authMiddleware, validateRequest(schemas.putMatch), async (req, res) => {
   try {
     const matches = await dbOps.getMatches();
     const match = matches.find((m) => m.id === req.params.id);
@@ -192,13 +183,7 @@ router.put('/matches/:id', authMiddleware, async (req, res) => {
     }
 
     const { winners, losers, scoreWinner, scoreLoser } = req.body;
-
-    if (!Array.isArray(winners) || !Array.isArray(losers)) {
-      return res.status(400).json({ error: 'Winners and losers must be arrays' });
-    }
-    if (typeof scoreWinner !== 'number' || typeof scoreLoser !== 'number' || scoreWinner < 0 || scoreLoser < 0) {
-      return res.status(400).json({ error: 'Scores must be non-negative numbers' });
-    }
+    // Schema handles: all four fields required + type checks, unknown keys rejected.
 
     const players = await dbOps.getPlayers();
     const getP = (id) => players.find((p) => p.id === id);

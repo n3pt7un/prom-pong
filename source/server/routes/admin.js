@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { dbOps } from '../db/operations.js';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
+import { validateRequest } from '../middleware/validate-request.js';
+import { schemas } from '../validation/schemas.js';
 
 const router = Router();
 
@@ -34,27 +36,11 @@ router.get('/admin/users', authMiddleware, adminMiddleware, async (req, res) => 
 });
 
 // Update user details (admin can edit any player)
-router.put('/admin/users/:playerId', authMiddleware, adminMiddleware, async (req, res) => {
+router.put('/admin/users/:playerId', authMiddleware, adminMiddleware, validateRequest(schemas.updateUser), async (req, res) => {
   try {
     const { playerId } = req.params;
-    const updates = req.body;
-    
-    // Validate updates
-    const allowedFields = [
-      'name', 'avatar', 'bio', 'eloSingles', 'eloDoubles',
-      'winsSingles', 'lossesSingles', 'streakSingles',
-      'winsDoubles', 'lossesDoubles', 'streakDoubles',
-      'leagueId', 'mainRacketId'
-    ];
-    
-    const filteredUpdates = {};
-    for (const key of allowedFields) {
-      if (updates[key] !== undefined) {
-        filteredUpdates[key] = updates[key];
-      }
-    }
-    
-    const updated = await dbOps.updatePlayer(playerId, filteredUpdates);
+    // Schema strict-mode already rejected unknown keys; pass body directly.
+    const updated = await dbOps.updatePlayer(playerId, req.body);
     res.json(updated);
   } catch (err) {
     console.error('Error in PUT /api/admin/users/:playerId:', err);
@@ -98,14 +84,9 @@ router.get('/admin/admins', authMiddleware, adminMiddleware, async (req, res) =>
 });
 
 // Add admin
-router.post('/admin/admins', authMiddleware, adminMiddleware, async (req, res) => {
+router.post('/admin/admins', authMiddleware, adminMiddleware, validateRequest(schemas.addAdmin), async (req, res) => {
   try {
     const { firebaseUid } = req.body;
-    
-    if (!firebaseUid) {
-      return res.status(400).json({ error: 'Firebase UID is required' });
-    }
-    
     const admin = await dbOps.addAdmin(firebaseUid);
     res.json(admin);
   } catch (err) {
@@ -184,14 +165,11 @@ router.get('/admin/leagues', authMiddleware, adminMiddleware, async (req, res) =
 });
 
 // Create league
-router.post('/admin/leagues', authMiddleware, adminMiddleware, async (req, res) => {
+router.post('/admin/leagues', authMiddleware, adminMiddleware, validateRequest(schemas.createLeague), async (req, res) => {
   try {
     const { name, description } = req.body;
-    
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'League name is required' });
-    }
-    
+    // Schema handles: name required, name non-blank (semantic), unknown keys rejected.
+
     const league = {
       id: Date.now().toString(),
       name: name.trim(),
@@ -209,7 +187,7 @@ router.post('/admin/leagues', authMiddleware, adminMiddleware, async (req, res) 
 });
 
 // Update league
-router.put('/admin/leagues/:leagueId', authMiddleware, adminMiddleware, async (req, res) => {
+router.put('/admin/leagues/:leagueId', authMiddleware, adminMiddleware, validateRequest(schemas.updateLeague), async (req, res) => {
   try {
     const { leagueId } = req.params;
     const { name, description } = req.body;
