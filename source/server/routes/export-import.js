@@ -4,6 +4,8 @@ import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 import { isSupabaseEnabled } from '../../lib/supabase.js';
 import { supabase } from '../../lib/supabase.js';
 import { getDB, saveDB, seedData } from '../db/persistence.js';
+import { validateRequest } from '../middleware/validate-request.js';
+import { schemas } from '../validation/schemas.js';
 
 const router = Router();
 
@@ -22,12 +24,10 @@ router.get('/export', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/import', express.json({ limit: '5mb' }), authMiddleware, adminMiddleware, async (req, res) => {
+router.post('/import', express.json({ limit: '5mb' }), authMiddleware, adminMiddleware, validateRequest(schemas.importData), async (req, res) => {
   try {
     const { players, matches, history, rackets } = req.body;
-    if (!Array.isArray(players) || !Array.isArray(matches)) {
-      return res.status(400).json({ error: 'Invalid import data: players and matches must be arrays' });
-    }
+    // Schema handles: players/matches required as arrays, unknown keys rejected before this point.
 
     if (isSupabaseEnabled()) {
       for (const p of players) {
@@ -65,8 +65,9 @@ router.post('/import', express.json({ limit: '5mb' }), authMiddleware, adminMidd
   }
 });
 
-router.post('/reset', authMiddleware, adminMiddleware, async (req, res) => {
+router.post('/reset', authMiddleware, adminMiddleware, validateRequest(schemas.reset), async (req, res) => {
   try {
+    // Schema handles: mode optional string, enum [season|fresh|seed], unknown keys rejected.
     if (req.body.mode === 'season') {
       await dbOps.resetPlayers({
         eloSingles: 1200,
