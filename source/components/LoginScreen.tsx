@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { signInWithGoogle } from '../services/authService';
 import { Trophy, LogIn, Loader2 } from 'lucide-react';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -37,7 +39,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         <div className="absolute top-[40%] right-[20%] w-[30%] h-[30%] bg-cyber-pink/10 blur-[100px] rounded-full animate-pulse" />
       </div>
 
-      <div className="relative z-10 glass-panel p-10 rounded-2xl border border-white/10 max-w-md w-full mx-4 text-center">
+      <Card className="relative z-10 p-10 rounded-2xl max-w-md w-full mx-4 text-center">
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-2">
           <Trophy className="text-cyber-cyan w-12 h-12" />
@@ -51,10 +53,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         <div className="h-px bg-gradient-to-r from-transparent via-cyber-cyan/30 to-transparent mb-8" />
 
         {/* Sign In Button */}
-        <button
+        <Button
+          variant="outline"
+          size="lg"
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-white/5 border border-white/20 text-white px-6 py-4 rounded-xl font-bold text-lg hover:bg-white/10 hover:border-cyber-cyan/50 hover:shadow-[0_0_20px_rgba(0,243,255,0.15)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
+          className="w-full flex items-center justify-center gap-3 bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-cyber-cyan/50 hover:shadow-[0_0_20px_rgba(0,243,255,0.15)] text-lg group"
         >
           {loading ? (
             <Loader2 className="animate-spin" size={24} />
@@ -70,7 +74,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               <span className="group-hover:text-cyber-cyan transition-colors">Sign in with Google</span>
             </>
           )}
-        </button>
+        </Button>
 
         {error && (
           <p className="mt-4 text-red-400 text-sm font-mono">{error}</p>
@@ -79,7 +83,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         <p className="mt-6 text-gray-600 text-xs">
           Sign in to join the league and start competing.
         </p>
-      </div>
+      </Card>
     </div>
   );
 };

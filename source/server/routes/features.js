@@ -103,4 +103,15 @@ router.get('/hall-of-fame', authMiddleware, async (req, res) => {
   }
 });
 
+// Public (auth-required) read of the current ELO configuration for display purposes
+router.get('/elo-config', authMiddleware, async (req, res) => {
+  try {
+    const config = await dbOps.getEloConfig();
+    res.json(config);
+  } catch (err) {
+    console.error('Error in GET /api/elo-config:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

@@ -1,4 +1,27 @@
 /**
+ * Returns a URL for a thumbnail version of an avatar at the requested pixel size.
+ *
+ * Handles known CDN patterns without any server round-trip:
+ *   - picsum.photos  → rewrites /id/{n}/200/200 to /id/{n}/{px}/{px}
+ *   - Google CDN     → rewrites =s96-c suffix to =s{px}-c
+ *   - data: / other  → returned unchanged (already small or unknown)
+ */
+export function thumbUrl(src: string, px: number): string {
+  if (!src) return src;
+  // picsum.photos: https://picsum.photos/id/64/200/200
+  const picsumMatch = src.match(/^(https:\/\/picsum\.photos\/id\/\d+)\/\d+\/\d+/);
+  if (picsumMatch) return `${picsumMatch[1]}/${px}/${px}`;
+  // Google user content: ends with =s96-c or =s96
+  if (src.includes('googleusercontent.com')) {
+    if (/=s\d+-c/.test(src)) return src.replace(/=s\d+-c/, `=s${px}-c`);
+    if (/=s\d+$/.test(src)) return src.replace(/=s\d+$/, `=s${px}`);
+    // URL without size token: append it
+    return `${src}=s${px}-c`;
+  }
+  return src;
+}
+
+/**
  * Resizes an uploaded image file to a small square (200x200) Base64 string
  * to ensure it fits comfortably in LocalStorage.
  */

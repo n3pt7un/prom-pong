@@ -20,6 +20,7 @@ import {
   endSeason,
   createChallenge,
   respondToChallenge,
+  generateChallenges,
   cancelChallenge,
   completeChallenge,
   createTournament,
@@ -324,6 +325,19 @@ export function useLeagueHandlers() {
     [refreshData, showToast]
   );
 
+  const handleGenerateChallenges = useCallback(
+    async (gameType: 'singles' | 'doubles' = 'singles', maxPerPlayer = 1) => {
+      try {
+        const result = await generateChallenges(activeLeagueId, gameType, maxPerPlayer);
+        await refreshData();
+        showToast(`Generated ${result.generated} ${gameType} challenge${result.generated === 1 ? '' : 's'}`, 'success');
+      } catch (err: any) {
+        showToast(err.message || 'Failed to generate challenges', 'error');
+      }
+    },
+    [activeLeagueId, refreshData, showToast]
+  );
+
   const handleCancelChallenge = useCallback(
     async (challengeId: string) => {
       try {
@@ -486,6 +500,7 @@ export function useLeagueHandlers() {
     handleEndSeason,
     handleCreateChallenge,
     handleRespondChallenge,
+    handleGenerateChallenges,
     handleCancelChallenge,
     handleCompleteChallenge,
     handleCreateTournament,

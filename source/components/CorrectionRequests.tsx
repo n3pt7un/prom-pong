@@ -1,6 +1,8 @@
 import React from 'react';
 import { CorrectionRequest, Match, Player } from '../types';
 import { Flag, Check, X } from 'lucide-react';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
 
 interface Props {
   requests: CorrectionRequest[];
@@ -19,7 +21,7 @@ const CorrectionRequests: React.FC<Props> = ({ requests, matches, players, onApp
   const renderRequest = (r: CorrectionRequest) => {
     const match = matches.find(m => m.id === r.matchId);
     return (
-      <div key={r.id} className="glass-panel p-4 rounded-lg border-l-2 border-l-amber-400 space-y-3">
+      <Card key={r.id} className="p-4 border-l-2 border-l-amber-400 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-mono text-amber-400 uppercase tracking-widest font-bold">Correction Request</span>
           <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full border ${
@@ -52,19 +54,17 @@ const CorrectionRequests: React.FC<Props> = ({ requests, matches, players, onApp
 
         {r.status === 'pending' && (
           <div className="flex gap-2 justify-end">
-            <button onClick={() => onReject(r.id)}
-              className="px-3 py-1.5 text-xs text-gray-400 hover:text-red-400 bg-white/5 hover:bg-red-400/10 rounded-lg border border-white/10 transition-colors font-bold flex items-center gap-1">
+            <Button variant="outline" size="sm" onClick={() => onReject(r.id)}
+              className="text-gray-400 hover:text-red-400 hover:bg-red-400/10 hover:border-red-400/40">
               <X size={12} /> Reject
-            </button>
-            <button onClick={() => onApprove(r.id)}
-              className="px-3 py-1.5 text-xs text-black bg-green-400 hover:bg-green-300 rounded-lg transition-colors font-bold flex items-center gap-1">
+            </Button>
+            <Button size="sm" onClick={() => onApprove(r.id)}
+              className="bg-green-400 hover:bg-green-300 text-black">
               <Check size={12} /> Approve
-            </button>
+            </Button>
           </div>
         )}
-      </div>
-    );
-  };
+      </Card>
 
   return (
     <div className="space-y-4">

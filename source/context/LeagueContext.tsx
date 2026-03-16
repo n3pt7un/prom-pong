@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { getLeagueData, getCorrectionRequests } from '../services/storageService';
-import { Player, Match, EloHistoryEntry, Racket, PendingMatch, Season, Challenge, Tournament, League, CorrectionRequest } from '../types';
+import { getLeagueData, getCorrectionRequests, getEloConfig } from '../services/storageService';
+import { Player, Match, EloHistoryEntry, Racket, PendingMatch, Season, Challenge, Tournament, League, CorrectionRequest, EloConfig } from '../types';
 import { useAuth } from './AuthContext';
 import { useRealtime } from '../hooks/useRealtime';
-import { isSupabaseEnabled } from '../lib/supabase';
 
 interface LeagueContextType {
   players: Player[];
@@ -16,16 +15,18 @@ interface LeagueContextType {
   tournaments: Tournament[];
   leagues: League[];
   correctionRequests: CorrectionRequest[];
+  eloConfig: EloConfig | null;
   activeLeagueId: string | null;
   setActiveLeagueId: (id: string | null) => void;
   isConnected: boolean;
+  dataLoading: boolean;
   refreshData: () => Promise<void>;
 }
 
 const LeagueContext = createContext<LeagueContextType | null>(null);
 
 export function LeagueProvider({ children }: { children: ReactNode }) {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, isAdmin } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [history, setHistory] = useState<EloHistoryEntry[]>([]);
@@ -36,11 +37,14 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
   const [correctionRequests, setCorrectionRequests] = useState<CorrectionRequest[]>([]);
+  const [eloConfig, setEloConfig] = useState<EloConfig | null>(null);
   const [activeLeagueId, setActiveLeagueId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const refreshData = useCallback(async () => {
     if (!firebaseUser) return;
+    const adminSnapshot = isAdmin;
     try {
       const data = await getLeagueData();
       setPlayers(data.players);
@@ -52,22 +56,33 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       setChallenges(data.challenges || []);
       setTournaments(data.tournaments || []);
       setLeagues(data.leagues || []);
-      // Fetch correction requests — silently ignored for non-admins (403)
+      // Only fetch correction requests for admins — avoids a 403 for regular users
+      if (adminSnapshot) {
+        try {
+          const cr = await getCorrectionRequests();
+          setCorrectionRequests(cr);
+        } catch {
+          setCorrectionRequests([]);
+        }
+      }
+      // Fetch ELO config for all authenticated users (display in leaderboard)
       try {
-        const cr = await getCorrectionRequests();
-        setCorrectionRequests(cr);
+        const cfg = await getEloConfig();
+        setEloConfig(cfg);
       } catch {
-        setCorrectionRequests([]);
+        // Non-critical — fall back to defaults shown in the UI
       }
       setIsConnected(true);
     } catch (err) {
       console.error('Connection lost:', err);
       setIsConnected(false);
+    } finally {
+      setDataLoading(false);
     }
-  }, [firebaseUser]);
+  }, [firebaseUser, isAdmin]);
 
-  // Enable Realtime only when Supabase is enabled and user is authenticated
-  const isRealtimeEnabled = isSupabaseEnabled() && !!firebaseUser;
+  // Enable Realtime only when Supabase is configured and user is authenticated
+  const isRealtimeEnabled = import.meta.env.VITE_USE_SUPABASE === 'true' && !!firebaseUser;
 
   // Subscribe to Supabase Realtime changes
   useRealtime(isRealtimeEnabled, {
@@ -94,7 +109,9 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       setTournaments([]);
       setLeagues([]);
       setCorrectionRequests([]);
+      setEloConfig(null);
       setActiveLeagueId(null);
+      setDataLoading(true);
       return;
     }
     // Initial data load - only once, no polling
@@ -115,9 +132,11 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         tournaments,
         leagues,
         correctionRequests,
+        eloConfig,
         activeLeagueId,
         setActiveLeagueId,
         isConnected,
+        dataLoading,
         refreshData,
       }}
     >

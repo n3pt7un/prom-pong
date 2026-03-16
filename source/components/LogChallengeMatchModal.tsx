@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Player, Challenge } from '../types';
-import { Swords, X, Trophy, Flame } from 'lucide-react';
+import { Swords, Trophy, Flame } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 
 interface LogChallengeMatchModalProps {
   challenge: Challenge;
@@ -42,30 +45,16 @@ const LogChallengeMatchModal: React.FC<LogChallengeMatchModalProps> = ({
   const loser = players.find(p => p.id === loserId);
 
   return (
-    <div
-      className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-md glass-panel rounded-2xl p-6 space-y-5 border border-cyber-cyan/30 shadow-[0_0_40px_rgba(0,255,255,0.1)]"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Swords size={20} className="text-cyber-cyan" />
-            <h2 className="text-lg font-display font-bold text-white">
-              LOG <span className="text-cyber-cyan">RESULT</span>
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md border-cyber-cyan/30 shadow-[0_0_40px_rgba(0,255,255,0.1)]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Swords size={18} className="text-cyber-cyan" />
+            LOG <span className="text-cyber-cyan ml-1">RESULT</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 mt-2">
 
         {/* Challenge info */}
         <div className="flex items-center justify-center gap-4 bg-white/5 rounded-xl p-4">
@@ -133,42 +122,42 @@ const LogChallengeMatchModal: React.FC<LogChallengeMatchModalProps> = ({
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <div className="text-xs text-gray-600 mb-1 font-mono truncate">{winner?.name} (winner)</div>
-                <input
+                <Input
                   type="number"
                   min={0}
                   max={99}
                   value={scoreWinner}
                   onChange={e => setScoreWinner(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full bg-black/60 border border-cyber-cyan/30 rounded-lg px-3 py-2 text-white text-center font-mono text-lg focus:outline-none focus:border-cyber-cyan/60"
+                  className="text-center font-mono text-lg border-cyber-cyan/30 focus:border-cyber-cyan"
                 />
               </div>
               <span className="text-gray-600 font-mono text-lg">–</span>
               <div className="flex-1">
                 <div className="text-xs text-gray-600 mb-1 font-mono truncate">{loser?.name} (loser)</div>
-                <input
+                <Input
                   type="number"
                   min={0}
                   max={99}
                   value={scoreLoser}
                   onChange={e => setScoreLoser(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-white text-center font-mono text-lg focus:outline-none focus:border-white/20"
+                  className="text-center font-mono text-lg"
                 />
               </div>
             </div>
           </div>
         )}
 
-        {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          disabled={!winnerId || submitting}
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyber-cyan to-cyber-purple text-black font-display font-bold py-3 rounded-lg transition-all hover:shadow-neon-cyan disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <Trophy size={18} />
-          {submitting ? 'LOGGING...' : 'LOG MATCH & CLOSE CHALLENGE'}
-        </button>
-      </div>
-    </div>
+          <Button
+            onClick={handleSubmit}
+            disabled={!winnerId || submitting}
+            className="w-full bg-gradient-to-r from-cyber-cyan to-cyber-purple text-black font-display font-bold hover:shadow-neon-cyan"
+          >
+            <Trophy size={16} className="mr-1" />
+            {submitting ? 'LOGGING...' : 'LOG MATCH & CLOSE CHALLENGE'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

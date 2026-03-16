@@ -152,6 +152,16 @@ export const toLegacyChallenge = (c) => ({
   message: c.message,
   matchId: c.match_id,
   createdAt: c.created_at,
+  source: c.source || 'manual',
+  gameType: c.game_type || 'singles',
+  leagueId: c.league_id || null,
+  generatedAt: c.generated_at || undefined,
+  expiresAt: c.expires_at || undefined,
+  generationReason: c.generation_reason || undefined,
+  respondedAt: c.responded_at || undefined,
+  completedAt: c.completed_at || undefined,
+  challengerAcceptedAt: c.challenger_accepted_at || undefined,
+  challengedAcceptedAt: c.challenged_accepted_at || undefined,
 });
 
 export const toLegacyTournament = (t) => ({

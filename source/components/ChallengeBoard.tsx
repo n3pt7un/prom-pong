@@ -1,22 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Player, Match } from '../types';
+import { Player, Match, Challenge } from '../types';
 import {
   Swords, Send, Check, X, Clock, Flame, ChevronDown, ChevronUp,
   Trophy, AlertTriangle, TrendingUp, TrendingDown, Minus,
 } from 'lucide-react';
+import { Button } from './ui/button';
+import { shortName } from '../utils/playerRanking';
+import { thumbUrl } from '../utils/imageUtils';
 
-// --- Local types ---
-interface Challenge {
-  id: string;
-  challengerId: string;
-  challengedId: string;
-  status: 'pending' | 'accepted' | 'declined' | 'completed' | 'expired';
-  wager: number;
-  matchId?: string;
-  createdAt: string;
-  message?: string;
-}
-
+// --- Props ---
 interface ChallengeBoardProps {
   challenges: Challenge[];
   players: Player[];
@@ -41,8 +33,10 @@ const timeAgo = (dateStr: string): string => {
 };
 
 /** Time until challenge expires (assumed 24h TTL from createdAt). */
-const expiresIn = (createdAt: string): string => {
-  const expiresAt = new Date(createdAt).getTime() + 24 * 3600000;
+const expiresIn = (challenge: Challenge): string => {
+  const expiresAt = challenge.expiresAt
+    ? new Date(challenge.expiresAt).getTime()
+    : new Date(challenge.createdAt).getTime() + 24 * 3600000;
   const diff = expiresAt - Date.now();
   if (diff <= 0) return 'Expiring';
   const hours = Math.floor(diff / 3600000);
@@ -51,8 +45,10 @@ const expiresIn = (createdAt: string): string => {
   return `${mins}m to accept`;
 };
 
-const isExpiringSoon = (createdAt: string): boolean => {
-  const expiresAt = new Date(createdAt).getTime() + 24 * 3600000;
+const isExpiringSoon = (challenge: Challenge): boolean => {
+  const expiresAt = challenge.expiresAt
+    ? new Date(challenge.expiresAt).getTime()
+    : new Date(challenge.createdAt).getTime() + 24 * 3600000;
   return expiresAt - Date.now() < 4 * 3600000 && expiresAt > Date.now();
 };
 
@@ -116,7 +112,7 @@ const PlayerAvatar: React.FC<{ player: Player | undefined; size?: number }> = ({
     style={{ width: size, height: size }}
   >
     {player?.avatar ? (
-      <img src={player.avatar} alt={player.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+      <img src={thumbUrl(player.avatar, 64)} alt={player.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" loading="lazy" />
     ) : (
       <div className="w-full h-full flex items-center justify-center text-gray-500" style={{ fontSize: size * 0.4 }}>?</div>
     )}
@@ -175,6 +171,16 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
     [challenges, currentPlayerId],
   );
 
+  const generatedIncoming = useMemo(
+    () => incoming.filter((c) => c.source === 'auto_generated'),
+    [incoming],
+  );
+
+  const manualIncoming = useMemo(
+    () => incoming.filter((c) => c.source !== 'auto_generated'),
+    [incoming],
+  );
+
   const active = useMemo(
     () => challenges.filter(
       (c) => c.status === 'accepted' &&
@@ -200,7 +206,7 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
   );
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <Swords className="text-cyber-pink" size={28} />
@@ -214,27 +220,30 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
         )}
       </div>
 
-      {/* Incoming Challenges */}
-      {incoming.length > 0 && (
+      {/* Auto-generated daily challenges */}
+      {generatedIncoming.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-display font-bold text-cyber-pink tracking-widest uppercase flex items-center gap-2">
-            <AlertTriangle size={14} /> Incoming Challenges ({incoming.length})
+          <h3 className="text-sm font-display font-bold text-cyber-cyan tracking-widest uppercase flex items-center gap-2">
+            <Flame size={14} /> Daily Matchups ({generatedIncoming.length})
           </h3>
-          {incoming.map((c) => {
+          {generatedIncoming.map((c) => {
             const challenger = getPlayer(players, c.challengerId);
             const streak = challenger ? getCurrentStreak(matches, challenger.id) : { type: null, count: 0 };
-            const expiring = isExpiringSoon(c.createdAt);
+            const expiring = isExpiringSoon(c);
             const myH2H = currentPlayerId && challenger ? getH2H(matches, currentPlayerId, challenger.id) : null;
             return (
               <div
                 key={c.id}
-                className={`glass-panel rounded-xl p-4 border-l-2 animate-fadeIn ${expiring ? 'border-l-red-400' : 'border-l-cyber-pink'}`}
+                className={`rounded-xl p-4 border-l-2 animate-fade-in ${expiring ? 'border-l-red-400' : 'border-l-cyber-pink'}`}
               >
                 <div className="flex items-start gap-3">
                   <PlayerAvatar player={challenger} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-bold text-sm">{challenger?.name || 'Unknown'}</span>
+                      <span className="text-white font-bold text-sm">{shortName(challenger?.name || 'Unknown')}</span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-cyber-cyan/40 bg-cyber-cyan/10 text-cyber-cyan uppercase tracking-wide">
+                        auto
+                      </span>
                       <WagerBadge wager={c.wager} size="sm" />
                       <StreakBadge streak={streak as any} />
                     </div>
@@ -250,22 +259,93 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
                       <p className="text-gray-500 text-xs italic mt-0.5 truncate">"{c.message}"</p>
                     )}
                     <span className={`text-[10px] font-mono flex items-center gap-1 mt-0.5 ${expiring ? 'text-red-400 animate-pulse' : 'text-gray-600'}`}>
-                      <Clock size={10} /> {expiresIn(c.createdAt)}
+                      <Clock size={10} /> {expiresIn(c)}
+                    </span>
+                    {c.generationReason && c.source === 'auto_generated' && (
+                      <span className="text-[10px] font-mono text-cyber-cyan/80 block mt-0.5">{c.generationReason}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-green-500/30 text-green-400 hover:bg-green-600/40 hover:text-green-400 hover:border-green-500/50"
+                      onClick={() => onRespondChallenge(c.id, true)}
+                    >
+                      <Check size={14} /> Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-500/30 text-red-400 hover:bg-red-600/40 hover:text-red-400 hover:border-red-500/50"
+                      onClick={() => onRespondChallenge(c.id, false)}
+                    >
+                      <X size={14} /> Decline
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Incoming manual challenges */}
+      {manualIncoming.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-display font-bold text-cyber-pink tracking-widest uppercase flex items-center gap-2">
+            <AlertTriangle size={14} /> Incoming Challenges ({manualIncoming.length})
+          </h3>
+          {manualIncoming.map((c) => {
+            const challenger = getPlayer(players, c.challengerId);
+            const streak = challenger ? getCurrentStreak(matches, challenger.id) : { type: null, count: 0 };
+            const expiring = isExpiringSoon(c);
+            const myH2H = currentPlayerId && challenger ? getH2H(matches, currentPlayerId, challenger.id) : null;
+            return (
+              <div
+                key={c.id}
+                className={`rounded-xl p-4 border-l-2 animate-fade-in ${expiring ? 'border-l-red-400' : 'border-l-cyber-pink'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <PlayerAvatar player={challenger} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white font-bold text-sm">{shortName(challenger?.name || 'Unknown')}</span>
+                      <WagerBadge wager={c.wager} size="sm" />
+                      <StreakBadge streak={streak as any} />
+                    </div>
+                    {challenger && currentPlayer && (
+                      <EloDiffBadge myElo={currentPlayer.eloSingles} oppElo={challenger.eloSingles} />
+                    )}
+                    {myH2H && myH2H.total > 0 && (
+                      <span className="text-[10px] font-mono text-gray-500">
+                        Your H2H: <span className="text-green-400">{myH2H.wins}W</span>–<span className="text-red-400">{myH2H.losses}L</span>
+                      </span>
+                    )}
+                    {c.message && (
+                      <p className="text-gray-500 text-xs italic mt-0.5 truncate">"{c.message}"</p>
+                    )}
+                    <span className={`text-[10px] font-mono flex items-center gap-1 mt-0.5 ${expiring ? 'text-red-400 animate-pulse' : 'text-gray-600'}`}>
+                      <Clock size={10} /> {expiresIn(c)}
                     </span>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
-                    <button
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-green-500/30 text-green-400 hover:bg-green-600/40 hover:text-green-400 hover:border-green-500/50"
                       onClick={() => onRespondChallenge(c.id, true)}
-                      className="flex items-center gap-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
                     >
                       <Check size={14} /> Accept
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-500/30 text-red-400 hover:bg-red-600/40 hover:text-red-400 hover:border-red-500/50"
                       onClick={() => onRespondChallenge(c.id, false)}
-                      className="flex items-center gap-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
                     >
                       <X size={14} /> Decline
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -284,28 +364,25 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
             const challenger = getPlayer(players, c.challengerId);
             const challenged = getPlayer(players, c.challengedId);
             return (
-              <div key={c.id} className="glass-panel rounded-xl p-4 border-l-2 border-l-cyber-cyan">
+              <div key={c.id} className="rounded-xl p-4 border-l-2 border-l-cyber-cyan">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <PlayerAvatar player={challenger} size={28} />
-                    <span className="text-white font-bold text-sm">{challenger?.name}</span>
+                    <span className="text-white font-bold text-sm">{shortName(challenger?.name || '')}</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <Swords size={16} className="text-cyber-yellow" />
                     <WagerBadge wager={c.wager} size="sm" />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-white font-bold text-sm">{challenged?.name}</span>
+                    <span className="text-white font-bold text-sm">{shortName(challenged?.name || '')}</span>
                     <PlayerAvatar player={challenged} size={28} />
                   </div>
                   <div className="flex-1" />
                   {onCompleteChallenge && (
-                    <button
-                      onClick={() => onCompleteChallenge(c.id)}
-                      className="flex items-center gap-1 bg-cyber-cyan/10 hover:bg-cyber-cyan/20 text-cyber-cyan border border-cyber-cyan/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                    >
+                    <Button size="sm" variant="cyber" onClick={() => onCompleteChallenge(c.id)}>
                       <Send size={14} /> LOG MATCH
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -322,33 +399,35 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
           </h3>
           {outgoing.map((c) => {
             const challenged = getPlayer(players, c.challengedId);
-            const expiring = isExpiringSoon(c.createdAt);
+            const expiring = isExpiringSoon(c);
             return (
-              <div key={c.id} className="glass-panel rounded-xl p-4 opacity-80">
+              <div key={c.id} className="rounded-xl p-4 opacity-80">
                 <div className="flex items-center gap-3">
                   <PlayerAvatar player={challenged} size={28} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-white text-sm">
-                        Sent to <span className="font-bold">{challenged?.name}</span>
+                        Sent to <span className="font-bold">{shortName(challenged?.name || '')}</span>
                       </span>
                       <WagerBadge wager={c.wager} size="sm" />
                     </div>
                     <span className={`text-[10px] font-mono flex items-center gap-1 mt-0.5 ${expiring ? 'text-red-400 animate-pulse' : 'text-gray-600'}`}>
-                      <Clock size={10} /> {expiresIn(c.createdAt)}
+                      <Clock size={10} /> {expiresIn(c)}
                     </span>
                   </div>
                   <span className="text-xs font-mono text-cyber-yellow/60 bg-cyber-yellow/5 border border-cyber-yellow/20 px-2 py-1 rounded-full">
                     PENDING
                   </span>
                   {onCancelChallenge && (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-gray-500 hover:text-red-400"
                       onClick={() => onCancelChallenge(c.id)}
-                      className="text-gray-500 hover:text-red-400 transition-colors p-1"
                       title="Withdraw challenge"
                     >
                       <X size={16} />
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -360,14 +439,16 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
       {/* Challenge History (collapsible) */}
       {history.length > 0 && (
         <div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
+            className="font-display tracking-widest font-bold w-full justify-start gap-2 text-gray-500 hover:text-gray-300 uppercase"
             onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-2 text-sm font-display font-bold text-gray-500 tracking-widest uppercase hover:text-gray-300 transition-colors w-full"
           >
             <Trophy size={14} />
             History ({history.length})
             {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+          </Button>
 
           {showHistory && (
             <div className="space-y-2 mt-3">
@@ -386,13 +467,13 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
                 return (
                   <div
                     key={c.id}
-                    className="glass-panel rounded-lg p-3 flex items-center gap-3 opacity-60 hover:opacity-80 transition-opacity"
+                    className="rounded-lg p-3 flex items-center gap-3 opacity-60 hover:opacity-80 transition-opacity"
                   >
                     <PlayerAvatar player={otherPlayer} size={24} />
                     <div className="flex-1 min-w-0">
                       <span className="text-gray-400 text-xs">
                         {isChallenger ? 'vs' : 'from'}{' '}
-                        <span className="text-white font-medium">{otherPlayer?.name}</span>
+                        <span className="text-white font-medium">{shortName(otherPlayer?.name || '')}</span>
                       </span>
                       {c.wager > 0 && <span className="ml-2"><WagerBadge wager={c.wager} size="sm" /></span>}
                     </div>

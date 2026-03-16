@@ -64,7 +64,7 @@ app.use(express.static(path.join(__dirname, '..', 'dist')));
 const rawOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
 const allowedOrigins = new Set([
   ...rawOrigins,
-  ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:5173', 'http://localhost:8080'] : []),
+  ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:8080'] : []),
 ]);
 
 app.use(cors({

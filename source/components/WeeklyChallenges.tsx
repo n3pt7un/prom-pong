@@ -22,6 +22,7 @@ import {
   Dumbbell,
   Repeat2,
 } from 'lucide-react';
+import { Card } from './ui/card';
 
 const ICON_MAP: Record<string, any> = {
   Target, Flame, Trophy, TrendingUp, Swords, Zap,
@@ -230,7 +231,7 @@ const WeeklyChallenges: React.FC<WeeklyChallengesProps> = ({
   }, [matches, players, currentPlayerId]);
 
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <div className="space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -263,7 +264,7 @@ const WeeklyChallenges: React.FC<WeeklyChallengesProps> = ({
 
       {/* Rival Challenge — hidden once completed */}
       {currentPlayerId && rivalChallenge && !rivalChallenge.done && (
-        <div className={`glass-panel p-4 rounded-lg border border-dashed transition-all ${
+        <Card className={`p-4 border border-dashed transition-all ${
           rivalChallenge.done ? 'border-green-500/40 bg-green-500/5' : 'border-cyber-pink/30 bg-cyber-pink/5'
         }`}>
           <div className="flex items-start gap-3">
@@ -290,7 +291,7 @@ const WeeklyChallenges: React.FC<WeeklyChallengesProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Personal Challenges */}
@@ -306,20 +307,20 @@ const WeeklyChallenges: React.FC<WeeklyChallengesProps> = ({
             const IconComponent = ICON_MAP[challenge.icon] || Target;
 
             return (
-              <div
-                key={challenge.id}
-                className={`glass-panel p-4 rounded-lg border-l-2 transition-all ${
-                  isGoldDone
-                    ? 'border-l-cyber-yellow bg-cyber-yellow/5'
-                    : highestTier >= 0
-                    ? 'border-l-green-500'
-                    : urgent
-                    ? 'border-l-red-400 bg-red-500/5'
-                    : challenge.type === 'daily'
-                    ? 'border-l-cyber-cyan'
-                    : 'border-l-cyber-pink'
-                }`}
-              >
+            <Card
+              key={challenge.id}
+              className={`p-4 border-l-2 transition-all ${
+                isGoldDone
+                  ? 'border-l-cyber-yellow bg-cyber-yellow/5'
+                  : highestTier >= 0
+                  ? 'border-l-green-500'
+                  : urgent
+                  ? 'border-l-red-400 bg-red-500/5'
+                  : challenge.type === 'daily'
+                  ? 'border-l-cyber-cyan'
+                  : 'border-l-cyber-pink'
+              }`}
+            >
                 <div className="flex items-start gap-3">
                   <div className={`flex-shrink-0 p-2 rounded-lg ${
                     isGoldDone ? 'bg-cyber-yellow/20 text-cyber-yellow'
@@ -383,7 +384,7 @@ const WeeklyChallenges: React.FC<WeeklyChallengesProps> = ({
                     )}
                   </div>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>

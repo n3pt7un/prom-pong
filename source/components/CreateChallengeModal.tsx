@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Player, Match } from '../types';
-import { Zap, Flame, X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Zap, Flame, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 
 interface CreateChallengeModalProps {
   players: Player[];
@@ -62,30 +65,16 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-md glass-panel rounded-2xl p-6 space-y-5 border border-cyber-pink/30 shadow-[0_0_40px_rgba(255,0,255,0.15)]"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap size={20} className="text-cyber-pink" />
-            <h2 className="text-lg font-display font-bold text-white">
-              ISSUE A <span className="text-cyber-pink">CHALLENGE</span>
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md border-cyber-pink/30 shadow-[0_0_40px_rgba(255,0,255,0.15)]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Zap size={18} className="text-cyber-pink" />
+            ISSUE A <span className="text-cyber-pink ml-1">CHALLENGE</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 mt-2">
 
         {/* Opponent selector */}
         <div>
@@ -148,11 +137,10 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
           <label className="block text-xs text-gray-500 mb-1 font-mono">
             Trash Talk <span className="text-gray-700">(optional, {100 - message.length} chars left)</span>
           </label>
-          <input
+          <Input
             type="text" maxLength={100} value={message}
             onChange={e => setMessage(e.target.value)}
             placeholder="Think you can handle my spin?"
-            className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyber-pink/50 placeholder:text-gray-600 transition-colors"
           />
         </div>
 
@@ -169,17 +157,17 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
           </div>
         )}
 
-        {/* Send */}
-        <button
-          onClick={handleSend}
-          disabled={!selectedOpponent}
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyber-pink to-cyber-purple text-white font-display font-bold py-3 rounded-lg transition-all hover:shadow-neon-pink disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <Zap size={18} />
-          SEND CHALLENGE
-        </button>
-      </div>
-    </div>
+          <Button
+            onClick={handleSend}
+            disabled={!selectedOpponent}
+            className="w-full bg-gradient-to-r from-cyber-pink to-cyber-purple text-white font-display font-bold hover:shadow-neon-pink"
+          >
+            <Zap size={16} className="mr-1" />
+            SEND CHALLENGE
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

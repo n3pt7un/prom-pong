@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Match, Player } from '../types';
+import { Match, Player, EloHistoryEntry } from '../types';
 import { validateMatchScore } from '../utils/matchValidation';
+import { shortName } from '../utils/playerRanking';
 import { Trash2, ChevronDown, Pencil, Check, X, ArrowLeftRight, Flag } from 'lucide-react';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import MatchDetailModal from './MatchDetailModal';
 
 const timeAgo = (dateStr: string) => {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -18,6 +23,7 @@ const isWithin60s = (timestamp: string) => Date.now() - new Date(timestamp).getT
 interface RecentMatchesProps {
   matches: Match[];
   players: Player[];
+  history: EloHistoryEntry[];
   isAdmin?: boolean;
   currentUserUid?: string;
   currentPlayerIds?: string[];
@@ -34,7 +40,7 @@ interface RecentMatchesProps {
 
 const PAGE_SIZE = 15;
 
-const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin, currentUserUid, currentPlayerIds, onDeleteMatch, onEditMatch, onRequestCorrection }) => {
+const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, history, isAdmin, currentUserUid, currentPlayerIds, onDeleteMatch, onEditMatch, onRequestCorrection }) => {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editScore1, setEditScore1] = useState('');
@@ -49,6 +55,7 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
   const [reqLosers, setReqLosers] = useState<string[]>([]);
   const [reqReason, setReqReason] = useState('');
   const [reqError, setReqError] = useState<string | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   // Force re-render every 10s so the 60s window buttons appear/disappear correctly
   const [, setTick] = useState(0);
 
@@ -57,7 +64,7 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
     return () => clearInterval(timer);
   }, []);
 
-  const getPlayerName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
+  const getPlayerName = (id: string) => shortName(players.find(p => p.id === id)?.name || 'Unknown');
 
   const canModify = (match: Match) => {
     if (isAdmin) return true;
@@ -167,7 +174,7 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
         <span className="text-xs text-gray-500 font-mono">{matches.length} total</span>
       </div>
 
-      <div className="grid gap-2">
+      <div className="grid gap-3">
         {visibleMatches.map(match => {
           const isEditing = editingId === match.id;
           const isRequesting = requestingId === match.id;
@@ -175,7 +182,7 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
 
           if (isRequesting) {
             return (
-              <div key={match.id} className="glass-panel p-4 rounded-lg border-l-2 border-l-amber-400 space-y-3">
+              <Card key={match.id} className="p-4 border-l-2 border-l-amber-400 space-y-3 rounded-lg">
                 <span className="text-[10px] font-mono text-amber-400 uppercase tracking-widest font-bold">Request Score Correction</span>
 
                 <div className="flex items-center gap-2 text-sm">
@@ -197,40 +204,37 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
                 </div>
 
                 <div className="flex items-center gap-3 justify-center">
-                  <input type="number" value={reqScore1} onChange={e => setReqScore1(e.target.value)}
-                    className="w-16 bg-black/50 border border-white/20 text-white text-center p-2 rounded-lg font-mono text-lg focus:border-amber-400 outline-none" min="0" />
+                  <Input type="number" value={reqScore1} onChange={e => setReqScore1(e.target.value)}
+                    className="w-16 text-center font-mono text-lg border-amber-400/30 focus:border-amber-400" min={0} />
                   <span className="text-gray-500 font-bold">-</span>
-                  <input type="number" value={reqScore2} onChange={e => setReqScore2(e.target.value)}
-                    className="w-16 bg-black/50 border border-white/20 text-white text-center p-2 rounded-lg font-mono text-lg focus:border-amber-400 outline-none" min="0" />
+                  <Input type="number" value={reqScore2} onChange={e => setReqScore2(e.target.value)}
+                    className="w-16 text-center font-mono text-lg border-amber-400/30 focus:border-amber-400" min={0} />
                 </div>
 
-                <input
+                <Input
                   type="text"
                   placeholder="Reason (optional)"
                   value={reqReason}
                   onChange={e => setReqReason(e.target.value)}
-                  className="w-full bg-black/30 border border-white/10 text-white text-sm px-3 py-2 rounded-lg font-mono focus:border-amber-400 outline-none"
                 />
 
                 {reqError && <p className="text-red-400 text-xs font-mono text-center">{reqError}</p>}
 
                 <div className="flex gap-2 justify-end">
-                  <button onClick={cancelRequest}
-                    className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors font-bold flex items-center gap-1">
-                    <X size={12} /> Cancel
-                  </button>
-                  <button onClick={submitRequest}
-                    className="px-3 py-1.5 text-xs text-black bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors font-bold flex items-center gap-1">
-                    <Flag size={12} /> Submit
-                  </button>
+                  <Button size="sm" variant="outline" onClick={cancelRequest}>
+                    <X size={11} className="mr-1" /> Cancel
+                  </Button>
+                  <Button size="sm" onClick={submitRequest} className="bg-amber-400 text-black hover:bg-amber-300">
+                    <Flag size={11} className="mr-1" /> Submit
+                  </Button>
                 </div>
-              </div>
+              </Card>
             );
           }
 
           if (isEditing) {
             return (
-              <div key={match.id} className="glass-panel p-4 rounded-lg border-l-2 border-l-cyber-yellow space-y-3">
+              <Card key={match.id} className="p-4 border-l-2 border-l-cyber-yellow space-y-3 rounded-lg">
                 <span className="text-[10px] font-mono text-cyber-yellow uppercase tracking-widest font-bold">Editing Match</span>
 
                 {/* Team display with swap */}
@@ -254,20 +258,20 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
 
                 {/* Score inputs */}
                 <div className="flex items-center gap-3 justify-center">
-                  <input
+                  <Input
                     type="number"
                     value={editScore1}
                     onChange={e => setEditScore1(e.target.value)}
-                    className="w-16 bg-black/50 border border-white/20 text-white text-center p-2 rounded-lg font-mono text-lg focus:border-cyber-cyan outline-none"
-                    min="0"
+                    className="w-16 text-center font-mono text-lg border-cyber-cyan/30 focus:border-cyber-cyan"
+                    min={0}
                   />
                   <span className="text-gray-500 font-bold">-</span>
-                  <input
+                  <Input
                     type="number"
                     value={editScore2}
                     onChange={e => setEditScore2(e.target.value)}
-                    className="w-16 bg-black/50 border border-white/20 text-white text-center p-2 rounded-lg font-mono text-lg focus:border-cyber-cyan outline-none"
-                    min="0"
+                    className="w-16 text-center font-mono text-lg"
+                    min={0}
                   />
                 </div>
 
@@ -275,33 +279,27 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
 
                 {/* Action buttons */}
                 <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={cancelEdit}
-                    className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors font-bold flex items-center gap-1"
-                  >
-                    <X size={12} /> Cancel
-                  </button>
-                  <button
-                    onClick={submitEdit}
-                    className="px-3 py-1.5 text-xs text-black bg-cyber-cyan hover:bg-white rounded-lg transition-colors font-bold flex items-center gap-1"
-                  >
-                    <Check size={12} /> Save
-                  </button>
+                  <Button size="sm" variant="outline" onClick={cancelEdit}>
+                    <X size={11} className="mr-1" /> Cancel
+                  </Button>
+                  <Button size="sm" variant="cyber" onClick={submitEdit}>
+                    <Check size={11} className="mr-1" /> Save
+                  </Button>
                 </div>
-              </div>
+              </Card>
             );
           }
 
           return (
-            <div key={match.id} className="glass-panel p-3 rounded-lg border-l-2 border-l-cyber-cyan hover:translate-x-1 transition-transform group">
+            <Card key={match.id} className="p-4 border-l-2 border-l-cyber-cyan hover:translate-x-1 transition-transform group rounded-lg cursor-pointer hover:bg-white/5 relative" onClick={() => setSelectedMatchId(match.id)}>
               {/* Header row: match type, time, and badges */}
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${match.type === 'singles' ? 'bg-cyber-cyan' : 'bg-cyber-pink'}`}></span>
+              <div className="flex items-center gap-2 mb-3 pr-8 flex-wrap">
+                <span className="text-[11px] font-mono text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${match.type === 'singles' ? 'bg-cyber-cyan' : 'bg-cyber-pink'}`}></span>
                   {match.type} • {timeAgo(match.timestamp)}
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                <div className="flex items-center gap-2">
+                  <span className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded border ${
                     match.matchFormat === 'vintage21'
                       ? 'bg-cyber-purple/10 text-cyber-purple border-cyber-purple/30'
                       : 'bg-white/5 text-gray-500 border-white/10'
@@ -309,76 +307,87 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
                     {match.matchFormat === 'vintage21' ? 'V-21' : 'S-11'}
                   </span>
                   {match.isFriendly ? (
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-300 border-amber-500/30">
+                    <span className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-300 border-amber-500/30">
                       FRIENDLY
                     </span>
                   ) : (
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-cyber-cyan/10 text-cyber-cyan border-cyber-cyan/30">
+                    <span className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded border bg-cyber-cyan/10 text-cyber-cyan border-cyber-cyan/30">
                       +{match.eloChange}
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Match result: winner left, score center, loser right */}
-              <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center text-sm">
+              {/* Match result: winner left, score center, loser right - with improved spacing */}
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center py-2">
                 {/* Winner */}
                 <div className="text-left min-w-0">
-                  <div className="font-bold text-white truncate" title={match.winners.map(id => getPlayerName(id)).join(' & ')}>
+                  <div className="font-bold text-white text-base break-words leading-tight" title={match.winners.map(id => getPlayerName(id)).join(' & ')}>
                     {match.winners.map(id => getPlayerName(id)).join(' & ')}
                   </div>
                 </div>
 
-                {/* Score */}
+                {/* Score - Made much larger and more prominent */}
                 <div className="text-center px-2">
-                  <span className="text-cyber-cyan font-mono font-bold">
+                  <span className="text-cyber-cyan font-mono font-bold text-2xl">
                     {match.scoreWinner}
                   </span>
-                  <span className="text-gray-600 mx-1">-</span>
-                  <span className="text-gray-400 font-mono">
+                  <span className="text-gray-600 mx-1 text-lg">-</span>
+                  <span className="text-gray-400 font-mono text-2xl">
                     {match.scoreLoser}
                   </span>
                 </div>
 
                 {/* Loser */}
                 <div className="text-right min-w-0">
-                  <div className="text-gray-400 truncate" title={match.losers.map(id => getPlayerName(id)).join(' & ')}>
+                  <div className="text-gray-400 text-base break-words leading-tight" title={match.losers.map(id => getPlayerName(id)).join(' & ')}>
                     {match.losers.map(id => getPlayerName(id)).join(' & ')}
                   </div>
                 </div>
               </div>
 
-              {/* Action buttons - appear on hover */}
-              <div className="flex items-center justify-end gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                {showActions && onEditMatch && (
-                  <button
-                    onClick={() => startEdit(match)}
-                    className="p-1 text-gray-500 hover:text-cyber-cyan hover:bg-cyber-cyan/10 rounded transition-colors"
-                    title="Edit match"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                )}
-                {showActions && onDeleteMatch && (
-                  <button
-                    onClick={() => handleDelete(match.id)}
-                    className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                    title="Delete match & reverse ELO"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                )}
-                {canRequestCorrection(match) && onRequestCorrection && (
-                  <button
-                    onClick={() => startRequest(match)}
-                    className="p-1 text-gray-500 hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors"
-                    title="Request score correction"
-                  >
-                    <Flag size={12} />
-                  </button>
-                )}
-              </div>
-            </div>
+              {/* Compact action icons (no layout space reserved) */}
+              {(showActions || canRequestCorrection(match)) && (
+                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {showActions && onEditMatch && (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        startEdit(match);
+                      }}
+                      className="p-1 text-gray-500 hover:text-cyber-cyan hover:bg-cyber-cyan/10 rounded transition-colors"
+                      title="Edit match"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  )}
+                  {showActions && onDeleteMatch && (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleDelete(match.id);
+                      }}
+                      className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                      title="Delete match"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                  {canRequestCorrection(match) && onRequestCorrection && (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        startRequest(match);
+                      }}
+                      className="p-1 text-gray-500 hover:text-amber-400 hover:bg-amber-400/10 rounded transition-colors"
+                      title="Request correction"
+                    >
+                      <Flag size={12} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </Card>
           );
         })}
         {matches.length === 0 && (
@@ -389,13 +398,19 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, isAdmin
       </div>
 
       {hasMore && (
-        <button
-          onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
-          className="w-full py-2 text-sm text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors flex items-center justify-center gap-2 font-bold"
-        >
-          <ChevronDown size={16} /> Show More ({matches.length - visibleCount} remaining)
-        </button>
+      <Button variant="outline" className="w-full" onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}>
+        <ChevronDown size={15} className="mr-1" /> Show More ({matches.length - visibleCount} remaining)
+      </Button>
       )}
+
+      <MatchDetailModal
+        isOpen={selectedMatchId !== null}
+        onClose={() => setSelectedMatchId(null)}
+        match={matches.find(m => m.id === selectedMatchId) || null}
+        players={players}
+        allMatches={matches}
+        history={history}
+      />
     </div>
   );
 };

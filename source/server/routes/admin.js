@@ -301,4 +301,26 @@ router.post('/admin/recalculate-elo', authMiddleware, adminMiddleware, async (re
   }
 });
 
+// Get challenge generation schedule settings
+router.get('/admin/settings/challenge-schedule', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const settings = await dbOps.getChallengeScheduleSettings();
+    res.json(settings);
+  } catch (err) {
+    console.error('Error in GET /api/admin/settings/challenge-schedule:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update challenge generation schedule settings
+router.put('/admin/settings/challenge-schedule', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const settings = await dbOps.saveChallengeScheduleSettings(req.body);
+    res.json(settings);
+  } catch (err) {
+    console.error('Error in PUT /api/admin/settings/challenge-schedule:', err);
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
 export default router;

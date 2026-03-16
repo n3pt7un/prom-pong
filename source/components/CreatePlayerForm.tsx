@@ -1,9 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { AVATARS } from '../constants';
 import { Racket } from '../types';
-import { UserPlus, X, Upload, Zap } from 'lucide-react';
+import { UserPlus, Upload, Zap } from 'lucide-react';
 import { resizeImage } from '../utils/imageUtils';
 import { formatRacketStats } from './RacketManager';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 
 interface CreatePlayerFormProps {
   rackets: Racket[];
@@ -39,42 +43,31 @@ const CreatePlayerForm: React.FC<CreatePlayerFormProps> = ({ rackets, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
-        onClick={onClose}
-      />
-      
-      <div className="relative w-full max-w-lg glass-panel p-6 rounded-xl border border-cyber-cyan/30 shadow-neon-cyan animate-fadeIn max-h-[90vh] overflow-y-auto">
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-        >
-          <X size={24} />
-        </button>
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg border-cyber-cyan/30 shadow-neon-cyan max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <UserPlus className="text-cyber-cyan w-5 h-5" />
+            NEW <span className="text-cyber-cyan ml-1">PLAYER</span>
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="flex items-center gap-3 mb-6">
-          <UserPlus className="text-cyber-cyan w-6 h-6" />
-          <h2 className="text-xl font-display font-bold text-white">NEW <span className="text-cyber-cyan">PLAYER</span></h2>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-2">
           {/* Name */}
           <div className="space-y-2">
-            <label className="text-xs font-mono text-cyber-cyan uppercase tracking-widest">Codename</label>
-            <input 
-              type="text" 
+            <Label className="text-cyber-cyan">Codename</Label>
+            <Input
+              type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter name..."
-              className="w-full bg-black/50 border border-white/10 text-white p-3 rounded font-mono focus:border-cyber-cyan focus:outline-none focus:ring-1 focus:ring-cyber-cyan transition-all"
               autoFocus
             />
           </div>
 
           {/* Avatar Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-mono text-cyber-pink uppercase tracking-widest">Avatar Identity</label>
+            <Label className="text-cyber-pink">Avatar Identity</Label>
             
             <div className="flex flex-col gap-4">
                {/* Upload Button */}
@@ -82,13 +75,14 @@ const CreatePlayerForm: React.FC<CreatePlayerFormProps> = ({ rackets, onClose, o
                   <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-cyber-pink shadow-neon-pink">
                     <img src={avatar} alt="Current" className="w-full h-full object-cover" />
                   </div>
-                  <button 
-                    type="button" 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/20 rounded hover:bg-white/10 text-sm text-gray-300 transition-colors"
                   >
-                    <Upload size={16} /> Upload Custom
-                  </button>
+                    <Upload size={14} className="mr-1" /> Upload Custom
+                  </Button>
                   <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -120,7 +114,7 @@ const CreatePlayerForm: React.FC<CreatePlayerFormProps> = ({ rackets, onClose, o
 
           {/* Racket Selection */}
           <div className="space-y-2">
-             <label className="text-xs font-mono text-cyber-yellow uppercase tracking-widest">Primary Racket</label>
+            <Label className="text-cyber-yellow">Primary Racket</Label>
              <div className="relative">
                 <select
                   value={selectedRacketId}
@@ -136,16 +130,17 @@ const CreatePlayerForm: React.FC<CreatePlayerFormProps> = ({ rackets, onClose, o
              </div>
           </div>
 
-          <button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={!name.trim()}
-            className="w-full py-3 bg-cyber-cyan/10 border border-cyber-cyan text-cyber-cyan font-bold font-display rounded hover:bg-cyber-cyan hover:text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="cyber"
+            className="w-full"
           >
             INITIALIZE AGENT
-          </button>
+          </Button>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

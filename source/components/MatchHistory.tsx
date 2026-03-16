@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Match, Player } from '../types';
 import { ChevronDown, Search, X } from 'lucide-react';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 
 interface MatchHistoryProps {
   matches: Match[];
@@ -80,12 +83,12 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, onPlayerC
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input
+          <Input
             type="text"
             placeholder="Search by player name..."
             value={search}
             onChange={e => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }}
-            className="w-full bg-black/40 border border-white/10 text-white text-sm pl-8 pr-8 py-2 rounded-lg font-mono focus:border-cyber-cyan outline-none placeholder:text-gray-600"
+            className="pl-8 font-mono"
           />
           {search && (
             <button
@@ -98,17 +101,15 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, onPlayerC
         </div>
         <div className="flex gap-1">
           {(['all', 'singles', 'doubles'] as const).map(t => (
-            <button
+            <Button
               key={t}
+              variant={typeFilter === t ? 'secondary' : 'outline'}
+              size="sm"
               onClick={() => { setTypeFilter(t); setVisibleCount(PAGE_SIZE); }}
-              className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors ${
-                typeFilter === t
-                  ? 'bg-cyber-cyan/20 text-cyber-cyan border border-cyber-cyan/40'
-                  : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white hover:bg-white/10'
-              }`}
+              className={typeFilter === t ? 'bg-cyber-cyan/20 text-cyber-cyan border-cyber-cyan/40' : ''}
             >
               {t}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -124,9 +125,9 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, onPlayerC
         {visible.map(match => {
           const isDoubles = match.type === 'doubles';
           return (
-            <div
+            <Card
               key={match.id}
-              className="glass-panel rounded-lg border-l-2 border-l-cyber-cyan px-4 py-3"
+              className="rounded-lg border-l-2 border-l-cyber-cyan px-4 py-3"
             >
               {/* Top row: meta info */}
               <div className="flex items-center justify-between mb-2.5">
@@ -195,18 +196,19 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, onPlayerC
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>
 
       {hasMore && (
-        <button
+        <Button
+          variant="outline"
+          className="w-full"
           onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
-          className="w-full py-2 text-sm text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors flex items-center justify-center gap-2 font-bold"
         >
           <ChevronDown size={16} /> Show More ({filtered.length - visibleCount} remaining)
-        </button>
+        </Button>
       )}
     </div>
   );

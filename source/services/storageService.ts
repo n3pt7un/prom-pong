@@ -1,4 +1,4 @@
-import { Player, Match, EloHistoryEntry, GameType, MatchFormat, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament, League, CorrectionRequest } from '../types';
+import { Player, Match, EloHistoryEntry, GameType, MatchFormat, Racket, RacketStats, AppUser, PendingMatch, Season, Challenge, Tournament, League, CorrectionRequest, EloConfig } from '../types';
 import { getIdToken } from './authService';
 
 export interface LeagueState {
@@ -48,6 +48,10 @@ const apiRequest = async (url: string, options?: RequestInit) => {
 
 export const getLeagueData = async (): Promise<LeagueState> => {
   return apiRequest(`${API_URL}/state`);
+};
+
+export const getEloConfig = async (): Promise<EloConfig> => {
+  return apiRequest(`${API_URL}/elo-config`);
 };
 
 export const getMe = async (): Promise<AppUser> => {
@@ -232,6 +236,10 @@ export const endSeason = async (): Promise<Season> => {
   return apiRequest(`${API_URL}/seasons/end`, { method: 'POST' });
 };
 
+export const getSeasonMatches = async (seasonId: string): Promise<Match[]> => {
+  return apiRequest(`${API_URL}/seasons/${seasonId}/matches`);
+};
+
 // --- Challenges ---
 export const getChallenges = async (): Promise<Challenge[]> => {
   return apiRequest(`${API_URL}/challenges`);
@@ -248,6 +256,17 @@ export const respondToChallenge = async (challengeId: string, accept: boolean) =
   return apiRequest(`${API_URL}/challenges/${challengeId}/respond`, {
     method: 'PUT',
     body: JSON.stringify({ accept })
+  });
+};
+
+export const generateChallenges = async (
+  leagueId?: string | null,
+  gameType: 'singles' | 'doubles' = 'singles',
+  maxPerPlayer = 1,
+): Promise<{ generated: number; challenges: Challenge[] }> => {
+  return apiRequest(`${API_URL}/challenges/generate`, {
+    method: 'POST',
+    body: JSON.stringify({ leagueId: leagueId ?? null, gameType, maxPerPlayer }),
   });
 };
 

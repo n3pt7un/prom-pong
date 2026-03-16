@@ -1,6 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Player, Match, EloHistoryEntry } from '../types';
-import { Crown, ChevronDown, ChevronUp, Calendar, TrendingUp, Zap, Target } from 'lucide-react';
+import { Crown, ChevronDown, ChevronUp, TrendingUp, Zap } from 'lucide-react';
+import { shortName } from '../utils/playerRanking';
+import { thumbUrl } from '../utils/imageUtils';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
 
 interface PlayerOfTheWeekProps {
   players: Player[];
@@ -175,147 +179,116 @@ const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, his
   }, [players, matches, history]);
 
   return (
-    <div className="glass-panel rounded-xl p-6 relative overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute -top-20 -right-20 w-60 h-60 bg-cyber-yellow/5 blur-[80px] rounded-full pointer-events-none" />
+    <Card className="p-4 relative overflow-hidden">
+      <div className="absolute -top-16 -right-16 w-48 h-48 bg-cyber-yellow/5 blur-[60px] rounded-full pointer-events-none" />
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative">
-          <Crown
-            className="text-cyber-yellow drop-shadow-[0_0_10px_rgba(252,238,10,0.6)]"
-            size={28}
-            style={{ animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' }}
-          />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Crown size={16} className="text-cyber-yellow drop-shadow-[0_0_6px_rgba(252,238,10,0.6)]" />
+          <span className="text-xs font-display font-bold text-white tracking-widest uppercase">
+            Player of the <span className="text-cyber-yellow">Week</span>
+          </span>
         </div>
-        <h3 className="text-xl font-display font-bold text-white tracking-wide">
-          PLAYER OF THE <span className="text-cyber-yellow">WEEK</span>
-        </h3>
+        {currentWinner && (
+          <span className="text-[10px] font-mono text-gray-500">{currentWinner.weekLabel}</span>
+        )}
       </div>
 
       {!currentWinner ? (
-        <div className="text-center py-10">
+        <div className="py-6 text-center">
           <div className="text-gray-500 text-sm font-mono">No matches played this week yet</div>
-          <div className="text-gray-600 text-xs mt-1">Play some games to crown this week's champion!</div>
+          <div className="text-gray-600 text-xs mt-1">Play some games to crown a champion!</div>
         </div>
       ) : (
         <>
-          {/* Spotlight Card */}
-          <div className="flex flex-col items-center text-center mb-5">
-            {/* Avatar */}
-            <div
-              className={`mb-3 w-20 h-20 rounded-full border-2 border-cyber-yellow shadow-[0_0_20px_rgba(252,238,10,0.3)] overflow-hidden ${onPlayerClick ? 'cursor-pointer' : ''}`}
-              style={{ background: 'linear-gradient(135deg, rgba(252,238,10,0.1), rgba(252,238,10,0.02))' }}
-              onClick={() => onPlayerClick?.(currentWinner.player.id)}
-            >
+          {/* Winner row */}
+          <div
+            className={`flex items-center gap-4 ${onPlayerClick ? 'cursor-pointer group' : ''}`}
+            onClick={() => onPlayerClick?.(currentWinner.player.id)}
+          >
+            <div className="relative flex-shrink-0">
               <img
-                src={currentWinner.player.avatar}
+                src={thumbUrl(currentWinner.player.avatar, 96)}
                 alt={currentWinner.player.name}
-                className="w-full h-full object-cover"
+                className="w-14 h-14 rounded-full border-2 border-cyber-yellow shadow-[0_0_14px_rgba(252,238,10,0.25)] object-cover"
                 referrerPolicy="no-referrer"
               />
+              <Crown size={12} className="absolute -top-1.5 -right-1 text-cyber-yellow drop-shadow-[0_0_4px_rgba(252,238,10,0.8)]" />
             </div>
 
-            {/* Name */}
-            <h4
-              className={`font-display text-2xl font-bold text-white mb-1 ${onPlayerClick ? 'cursor-pointer hover:text-cyber-yellow transition-colors' : ''}`}
-              onClick={() => onPlayerClick?.(currentWinner.player.id)}
-            >
-              {currentWinner.player.name}
-            </h4>
-            <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-4">
-              {currentWinner.weekLabel}
-            </span>
-
-            {/* Performance Score */}
-            <div className="mb-4">
-              <div className="text-xs font-mono text-gray-500 uppercase tracking-wider mb-1">Performance Score</div>
-              <div className="text-3xl font-display font-bold text-cyber-yellow drop-shadow-[0_0_8px_rgba(252,238,10,0.4)]">
-                {currentWinner.performance.performanceScore.toFixed(1)}
+            <div className="flex-1 min-w-0">
+              <div className="font-display font-bold text-lg text-white leading-tight group-hover:text-cyber-yellow transition-colors truncate">
+                {shortName(currentWinner.player.name)}
+              </div>
+              {/* Inline stats chips */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                <StatChip label="W" value={currentWinner.performance.weeklyWins.toString()} color="text-green-400" />
+                <StatChip label="M" value={currentWinner.performance.weeklyMatches.toString()} color="text-gray-400" />
+                <StatChip label="ELO" value={`+${currentWinner.performance.eloGained}`} color="text-cyber-cyan" icon={<TrendingUp size={10} />} />
+                <StatChip label="WR" value={`${(currentWinner.performance.winRate * 100).toFixed(0)}%`} color="text-cyber-yellow" icon={<Zap size={10} />} />
               </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
-              <StatCard
-                icon={<Target size={14} className="text-cyber-cyan" />}
-                label="Wins"
-                value={currentWinner.performance.weeklyWins.toString()}
-              />
-              <StatCard
-                icon={<Calendar size={14} className="text-cyber-pink" />}
-                label="Matches"
-                value={currentWinner.performance.weeklyMatches.toString()}
-              />
-              <StatCard
-                icon={<TrendingUp size={14} className="text-green-400" />}
-                label="ELO Gained"
-                value={`+${currentWinner.performance.eloGained}`}
-              />
-              <StatCard
-                icon={<Zap size={14} className="text-cyber-yellow" />}
-                label="Win Rate"
-                value={`${(currentWinner.performance.winRate * 100).toFixed(0)}%`}
-              />
+            <div className="flex-shrink-0 text-right">
+              <div className="text-xl font-mono font-bold text-cyber-yellow">
+                {currentWinner.performance.performanceScore.toFixed(1)}
+              </div>
+              <div className="text-[9px] font-mono text-gray-600 uppercase tracking-wider">score</div>
             </div>
           </div>
 
-          {/* Runner-ups - visible when 3+ players have a valid score this week */}
+          {/* Runner-ups */}
           {currentRunnerUps.length > 0 && (
-            <div className="border-t border-white/10 pt-4 mb-4">
-              <div className="text-xs font-mono text-gray-500 uppercase tracking-widest mb-3">Runner-ups</div>
-              <div className="space-y-2">
-                {currentRunnerUps.map((r, i) => (
-                  <div
-                    key={r.player.id}
-                    className={`flex items-center gap-3 p-2 rounded-lg bg-white/[0.03] border border-white/5 ${onPlayerClick ? 'cursor-pointer hover:bg-white/[0.06] transition-colors' : ''}`}
-                    onClick={() => onPlayerClick?.(r.player.id)}
-                  >
-                    <span className="w-6 text-center font-mono text-gray-500 font-bold text-sm">{i + 2}</span>
-                    <img src={r.player.avatar} alt={r.player.name} className="w-8 h-8 rounded-full object-cover border border-white/20" referrerPolicy="no-referrer" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-white truncate">{r.player.name}</div>
-                    </div>
-                    <span className="text-sm font-mono font-bold text-cyber-cyan w-12 text-right">{r.performance.performanceScore.toFixed(1)}</span>
-                    <span className="text-sm font-mono text-gray-400 w-14 text-right" title="Delta to P1">{r.deltaToP1.toFixed(1)} pts</span>
+            <div className="mt-4 flex gap-2">
+              {currentRunnerUps.map((r, i) => (
+                <div
+                  key={r.player.id}
+                  className={`flex-1 flex items-center gap-2 p-2 rounded-lg bg-white/[0.03] border border-white/5 min-w-0 ${
+                    onPlayerClick ? 'cursor-pointer hover:bg-white/[0.06] transition-colors' : ''
+                  }`}
+                  onClick={() => onPlayerClick?.(r.player.id)}
+                >
+                  <span className="text-[10px] font-mono text-gray-600 font-bold w-3 flex-shrink-0">{i + 2}</span>
+                  <img src={thumbUrl(r.player.avatar, 48)} alt={r.player.name} className="w-6 h-6 rounded-full object-cover border border-white/20 flex-shrink-0" referrerPolicy="no-referrer" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-white truncate">{shortName(r.player.name)}</div>
                   </div>
-                ))}
-              </div>
+                  <span className="text-xs font-mono text-cyber-cyan flex-shrink-0">{r.performance.performanceScore.toFixed(1)}</span>
+                </div>
+              ))}
             </div>
           )}
 
           {/* Previous Winners */}
           {previousWinners.length > 0 && (
-            <div className="border-t border-white/10 pt-4">
-              <button
+            <div className="mt-3 border-t border-white/8 pt-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-between font-mono uppercase tracking-widest text-gray-500 hover:text-gray-300 h-7 text-[10px]"
                 onClick={() => setShowPrevious(!showPrevious)}
-                className="flex items-center gap-2 text-xs font-mono text-gray-400 hover:text-white transition-colors w-full justify-between"
               >
-                <span className="uppercase tracking-widest">Previous Winners</span>
-                {showPrevious ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
+                <span>Previous Winners</span>
+                {showPrevious ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </Button>
 
               {showPrevious && (
-                <div className="mt-3 space-y-2">
+                <div className="mt-2 space-y-1.5">
                   {previousWinners.map((w, i) => (
                     <div
                       key={i}
-                      className={`flex items-center gap-3 p-2 rounded-lg bg-white/[0.03] border border-white/5 ${onPlayerClick ? 'cursor-pointer hover:bg-white/[0.06] transition-colors' : ''}`}
+                      className={`flex items-center gap-3 py-1.5 px-2 rounded-lg ${
+                        onPlayerClick ? 'cursor-pointer hover:bg-white/[0.04] transition-colors' : ''
+                      }`}
                       onClick={() => onPlayerClick?.(w.player.id)}
                     >
-                      <img src={w.player.avatar} alt={w.player.name} className="w-8 h-8 rounded-full object-cover border border-cyber-yellow/30" referrerPolicy="no-referrer" />
+                      <img src={thumbUrl(w.player.avatar, 48)} alt={w.player.name} className="w-6 h-6 rounded-full object-cover border border-cyber-yellow/20 flex-shrink-0" referrerPolicy="no-referrer" loading="lazy" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-white truncate">{w.player.name}</div>
-                        <div className="text-[10px] font-mono text-gray-500">{w.weekLabel}</div>
+                        <span className="text-xs font-bold text-white truncate block">{shortName(w.player.name)}</span>
+                        <span className="text-[9px] font-mono text-gray-600">{w.weekLabel}</span>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-mono font-bold text-cyber-yellow">
-                          {w.performance.performanceScore.toFixed(1)}
-                        </div>
-                        <div className="text-[10px] font-mono text-gray-500">
-                          {w.performance.weeklyWins}W / {w.performance.weeklyMatches}M
-                        </div>
-                      </div>
+                      <span className="text-xs font-mono text-cyber-yellow flex-shrink-0">{w.performance.weeklyWins}W · {w.performance.weeklyMatches}M</span>
                     </div>
                   ))}
                 </div>
@@ -324,16 +297,16 @@ const PlayerOfTheWeek: React.FC<PlayerOfTheWeekProps> = ({ players, matches, his
           )}
         </>
       )}
-    </div>
+    </Card>
   );
 };
 
-const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
-  <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5 text-center">
-    <div className="flex items-center justify-center gap-1 mb-1">{icon}</div>
-    <div className="text-sm font-mono font-bold text-white">{value}</div>
-    <div className="text-[10px] font-mono text-gray-500 uppercase">{label}</div>
-  </div>
+const StatChip: React.FC<{ label: string; value: string; color: string; icon?: React.ReactNode }> = ({ label, value, color, icon }) => (
+  <span className="inline-flex items-center gap-1 text-[11px] font-mono">
+    {icon && <span className={color}>{icon}</span>}
+    <span className={`font-bold ${color}`}>{value}</span>
+    <span className="text-gray-600">{label}</span>
+  </span>
 );
 
 export default PlayerOfTheWeek;

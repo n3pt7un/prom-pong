@@ -2,11 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { Player, GameType } from '../types';
 import { Sparkles, Swords, ChevronDown, ChevronUp } from 'lucide-react';
 import { predictWinProbability, predictDoublesWinProbability, formatProbability } from '../utils/predictionUtils';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
 
 interface MatchMakerProps {
   players: Player[];
   onSelectMatch: (type: GameType, team1: string[], team2: string[]) => void;
   activeLeagueId?: string | null;
+  initialExpanded?: boolean;
 }
 
 interface Suggestion {
@@ -20,8 +23,8 @@ interface Suggestion {
 const MAX_SINGLES_SUGGESTIONS = 8;
 const MAX_DOUBLES_SUGGESTIONS = 8;
 
-const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch, activeLeagueId }) => {
-  const [expanded, setExpanded] = useState(false);
+const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch, activeLeagueId, initialExpanded = false }) => {
+  const [expanded, setExpanded] = useState(initialExpanded);
   const [type, setType] = useState<GameType>('singles');
 
   // Filter players by league when active
@@ -98,7 +101,7 @@ const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch, activeL
   const hasEnough = filteredPlayers.length >= minPlayers;
 
   return (
-    <div className="glass-panel rounded-xl border border-white/5 mb-6 overflow-hidden">
+    <Card className="mb-6 overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
@@ -114,22 +117,22 @@ const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch, activeL
         <div className="px-4 pb-4 space-y-4 animate-slideUp">
           {/* Type Toggle */}
           <div className="flex justify-center gap-3">
-            <button
+            <Button
+              size="sm"
               onClick={() => setType('singles')}
-              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
-                type === 'singles' ? 'bg-cyber-cyan text-black shadow-neon-cyan' : 'text-gray-400 hover:text-white border border-white/10'
-              }`}
+              className={type === 'singles' ? '' : 'border border-white/10 bg-transparent text-gray-400 hover:text-white hover:bg-white/5'}
+              variant={type === 'singles' ? 'default' : 'ghost'}
             >
               1v1 SINGLES
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
               onClick={() => setType('doubles')}
-              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
-                type === 'doubles' ? 'bg-cyber-pink text-black shadow-neon-pink' : 'text-gray-400 hover:text-white border border-white/10'
-              }`}
+              className={type === 'doubles' ? 'bg-cyber-pink text-black shadow-neon-pink hover:bg-cyber-pink/90' : 'border border-white/10 bg-transparent text-gray-400 hover:text-white hover:bg-white/5'}
+              variant={type === 'doubles' ? 'ghost' : 'ghost'}
             >
               2v2 DOUBLES
-            </button>
+            </Button>
           </div>
 
           {!hasEnough ? (
@@ -206,12 +209,14 @@ const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch, activeL
                       </div>
                     </div>
 
-                    <button
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 w-full"
                       onClick={() => onSelectMatch(type, s.team1, s.team2)}
-                      className="mt-2 w-full text-[10px] font-bold bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 text-gray-300 hover:text-white px-2 py-1.5 rounded transition-all flex items-center justify-center gap-1.5"
                     >
                       <Swords size={12} /> LOG THIS MATCH
-                    </button>
+                    </Button>
                   </div>
                 );
               })}
@@ -219,7 +224,7 @@ const MatchMaker: React.FC<MatchMakerProps> = ({ players, onSelectMatch, activeL
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 };
 

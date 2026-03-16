@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react';
 import { Player, Match, EloHistoryEntry } from '../types';
 import { Trophy, Crown, Flame, Target, TrendingUp, Zap, Medal, Award, Star } from 'lucide-react';
+import { Card } from './ui/card';
+import { shortName } from '../utils/playerRanking';
+import { thumbUrl } from '../utils/imageUtils';
 
 interface HallOfFameProps {
   players: Player[];
@@ -212,7 +215,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history, onPl
         title: 'Highest ELO Gain (Single Match)',
         icon: <TrendingUp size={18} className="text-green-400" />,
         holders: sortedByElo.map((m, i) => {
-          const winnerNames = m.winners.map(id => getPlayer(id)?.name || 'Unknown').join(' & ');
+          const winnerNames = m.winners.map(id => shortName(getPlayer(id)?.name || 'Unknown')).join(' & ');
           const p = getPlayer(m.winners[0]);
           return p
             ? { player: p, value: `+${m.eloChange} ELO`, detail: `${winnerNames} • ${formatDate(m.timestamp)}`, rank: i + 1 }
@@ -235,8 +238,8 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history, onPl
         title: 'Most Dominant Victory',
         icon: <Zap size={18} className="text-cyber-yellow" />,
         holders: sortedByMargin.map((h, i) => {
-          const winnerNames = h.match.winners.map(id => getPlayer(id)?.name || 'Unknown').join(' & ');
-          const loserNames = h.match.losers.map(id => getPlayer(id)?.name || 'Unknown').join(' & ');
+          const winnerNames = h.match.winners.map(id => shortName(getPlayer(id)?.name || 'Unknown')).join(' & ');
+          const loserNames = h.match.losers.map(id => shortName(getPlayer(id)?.name || 'Unknown')).join(' & ');
           const p = getPlayer(h.match.winners[0]);
           return p
             ? {
@@ -276,9 +279,9 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history, onPl
       {/* Records Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {records.map((record, ri) => (
-          <div
+          <Card
             key={ri}
-            className="glass-panel rounded-xl p-5 relative overflow-hidden"
+            className="rounded-xl p-5 relative overflow-hidden"
           >
             {/* Subtle glow for the top card */}
             {record.holders.length > 0 && record.holders[0].rank === 1 && (
@@ -318,16 +321,17 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history, onPl
 
                       {/* Avatar */}
                       <img
-                        src={h.player.avatar}
+                        src={thumbUrl(h.player.avatar, 64)}
                         alt={h.player.name}
                         className={`w-8 h-8 rounded-full object-cover border ${isFirst ? 'border-cyber-yellow shadow-[0_0_6px_rgba(252,238,10,0.4)]' : 'border-white/20'}`}
                         referrerPolicy="no-referrer"
+                        loading="lazy"
                       />
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className={`text-sm font-bold truncate ${isFirst ? 'text-white' : 'text-gray-300'}`}>
-                          {h.player.name}
+                          {shortName(h.player.name)}
                         </div>
                         <div className="text-[10px] font-mono text-gray-500 truncate">{h.detail}</div>
                       </div>
@@ -341,7 +345,7 @@ const HallOfFame: React.FC<HallOfFameProps> = ({ players, matches, history, onPl
                 })}
               </div>
             )}
-          </div>
+          </Card>
         ))}
       </div>
     </div>

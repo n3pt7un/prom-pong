@@ -5,6 +5,7 @@ import { RACKET_ICONS, formatRacketStats } from './RacketManager';
 import { Zap, TrendingUp, TrendingDown, Calendar, Sword, AlertTriangle, Pencil, Check, X, Activity, BarChart3, Target, Shield } from 'lucide-react';
 import { getPlayerAchievements } from '../achievements';
 import { getStatsForGameType } from '../utils/gameTypeStats';
+import { shortName } from '../utils/playerRanking';
 import {
   calculateRollingWinRate,
   getWinRateByOpponent,
@@ -14,6 +15,10 @@ import {
   getRecentForm,
 } from '../utils/statsUtils';
 import { computeSoS, computeSoSProgression, getSoSColor, SOS_THRESHOLD_TOUGH, SOS_THRESHOLD_EASY } from '../utils/sosUtils';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 
 interface PlayerProfileProps {
   player: Player;
@@ -63,9 +68,8 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
 
   const winRateByOpponent = useMemo(() => {
     const raw = getWinRateByOpponent(filteredMatches, player.id);
-    const playerMap = new Map(players.map(p => [p.id, p.name]));
+    const playerMap = new Map(players.map(p => [p.id, shortName(p.name)]));
     return raw
-      .filter(o => o.wins + o.losses >= 2)
       .map(o => ({
         ...o,
         opponentName: playerMap.get(o.opponentId) || o.opponentId,
@@ -80,7 +84,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
 
   const scoreAnalysis = useMemo(() => {
     const analysis = getScoreAnalysis(filteredMatches, player.id);
-    const playerMap = new Map(players.map(p => [p.id, p.name]));
+    const playerMap = new Map(players.map(p => [p.id, shortName(p.name)]));
     return {
       ...analysis,
       closestGame: {
@@ -197,10 +201,9 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* No-Racket Prompt */}
-      {needsRacket && (
-        <div className="glass-panel p-4 rounded-xl border border-cyber-yellow/30 bg-cyber-yellow/5 flex flex-col sm:flex-row items-center gap-4 animate-slideUp">
+    <div className="space-y-6 animate-fade-in">
+        {needsRacket && (
+        <Card className="p-4 border-cyber-yellow/30 bg-cyber-yellow/5 flex flex-col sm:flex-row items-center gap-4">
           <div className="flex items-center gap-3 flex-1">
             <AlertTriangle size={24} className="text-cyber-yellow flex-shrink-0" />
             <div>
@@ -210,27 +213,21 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
           </div>
           <div className="flex gap-2 flex-shrink-0">
             {onNavigateToArmory && (
-              <button
-                onClick={onNavigateToArmory}
-                className="flex items-center gap-1.5 bg-cyber-yellow text-black font-bold text-xs px-4 py-2 rounded-lg hover:bg-white transition-colors"
-              >
-                <Sword size={14} /> Go to Armory
-              </button>
+              <Button size="sm" onClick={onNavigateToArmory} className="bg-cyber-yellow text-black hover:bg-white">
+                <Sword size={14} className="mr-1" /> Go to Armory
+              </Button>
             )}
             {rackets.length > 0 && (
-              <button
-                onClick={handleEquipFromPrompt}
-                className="flex items-center gap-1.5 bg-white/5 text-gray-300 font-bold text-xs px-4 py-2 rounded-lg border border-white/10 hover:bg-white/10 hover:text-white transition-colors"
-              >
-                <Zap size={14} /> Equip Existing
-              </button>
+              <Button size="sm" variant="outline" onClick={handleEquipFromPrompt}>
+                <Zap size={14} className="mr-1" /> Equip Existing
+              </Button>
             )}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Header */}
-      <div className="glass-panel p-6 rounded-xl flex flex-col md:flex-row items-center gap-6 border-b-4 border-cyber-purple bg-gradient-to-r from-black/60 to-cyber-purple/10">
+      <Card className="p-6 flex flex-col md:flex-row items-center gap-6 border-b-4 border-cyber-purple bg-gradient-to-r from-black/60 to-cyber-purple/10">
         <div className="relative">
             <img src={player.avatar} className="w-24 h-24 rounded-full border-4 border-white/10 shadow-lg object-cover" />
             <div className="absolute -bottom-2 -right-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded border border-white/20">
@@ -243,23 +240,22 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
           <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
             {editingName ? (
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
+                <Input
                   value={nameValue}
                   onChange={(e) => setNameValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleNameConfirm();
                     if (e.key === 'Escape') setEditingName(false);
                   }}
-                  className="bg-black/50 border border-cyber-yellow/50 text-white text-2xl font-display font-bold px-3 py-1 rounded outline-none focus:border-cyber-yellow"
+                  className="text-2xl font-display font-bold h-12 border-cyber-yellow/50 focus:border-cyber-yellow"
                   autoFocus
                 />
-                <button onClick={handleNameConfirm} className="p-1.5 text-green-400 hover:bg-green-400/20 rounded transition-colors">
-                  <Check size={18} />
-                </button>
-                <button onClick={() => setEditingName(false)} className="p-1.5 text-gray-400 hover:bg-white/10 rounded transition-colors">
-                  <X size={18} />
-                </button>
+                <Button size="icon-sm" variant="ghost" onClick={handleNameConfirm} className="text-green-400 hover:bg-green-400/20">
+                  <Check size={16} />
+                </Button>
+                <Button size="icon-sm" variant="ghost" onClick={() => setEditingName(false)}>
+                  <X size={16} />
+                </Button>
               </div>
             ) : (
               <>
@@ -319,11 +315,11 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
               {rackets.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
            </select>
         </div>
-      </div>
+        </Card>
 
       {/* Achievements */}
       {achievements.length > 0 && (
-        <div className="glass-panel p-4 rounded-xl">
+        <Card className="p-4">
           <h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-widest">Achievements</h3>
           <div className="flex flex-wrap gap-3">
             {achievements.map(a => {
@@ -336,29 +332,15 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
               );
             })}
           </div>
-        </div>
+        </Card>
       )}
-
-      {/* Game Type Toggle */}
       <div className="flex justify-center">
-        <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
-          <button
-            onClick={() => setSelectedGameType('singles')}
-            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
-              selectedGameType === 'singles' ? 'bg-cyber-cyan text-black shadow-neon-cyan' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            SINGLES
-          </button>
-          <button
-            onClick={() => setSelectedGameType('doubles')}
-            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
-              selectedGameType === 'doubles' ? 'bg-cyber-pink text-black shadow-neon-pink' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            DOUBLES
-          </button>
-        </div>
+        <Tabs value={selectedGameType} onValueChange={(v) => setSelectedGameType(v as GameType)}>
+          <TabsList>
+            <TabsTrigger value="singles">SINGLES</TabsTrigger>
+            <TabsTrigger value="doubles">DOUBLES</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Stats Grid */}
@@ -378,7 +360,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart */}
-        <div className="lg:col-span-2 glass-panel p-6 rounded-xl min-h-[250px]">
+        <Card className="lg:col-span-2 p-6 min-h-[250px]">
             <h3 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest">
             <span className="w-1.5 h-6 bg-cyber-cyan rounded-full" />
             Performance History
@@ -406,10 +388,10 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
             </LineChart>
             </ResponsiveContainer>
             </div>
-        </div>
+        </Card>
 
         {/* Recent Matches Mini-Feed */}
-        <div className="lg:col-span-1 glass-panel p-6 rounded-xl">
+        <Card className="lg:col-span-1 p-6">
             <h3 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest">
             <span className="w-1.5 h-6 bg-cyber-pink rounded-full" />
             Recent Form
@@ -440,14 +422,14 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
                     <div className="text-xs text-gray-600 italic">No matches played</div>
                 )}
             </div>
-        </div>
+        </Card>
       </div>
 
       {/* Advanced Stats Section - Conditional Rendering */}
       {playerMatchCount >= 2 ? (
         <>
           {/* Recent Form Indicator */}
-          <div className="glass-panel p-6 rounded-xl border border-white/10">
+          <Card className="p-6 border-white/10">
             <h3 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest">
               <Activity size={16} className="text-cyber-cyan" />
               Recent Form
@@ -470,12 +452,12 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
                 <div className="text-sm text-gray-500 italic">No matches yet</div>
               )}
             </div>
-          </div>
+          </Card>
 
           {/* Charts Row: Win Rate by Opponent & Performance Trend */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Win Rate by Opponent */}
-            <div className="glass-panel rounded-xl border border-white/5 p-4">
+            <div className="p-4 border-white/5">
               <div className="flex items-center gap-2 mb-4">
                 <BarChart3 size={16} className="text-cyber-cyan" />
                 <h3 className="font-display text-sm text-white tracking-wider">WIN RATE BY OPPONENT</h3>
@@ -505,7 +487,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
             </div>
 
             {/* Performance Trend */}
-            <div className="glass-panel rounded-xl border border-white/5 p-4">
+            <div className="p-4 border-white/5">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp size={16} className="text-cyber-cyan" />
                 <h3 className="font-display text-sm text-white tracking-wider">PERFORMANCE TREND</h3>
@@ -537,7 +519,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
           </div>
 
           {/* Day of Week Heatmap */}
-          <div className="glass-panel rounded-xl border border-white/5 p-4">
+          <div className="p-4 border-white/5">
             <div className="flex items-center gap-2 mb-4">
               <Calendar size={16} className="text-cyber-cyan" />
               <h3 className="font-display text-sm text-white tracking-wider">DAY OF WEEK PERFORMANCE</h3>
@@ -589,7 +571,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
           {/* Score Analysis Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Avg Win Margin */}
-            <div className="glass-panel rounded-xl border border-white/5 p-4 text-center">
+            <div className="p-4 border-white/5 text-center">
               <Target size={20} className="text-cyber-cyan mx-auto mb-2" />
               <div className="font-display text-xs text-gray-400 tracking-wider mb-1">AVG WIN MARGIN</div>
               <div className="font-mono text-2xl text-white" style={{ textShadow: '0 0 10px #00f3ff' }}>
@@ -598,7 +580,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
             </div>
 
             {/* Closest Game */}
-            <div className="glass-panel rounded-xl border border-white/5 p-4 text-center">
+            <div className="p-4 border-white/5 text-center">
               <Activity size={20} className="text-cyber-pink mx-auto mb-2" />
               <div className="font-display text-xs text-gray-400 tracking-wider mb-1">CLOSEST GAME</div>
               <div className="font-mono text-2xl text-white" style={{ textShadow: '0 0 10px #ff00ff' }}>
@@ -612,7 +594,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
             </div>
 
             {/* Biggest Blowout */}
-            <div className="glass-panel rounded-xl border border-white/5 p-4 text-center">
+            <div className="p-4 border-white/5 text-center">
               <Zap size={20} className="text-cyber-yellow mx-auto mb-2" />
               <div className="font-display text-xs text-gray-400 tracking-wider mb-1">BIGGEST BLOWOUT</div>
               <div className="font-mono text-2xl text-white" style={{ textShadow: '0 0 10px #fcee0a' }}>
@@ -626,7 +608,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
             </div>
 
             {/* Total ELO Gained */}
-            <div className="glass-panel rounded-xl border border-white/5 p-4 text-center">
+            <div className="p-4 border-white/5 text-center">
               <TrendingUp 
                 size={20} 
                 className={`mx-auto mb-2 ${scoreAnalysis.totalEloGained >= 0 ? 'text-green-400' : 'text-red-400'}`} 
@@ -643,7 +625,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
 
           {/* SoS Progression */}
           {sosProgression.length >= 2 && (
-            <div className="glass-panel rounded-xl border border-white/5 p-4">
+            <div className="p-4 border-white/5">
               <div className="flex items-center gap-2 mb-4">
                 <Shield size={16} className="text-cyber-yellow" />
                 <h3 className="font-display text-sm text-white tracking-wider">STRENGTH OF SCHEDULE</h3>
@@ -710,7 +692,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
           )}
 
           {/* ELO Volatility Gauge */}
-          <div className="glass-panel rounded-xl border border-white/5 p-4">
+          <div className="p-4 border-white/5">
             <div className="flex items-center gap-2 mb-4">
               <Zap size={16} className="text-cyber-yellow" />
               <h3 className="font-display text-sm text-white tracking-wider">ELO VOLATILITY</h3>
@@ -743,29 +725,28 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({
           </div>
         </>
       ) : (
-        <div className="glass-panel p-6 rounded-xl border border-cyber-yellow/30 bg-cyber-yellow/5">
+        <Card className="p-6 border-cyber-yellow/30 bg-cyber-yellow/5">
           <div className="flex items-center gap-3 justify-center">
             <AlertTriangle size={20} className="text-cyber-yellow" />
             <p className="text-sm text-gray-300">
               Need at least 2 {selectedGameType} matches for advanced stats analysis
             </p>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );
 };
 
 const StatCard = ({ label, value, color, icon, tooltip }: any) => (
-  <div className="glass-panel p-4 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-colors" title={tooltip}>
+  <Card className="p-4 flex flex-col items-center justify-center gap-1 hover:bg-white/5 transition-colors" title={tooltip}>
     <div className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
         {icon} {label}
     </div>
     <div className={`text-xl md:text-2xl font-mono font-bold ${color}`}>
       {value}
     </div>
-  </div>
+  </Card>
 );
 
 export default PlayerProfile;
-

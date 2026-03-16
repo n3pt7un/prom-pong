@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { League, Player } from '../types';
 import { Users, Plus, Pencil, Trash2, X, Check, Building2 } from 'lucide-react';
+import { thumbUrl } from '../utils/imageUtils';
+import { Button } from './ui/button';
 
 interface LeagueManagerProps {
   leagues: League[];
@@ -70,7 +72,7 @@ const LeagueManager: React.FC<LeagueManagerProps> = ({
 
   if (!isAdmin) {
     return (
-      <div className="glass-panel p-6 rounded-xl">
+      <div className="p-6 rounded-xl">
         <div className="flex items-center gap-3 mb-4">
           <Building2 className="text-cyber-cyan w-6 h-6" />
           <h3 className="text-lg font-display font-bold text-white">LEAGUES</h3>
@@ -80,7 +82,7 @@ const LeagueManager: React.FC<LeagueManagerProps> = ({
         ) : (
           <div className="space-y-2">
             {leagues.map(league => (
-              <div key={league.id} className="glass-panel p-3 rounded-lg flex items-center justify-between">
+              <div key={league.id} className="p-3 rounded-lg flex items-center justify-between">
                 <div>
                   <span className="font-bold text-white">{league.name}</span>
                   {league.description && <p className="text-xs text-gray-400 mt-0.5">{league.description}</p>}
@@ -95,18 +97,15 @@ const LeagueManager: React.FC<LeagueManagerProps> = ({
   }
 
   return (
-    <div className="glass-panel p-6 rounded-xl">
+    <div className="p-6 rounded-xl">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Building2 className="text-cyber-cyan w-6 h-6" />
           <h3 className="text-lg font-display font-bold text-white">LEAGUE <span className="text-cyber-cyan">MANAGER</span></h3>
         </div>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30 rounded-lg hover:bg-cyber-cyan/20 transition-colors"
-        >
+        <Button variant="cyber" size="sm" onClick={() => setShowCreate(!showCreate)}>
           <Plus size={14} /> New League
-        </button>
+        </Button>
       </div>
 
       {/* Create Form */}
@@ -127,19 +126,10 @@ const LeagueManager: React.FC<LeagueManagerProps> = ({
             className="w-full bg-black/50 border border-white/10 text-white p-2.5 rounded-lg font-mono text-sm focus:border-cyber-cyan outline-none"
           />
           <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => setShowCreate(false)}
-              className="px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors font-bold"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleCreate}
-              disabled={!newName.trim() || isSubmitting}
-              className="px-3 py-1.5 text-xs text-black bg-cyber-cyan hover:bg-white rounded-lg transition-colors font-bold disabled:opacity-50"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleCreate} disabled={!newName.trim() || isSubmitting}>
               {isSubmitting ? 'Creating...' : 'Create'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -153,7 +143,7 @@ const LeagueManager: React.FC<LeagueManagerProps> = ({
         )}
 
         {leagues.map(league => (
-          <div key={league.id} className="glass-panel p-4 rounded-lg border-l-2 border-l-cyber-cyan">
+          <div key={league.id} className="p-4 rounded-lg border-l-2 border-l-cyber-cyan">
             {editingId === league.id ? (
               <div className="space-y-3">
                 <input
@@ -170,8 +160,8 @@ const LeagueManager: React.FC<LeagueManagerProps> = ({
                   className="w-full bg-black/50 border border-white/10 text-white p-2 rounded-lg font-mono text-sm focus:border-cyber-cyan outline-none"
                 />
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setEditingId(null)} className="p-1.5 text-gray-400 hover:text-white"><X size={14} /></button>
-                  <button onClick={() => handleUpdate(league.id)} disabled={isSubmitting} className="p-1.5 text-cyber-cyan hover:text-white"><Check size={14} /></button>
+                  <Button variant="ghost" size="icon-sm" onClick={() => setEditingId(null)}><X size={14} /></Button>
+                  <Button variant="cyber" size="icon-sm" onClick={() => handleUpdate(league.id)} disabled={isSubmitting}><Check size={14} /></Button>
                 </div>
               </div>
             ) : (
@@ -182,8 +172,8 @@ const LeagueManager: React.FC<LeagueManagerProps> = ({
                   <p className="text-xs text-gray-500 font-mono mt-1">{getLeaguePlayerCount(league.id)} players</p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => startEdit(league)} className="p-1.5 text-gray-600 hover:text-cyber-cyan transition-colors"><Pencil size={14} /></button>
-                  <button onClick={() => handleDelete(league.id)} className="p-1.5 text-gray-600 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                  <Button variant="ghost" size="icon-sm" className="text-gray-600 hover:text-cyber-cyan" onClick={() => startEdit(league)}><Pencil size={14} /></Button>
+                  <Button variant="ghost" size="icon-sm" className="text-gray-600 hover:text-red-400" onClick={() => handleDelete(league.id)}><Trash2 size={14} /></Button>
                 </div>
               </div>
             )}
@@ -201,7 +191,7 @@ const LeagueManager: React.FC<LeagueManagerProps> = ({
             {players.map(player => (
               <div key={player.id} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-black/20 hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-2 min-w-0">
-                  <img src={player.avatar} className="w-6 h-6 rounded-full flex-shrink-0" />
+                  <img src={thumbUrl(player.avatar, 48)} className="w-6 h-6 rounded-full flex-shrink-0" loading="lazy" />
                   <span className="text-sm text-white font-bold truncate">{player.name}</span>
                 </div>
                 <select

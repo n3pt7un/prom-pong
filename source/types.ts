@@ -163,6 +163,16 @@ export interface Challenge {
   matchId?: string;
   createdAt: string;
   message?: string;
+  source?: 'manual' | 'auto_generated' | 'tournament';
+  gameType?: GameType;
+  leagueId?: string | null;
+  generatedAt?: string;
+  expiresAt?: string;
+  generationReason?: string;
+  respondedAt?: string;
+  completedAt?: string;
+  challengerAcceptedAt?: string;
+  challengedAcceptedAt?: string;
 }
 
 // --- Correction Requests ---

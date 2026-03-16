@@ -1,11 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { Player, Match, GameType, League, EloHistoryEntry } from '../types';
 import RankBadge from './RankBadge';
-import { TrendingUp, TrendingDown, Minus, Info, ChevronDown, ChevronUp, Target } from 'lucide-react';
+import { Info, Target } from 'lucide-react';
 import { RANKS } from '../constants';
 import { getPlayerStats } from '../utils/gameTypeStats';
-import { partitionPlayers, sortRankedPlayers, sortUnrankedPlayers } from '../utils/playerRanking';
+import { partitionPlayers, sortRankedPlayers, sortUnrankedPlayers, shortName } from '../utils/playerRanking';
+import { thumbUrl } from '../utils/imageUtils';
 import { computeSoS, getSoSColor } from '../utils/sosUtils';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { useLeague } from '../context/LeagueContext';
 
 interface LeaderboardProps {
   players: Player[];
@@ -19,6 +25,12 @@ interface LeaderboardProps {
 const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [], onPlayerClick, activeLeagueId, leagues = [] }) => {
   const [type, setType] = useState<GameType>('singles');
   const [showInfo, setShowInfo] = useState(false);
+  const { eloConfig } = useLeague();
+
+  const kFactor = eloConfig?.kFactor ?? 32;
+  const initialElo = eloConfig?.initialElo ?? 1200;
+  const dFactor = eloConfig?.dFactor ?? 200;
+  const formulaPreset = eloConfig?.formulaPreset ?? 'standard';
 
   // Filter players by league if active (memoized)
   const filteredPlayers = useMemo(() => 
@@ -66,304 +78,197 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ players, matches, history = [
   }, [matches, type]);
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-3">
-          <h2 className="text-3xl font-display font-bold text-white neon-text-cyan">
-            {activeLeague ? activeLeague.name.toUpperCase() : 'GLOBAL'} <span className="text-cyber-pink">RANKINGS</span>
-          </h2>
+    <Card className="p-4 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-display font-bold text-white tracking-widest uppercase">
+            {activeLeague ? activeLeague.name.toUpperCase() : 'GLOBAL'}{' '}
+            <span className="text-cyber-cyan">RANKINGS</span>
+          </span>
           <button
             onClick={() => setShowInfo(!showInfo)}
-            className={`p-2 rounded-lg border transition-all ${
+            className={`p-1 rounded-md border transition-all ${
               showInfo
                 ? 'bg-cyber-cyan/10 border-cyber-cyan/30 text-cyber-cyan'
-                : 'border-white/10 text-gray-500 hover:text-white hover:border-white/30'
+                : 'border-white/10 text-gray-600 hover:text-gray-300 hover:border-white/25'
             }`}
             title="How ELO & Ranking Works"
           >
-            <Info size={16} />
+            <Info size={12} />
           </button>
         </div>
-        <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
-          <button
-            onClick={() => setType('singles')}
-            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
-              type === 'singles' ? 'bg-cyber-cyan text-black shadow-neon-cyan' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            SINGLES
-          </button>
-          <button
-            onClick={() => setType('doubles')}
-            className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
-              type === 'doubles' ? 'bg-cyber-pink text-black shadow-neon-pink' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            DOUBLES
-          </button>
-        </div>
+        <Tabs value={type} onValueChange={(v) => setType(v as GameType)}>
+          <TabsList>
+            <TabsTrigger value="singles">Singles</TabsTrigger>
+            <TabsTrigger value="doubles">Doubles</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* ELO Info Panel */}
       {showInfo && (
-        <div className="glass-panel p-6 rounded-xl border border-cyber-cyan/20 space-y-5 animate-slideUp">
-          <h3 className="text-lg font-display font-bold text-cyber-cyan">HOW RANKING WORKS</h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* ELO Explanation */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">The ELO System</h4>
-              <p className="text-sm text-gray-300 leading-relaxed">
-                Every player starts at <span className="text-cyber-cyan font-mono font-bold">1200 ELO</span>. After each match, rating points transfer from the loser to the winner.
-              </p>
-              <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">K-Factor</span>
-                  <span className="text-white font-mono font-bold">32</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Starting Rating</span>
-                  <span className="text-white font-mono font-bold">1200</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Separate Ratings</span>
-                  <span className="text-white font-mono font-bold">Singles + Doubles</span>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Beating a higher-rated player gives more points. Beating a lower-rated player gives fewer. The K-factor of 32 is the standard competitive ELO setting, balancing responsiveness with stability.
+        <div className="mb-4 bg-black/30 border border-cyber-cyan/20 rounded-xl p-4 space-y-3 animate-fade-in text-xs">
+          <h3 className="text-xs font-display font-bold text-cyber-cyan tracking-widest uppercase">How Ranking Works</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">ELO System</p>
+              <p className="text-gray-300 leading-relaxed">
+                Start at <span className="text-cyber-cyan font-mono font-bold">{initialElo}</span>.{' '}
+                Points transfer from loser to winner. K-factor: <span className="font-mono font-bold text-white">{kFactor}</span>.{' '}
+                Singles &amp; doubles rated separately.
               </p>
             </div>
-
-            {/* How it works */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">How Points Are Calculated</h4>
-              <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2 text-xs font-mono text-gray-300">
-                <p><span className="text-gray-500">Expected Score =</span> 1 / (1 + 10<sup>(opponent - you) / 200</sup>)</p>
-                <p><span className="text-gray-500">New Rating =</span> Old + 32 x (result - expected)</p>
-                <p className="text-gray-500 pt-1">result: 1 = win, 0 = loss</p>
-              </div>
-              <div className="bg-black/30 rounded-lg p-3 border border-white/5 text-xs space-y-1">
-                <p className="text-gray-400"><span className="text-green-400 font-bold">Example:</span> You (1200) beat someone at 1400</p>
-                <p className="text-gray-300">Expected win chance: ~9%. You gain <span className="text-green-400 font-bold">+29 pts</span></p>
-                <p className="text-gray-400 mt-1"><span className="text-red-400 font-bold">Example:</span> You (1400) lose to someone at 1200</p>
-                <p className="text-gray-300">Expected win chance: ~91%. You lose <span className="text-red-400 font-bold">-29 pts</span></p>
+            <div className="space-y-1.5">
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+                Formula
+                {formulaPreset !== 'standard' && (
+                  <span className="ml-1.5 text-cyber-yellow normal-case tracking-normal font-normal">
+                    ({formulaPreset === 'score_weighted' ? 'score-weighted' : 'custom'})
+                  </span>
+                )}
+              </p>
+              <div className="bg-black/40 rounded-lg p-2.5 border border-white/5 font-mono text-gray-300 space-y-1">
+                {formulaPreset === 'custom' && eloConfig?.customFormula ? (
+                  <p className="text-[10px] break-all text-gray-400">{eloConfig.customFormula}</p>
+                ) : (
+                  <>
+                    <p><span className="text-gray-500">Expected =</span> 1 / (1 + 10<sup>(opp−you)/{dFactor}</sup>)</p>
+                    {formulaPreset === 'score_weighted' ? (
+                      <p><span className="text-gray-500">New =</span> Old + {kFactor} × <span className="text-cyber-yellow">(1 + score_margin)</span> × (result − expected)</p>
+                    ) : (
+                      <p><span className="text-gray-500">New =</span> Old + {kFactor} × (result − expected)</p>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
-
-          {/* Doubles */}
-          <div className="bg-black/30 rounded-lg p-3 border border-white/5">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Doubles Matches</h4>
-            <p className="text-xs text-gray-300">In doubles, the <span className="text-white font-bold">average ELO</span> of each team is used for the calculation. Both teammates gain/lose the same amount. Doubles has a separate rating from singles.</p>
-          </div>
-
-          {/* Strength of Schedule */}
-          <div className="bg-black/30 rounded-lg p-3 border border-white/5">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Target size={12} className="text-cyber-yellow" /> Strength of Schedule (SoS)
-            </h4>
-            <p className="text-xs text-gray-300 leading-relaxed">
-              SoS shows the <span className="text-white font-bold">average ELO of your opponents</span>. Color is relative to <span className="text-white font-bold">your own rating</span> —
-              green means your opponents are near or above your level, orange means you've been playing well below your level.
+          <div className="bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1.5 flex items-center gap-1">
+              <Target size={10} className="text-cyber-yellow" /> Strength of Schedule
             </p>
-            <div className="mt-2 flex gap-3 text-[10px] font-mono">
-              <span className="text-green-400">● Near your ELO or above</span>
-              <span className="text-yellow-400">● Moderately below your ELO</span>
-              <span className="text-orange-400">● Well below your ELO</span>
+            <p className="text-gray-300">Average ELO of your opponents, coloured relative to your own rating.</p>
+            <div className="mt-1.5 flex gap-3 font-mono text-[10px]">
+              <span className="text-green-400">● Near/above your ELO</span>
+              <span className="text-yellow-400">● Moderately below</span>
+              <span className="text-orange-400">● Well below</span>
             </div>
           </div>
-
-          {/* Rank Tiers */}
           <div>
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Rank Tiers</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-2">Rank Tiers</p>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
               {RANKS.map((rank, i) => {
-                const nextThreshold = RANKS[i + 1]?.threshold;
+                const next = RANKS[i + 1]?.threshold;
                 return (
-                  <div key={rank.name} className="bg-black/30 rounded-lg p-3 border border-white/5 text-center">
-                    <div className={`text-sm font-display font-bold ${rank.color}`}>{rank.name}</div>
-                    <div className="text-[10px] font-mono text-gray-500 mt-1">
-                      {rank.threshold}{nextThreshold ? ` - ${nextThreshold - 1}` : '+'}
-                    </div>
+                  <div key={rank.name} className="bg-black/30 rounded-lg p-2 border border-white/5 text-center">
+                    <div className={`text-xs font-display font-bold ${rank.color}`}>{rank.name}</div>
+                    <div className="text-[9px] font-mono text-gray-600 mt-0.5">{rank.threshold}{next ? `–${next - 1}` : '+'}</div>
                   </div>
                 );
               })}
             </div>
           </div>
-
-          {/* Notes */}
-          <p className="text-[10px] text-gray-600 leading-relaxed">
-            Deleting a match reverses ELO changes but resets streak to 0 (exact streak reconstruction is not possible). Win streaks are tracked as consecutive wins/losses.
-          </p>
         </div>
       )}
 
-      <div className="glass-panel rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-white/5 border-b border-white/10 text-gray-400 text-xs uppercase tracking-widest font-mono">
-                <th className="p-4 text-center w-16">#</th>
-                <th className="p-4">Player</th>
-                <th className="p-4 text-right">Rating</th>
-                <th className="p-4 text-center hidden lg:table-cell" title="Strength of Schedule — avg opponent ELO">SoS</th>
-                <th className="p-4 text-center hidden md:table-cell">W/L</th>
-                <th className="p-4 text-center hidden sm:table-cell">Streak</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {sortedRanked.map((player, index) => {
-                const elo = type === 'singles' ? player.eloSingles : player.eloDoubles;
-                const delta = getLastDelta(player.id);
-                const stats = getPlayerStats(player, type);
-                return (
-                  <tr key={player.id} className={`hover:bg-white/5 transition-colors group ${onPlayerClick ? 'cursor-pointer' : ''}`} onClick={() => onPlayerClick?.(player.id)}>
-                    <td className="p-4 text-center font-mono text-gray-500 font-bold text-lg group-hover:text-cyber-cyan">
-                      {index + 1}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={player.avatar}
-                          alt={player.name}
-                          className="w-10 h-10 rounded-full border border-white/20"
-                        />
-                        <div>
-                          <div className="font-bold text-white tracking-wide flex items-center gap-2">
-                            {player.name}
-                            {!activeLeagueId && player.leagueId && (() => {
-                              const league = leagues.find(l => l.id === player.leagueId);
-                              return league ? (
-                                <span className="text-[10px] font-mono font-bold text-cyber-purple bg-cyber-purple/10 border border-cyber-purple/30 px-1.5 py-0.5 rounded-full">
-                                  {league.name}
-                                </span>
-                              ) : null;
-                            })()}
-                          </div>
-                          <RankBadge elo={elo} />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <span className="font-mono text-xl font-bold text-cyber-cyan neon-text-cyan">
-                        {elo}
-                      </span>
-                      {delta !== null && (
-                        <span className={`ml-2 text-xs font-mono font-bold ${delta > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {delta > 0 ? '+' : ''}{delta}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-center hidden lg:table-cell">
-                      {(() => {
-                        const sos = sosMap.get(player.id);
-                        if (sos === null || sos === undefined) {
-                          return <span className="text-gray-600 font-mono text-sm">—</span>;
-                        }
-                        return (
-                          <span className={`font-mono text-sm font-bold ${getSoSColor(sos, elo)}`} title={`Avg opponent ELO (your ELO: ${elo})`}>
-                            {sos}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="p-4 text-center hidden md:table-cell text-sm text-gray-400 font-mono">
-                      <span className="text-green-400">{stats.wins}</span> - <span className="text-red-400">{stats.losses}</span>
-                    </td>
-                    <td className="p-4 text-center hidden sm:table-cell">
-                      <div className="flex items-center justify-center gap-1 font-mono text-xs font-bold">
-                        {stats.streak > 0 ? (
-                          <span className="flex items-center text-green-400">
-                            <TrendingUp size={14} className="mr-1" /> {stats.streak}W
-                          </span>
-                        ) : stats.streak < 0 ? (
-                          <span className="flex items-center text-red-400">
-                            <TrendingDown size={14} className="mr-1" /> {Math.abs(stats.streak)}L
-                          </span>
-                        ) : (
-                          <span className="flex items-center text-gray-500">
-                            <Minus size={14} className="mr-1" /> -
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {/* Ranked rows */}
+      <div className="space-y-0.5">
+        {sortedRanked.map((player, index) => {
+          const elo = type === 'singles' ? player.eloSingles : player.eloDoubles;
+          const delta = getLastDelta(player.id);
+          const stats = getPlayerStats(player, type);
+          const sos = sosMap.get(player.id);
+          const isTop = index === 0;
+          return (
+            <div
+              key={player.id}
+              onClick={() => onPlayerClick?.(player.id)}
+              className={`flex items-center gap-3 px-2 py-2 rounded-lg border transition-colors ${
+                onPlayerClick ? 'cursor-pointer hover:bg-white/[0.05]' : ''
+              } ${isTop ? 'bg-cyber-cyan/[0.04] border-cyber-cyan/10' : 'border-transparent'}`}
+            >
+              {/* Position */}
+              <span className={`w-5 text-center text-[11px] font-mono font-bold flex-shrink-0 ${
+                isTop ? 'text-cyber-cyan' : index < 3 ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                {index + 1}
+              </span>
 
-        {/* Unranked Section */}
-        {sortedUnranked.length > 0 && (
-          <>
-            <div className="bg-gradient-to-r from-white/5 to-transparent border-t border-white/10 px-6 py-4">
-              <h3 className="text-sm font-display font-bold text-gray-400 uppercase tracking-widest">
-                Unranked Players (No Games Played)
-              </h3>
+              {/* Avatar */}
+              <Avatar className="w-8 h-8 ring-1 ring-white/10 flex-shrink-0">
+                <AvatarImage src={thumbUrl(player.avatar, 64)} alt={player.name} />
+                <AvatarFallback className="text-[10px]">{player.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+
+              {/* Name + sub-chips */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center">
+                  <span className="font-bold text-white text-sm leading-tight truncate">{shortName(player.name)}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <RankBadge elo={elo} />
+                  {stats.streak !== 0 && (
+                    <span className={`text-[10px] font-mono font-bold ${stats.streak > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {stats.streak > 0 ? `↑${stats.streak}` : `↓${Math.abs(stats.streak)}`}
+                    </span>
+                  )}
+                  {sos !== null && sos !== undefined && (
+                    <span className={`text-[10px] font-mono hidden sm:inline ${getSoSColor(sos, elo)}`} title={`Avg opponent ELO: ${sos}`}>
+                      SoS {sos}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* ELO + delta */}
+              <div className="flex flex-col items-end flex-shrink-0">
+                <span className={`font-mono text-base font-bold leading-tight ${isTop ? 'text-cyber-cyan neon-text-cyan' : 'text-cyber-cyan'}`}>
+                  {elo}
+                </span>
+                {delta !== null && (
+                  <span className={`text-[10px] font-mono font-bold leading-tight ${delta > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {delta > 0 ? '+' : ''}{delta}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <tbody className="divide-y divide-white/5">
-                  {sortedUnranked.map((player) => {
-                    const elo = type === 'singles' ? player.eloSingles : player.eloDoubles;
-                    return (
-                      <tr key={player.id} className={`hover:bg-white/5 transition-colors group ${onPlayerClick ? 'cursor-pointer' : ''}`} onClick={() => onPlayerClick?.(player.id)}>
-                        <td className="p-4 text-center font-mono text-gray-500 font-bold text-lg">
-                          —
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={player.avatar}
-                              alt={player.name}
-                              className="w-10 h-10 rounded-full border border-white/20"
-                            />
-                            <div>
-                              <div className="font-bold text-white tracking-wide flex items-center gap-2">
-                                {player.name}
-                                {!activeLeagueId && player.leagueId && (() => {
-                                  const league = leagues.find(l => l.id === player.leagueId);
-                                  return league ? (
-                                    <span className="text-[10px] font-mono font-bold text-cyber-purple bg-cyber-purple/10 border border-cyber-purple/30 px-1.5 py-0.5 rounded-full">
-                                      {league.name}
-                                    </span>
-                                  ) : null;
-                                })()}
-                              </div>
-                              <RankBadge elo={elo} />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-right">
-                          <span className="font-mono text-xl font-bold text-gray-500">
-                            {elo}
-                          </span>
-                        </td>
-                        <td className="p-4 text-center hidden lg:table-cell">
-                          <span className="text-gray-600 font-mono text-sm">—</span>
-                        </td>
-                        <td className="p-4 text-center hidden md:table-cell text-sm text-gray-500 font-mono">
-                          0 - 0
-                        </td>
-                        <td className="p-4 text-center hidden sm:table-cell">
-                          <div className="flex items-center justify-center gap-1 font-mono text-xs font-bold">
-                            <span className="flex items-center text-gray-500">
-                              <Minus size={14} className="mr-1" /> -
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+          );
+        })}
       </div>
-    </div>
+
+      {/* Unranked */}
+      {sortedUnranked.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-white/8">
+          <p className="text-[10px] font-mono text-gray-600 uppercase tracking-widest mb-2">Unranked — No Games Played</p>
+          <div className="space-y-0.5">
+            {sortedUnranked.map((player) => {
+              const elo = type === 'singles' ? player.eloSingles : player.eloDoubles;
+              return (
+                <div
+                  key={player.id}
+                  onClick={() => onPlayerClick?.(player.id)}
+                  className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-colors ${
+                    onPlayerClick ? 'cursor-pointer hover:bg-white/[0.03]' : ''
+                  }`}
+                >
+                  <span className="w-5 text-center text-[11px] font-mono text-gray-700 flex-shrink-0">—</span>
+                  <Avatar className="w-7 h-7 ring-1 ring-white/5 flex-shrink-0 opacity-50">
+                    <AvatarImage src={thumbUrl(player.avatar, 64)} alt={player.name} />
+                    <AvatarFallback className="text-[10px]">{player.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-gray-500 text-sm truncate block">{shortName(player.name)}</span>
+                    <RankBadge elo={elo} />
+                  </div>
+                  <span className="font-mono text-sm font-bold text-gray-700 flex-shrink-0">{elo}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </Card>
   );
 };
 

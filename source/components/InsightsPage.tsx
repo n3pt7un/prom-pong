@@ -5,6 +5,9 @@ import { TrendingUp, Users, Loader2, AlertCircle } from 'lucide-react';
 import SinglesInsightsPanel from './insights/SinglesInsightsPanel';
 import DoublesTeammatePanel from './insights/DoublesTeammatePanel';
 import LoadingSkeleton from './insights/LoadingSkeleton';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 
 interface InsightsPageProps {
   playerId: string;
@@ -49,12 +52,12 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ playerId }) => {
     return (
       <div className="space-y-6">
         {/* Tab Navigation Skeleton */}
-        <div className="glass-panel rounded-xl border border-white/5 p-4">
+        <Card className="p-4">
           <div className="flex items-center justify-center gap-2">
             <div className="h-10 w-40 bg-white/10 rounded-lg animate-pulse"></div>
             <div className="h-10 w-40 bg-white/10 rounded-lg animate-pulse"></div>
           </div>
-        </div>
+        </Card>
 
         {/* Content Skeleton */}
         <div className="space-y-4">
@@ -67,7 +70,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ playerId }) => {
 
   if (error) {
     return (
-      <div className="glass-panel p-8 rounded-xl border border-red-500/30">
+      <Card className="p-8 border-red-500/30">
         <div className="flex items-center gap-3 text-red-400">
           <AlertCircle size={24} />
           <div>
@@ -75,13 +78,15 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ playerId }) => {
             <p className="text-sm text-gray-400 mt-1">{error}</p>
           </div>
         </div>
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors text-sm font-bold"
+          className="mt-4 border-red-500/40 text-red-400 hover:bg-red-500/20"
         >
           Retry
-        </button>
-      </div>
+        </Button>
+      </Card>
     );
   }
 
@@ -96,37 +101,23 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ playerId }) => {
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="glass-panel rounded-xl border border-white/5 p-4">
-        <div className="flex items-center justify-center gap-2">
-          <button
-            onClick={() => setActiveTab('singles')}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold text-xs tracking-wider transition-all ${
-              activeTab === 'singles'
-                ? 'bg-cyber-cyan text-black shadow-neon-cyan'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
-          >
-            <TrendingUp size={16} />
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'singles' | 'doubles')}>
+        <TabsList className="w-full">
+          <TabsTrigger value="singles" className="flex-1 gap-2">
+            <TrendingUp size={14} />
             SINGLES INSIGHTS
-          </button>
-          <button
-            onClick={() => setActiveTab('doubles')}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold text-xs tracking-wider transition-all ${
-              activeTab === 'doubles'
-                ? 'bg-cyber-pink text-black shadow-neon-pink'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
-          >
-            <Users size={16} />
+          </TabsTrigger>
+          <TabsTrigger value="doubles" className="flex-1 gap-2">
+            <Users size={14} />
             TEAMMATE STATS
-          </button>
-        </div>
-      </div>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Content Area */}
-      <div className="animate-fadeIn">
+      <div className="animate-fade-in">
         {activeTab === 'singles' && (
-          <div className="glass-panel p-6 rounded-xl border border-white/5">
+          <Card className="p-6">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
               <TrendingUp size={24} className="text-cyber-cyan" />
               Singles ELO Insights
@@ -135,17 +126,17 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ playerId }) => {
               insights={data.singlesInsights} 
               playerElo={data.singlesInsights[0]?.playerElo || 1200}
             />
-          </div>
+          </Card>
         )}
 
         {activeTab === 'doubles' && (
-          <div className="glass-panel p-6 rounded-xl border border-white/5">
+          <Card className="p-6">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
               <Users size={24} className="text-cyber-pink" />
               Doubles Teammate Statistics
             </h2>
             <DoublesTeammatePanel stats={data.doublesTeammateStats} />
-          </div>
+          </Card>
         )}
       </div>
     </div>

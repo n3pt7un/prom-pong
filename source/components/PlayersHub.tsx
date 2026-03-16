@@ -7,6 +7,12 @@ import {
   Search, X, Plus, Trash2, ArrowLeft, Pencil, Check
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { Card } from './ui/card';
+import { shortName } from '../utils/playerRanking';
+import { thumbUrl } from '../utils/imageUtils';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 
 interface PlayersHubProps {
   players: Player[];
@@ -144,7 +150,7 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
   // ===== GRID VIEW =====
   if (!selectedId) {
     return (
-      <div className="space-y-6 animate-fadeIn">
+      <div className="space-y-6 animate-fade-in">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Users className="text-cyber-cyan w-8 h-8" />
@@ -160,12 +166,9 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
               ) : null;
             })()}
           </div>
-          <button
-            onClick={onAddPlayer}
-            className="flex items-center gap-2 bg-cyber-pink text-black px-4 py-2 rounded font-bold hover:bg-white transition-colors"
-          >
-            <Plus size={18} /> Add Player
-          </button>
+          <Button onClick={onAddPlayer} variant="cyber-pink">
+            <Plus size={16} className="mr-1" /> Add Player
+          </Button>
         </div>
 
         {filteredPlayers.length === 0 ? (
@@ -182,9 +185,9 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
               const isEditingThis = editingNameId === player.id;
 
               return (
-                <div
+                <Card
                   key={player.id}
-                  className="relative glass-panel rounded-xl border border-white/5 hover:border-cyber-cyan/40 transition-all cursor-pointer group"
+                  className="relative rounded-xl border-white/5 hover:border-cyber-cyan/40 transition-all cursor-pointer group"
                   onClick={() => { if (!isEditingThis) setSelectedId(player.id); }}
                 >
                   {/* Admin Actions */}
@@ -212,42 +215,35 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                   <div className="p-4 flex flex-col items-center gap-3">
                     {/* Avatar */}
                     <div className="relative">
-                      <img
-                        src={player.avatar}
-                        className="w-16 h-16 rounded-full border-2 border-white/10 group-hover:border-cyber-cyan/50 group-hover:scale-105 transition-all object-cover"
-                      />
+                      <Avatar className="w-16 h-16 border-2 border-white/10 group-hover:border-cyber-cyan/50 group-hover:scale-105 transition-all">
+                        <AvatarImage src={thumbUrl(player.avatar, 64)} className="object-cover" loading="lazy" />
+                        <AvatarFallback>{player.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
                     </div>
 
                     {/* Name (editable for admin) */}
                     {isEditingThis ? (
                       <div className="flex items-center gap-1 w-full" onClick={e => e.stopPropagation()}>
-                        <input
-                          type="text"
+                        <Input
                           value={editNameValue}
                           onChange={(e) => setEditNameValue(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleConfirmEdit(player.id);
                             if (e.key === 'Escape') handleCancelEdit();
                           }}
-                          className="flex-1 bg-black/50 border border-cyber-yellow/50 text-white text-center text-sm px-2 py-1 rounded font-bold outline-none focus:border-cyber-yellow"
+                          className="flex-1 text-center text-sm h-8 border-cyber-yellow/50 focus:border-cyber-yellow"
                           autoFocus
                         />
-                        <button
-                          onClick={() => handleConfirmEdit(player.id)}
-                          className="p-1 text-green-400 hover:bg-green-400/20 rounded transition-colors"
-                        >
-                          <Check size={14} />
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="p-1 text-gray-400 hover:bg-white/10 rounded transition-colors"
-                        >
-                          <X size={14} />
-                        </button>
+                        <Button size="icon-sm" variant="ghost" onClick={() => handleConfirmEdit(player.id)} className="text-green-400 hover:bg-green-400/20">
+                          <Check size={13} />
+                        </Button>
+                        <Button size="icon-sm" variant="ghost" onClick={handleCancelEdit}>
+                          <X size={13} />
+                        </Button>
                       </div>
                     ) : (
                       <span className="font-bold text-white text-center truncate w-full text-sm">
-                        {player.name}
+                        {shortName(player.name)}
                       </span>
                     )}
 
@@ -314,7 +310,7 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                       })()}
                     </div>
                   </div>
-                </div>
+                </Card>
               );
             })}
           </div>
@@ -329,17 +325,13 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
 
   // ===== DETAIL / COMPARE VIEW =====
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fade-in">
       {/* Top Bar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between glass-panel p-4 rounded-xl">
+      <Card className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex items-center gap-4 w-full md:w-auto">
-          <button
-            onClick={handleBack}
-            className="bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white p-2.5 rounded-lg transition-all border border-white/10 hover:border-white/30"
-            title="Back to Roster"
-          >
+          <Button variant="outline" size="icon" onClick={handleBack} title="Back to Roster">
             <ArrowLeft size={18} />
-          </button>
+          </Button>
 
           {!isCompareMode && (
             <>
@@ -347,19 +339,20 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                 <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Player</label>
                 {renderPlayerSelect(selectedId || '', (id) => setSelectedId(id), undefined, "Select Player...")}
               </div>
-              <button
+            <Button
+                variant="outline"
+                size="icon"
                 onClick={() => { setIsCompareMode(true); if (!secondaryId) setSecondaryId(players.find(p => p.id !== selectedId)?.id || ''); }}
-                className="mt-4 md:mt-auto bg-white/5 hover:bg-cyber-cyan/20 text-cyber-cyan border border-cyber-cyan/30 p-2.5 rounded-lg transition-all"
                 title="Compare Players"
               >
                 <ArrowRightLeft size={18} />
-              </button>
+              </Button>
             </>
           )}
         </div>
 
         {isCompareMode && (
-          <div className="flex items-center gap-4 w-full md:w-auto animate-fadeIn">
+          <div className="flex items-center gap-4 w-full md:w-auto">
             <div className="flex flex-col gap-1 w-full md:w-auto">
               <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Player A</label>
               {renderPlayerSelect(selectedId || '', (id) => setSelectedId(id), secondaryId, "Select Player...")}
@@ -369,15 +362,12 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
               <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Player B</label>
               {renderPlayerSelect(secondaryId, setSecondaryId, selectedId || undefined, "Select Opponent...")}
             </div>
-            <button
-              onClick={() => setIsCompareMode(false)}
-              className="mt-4 md:mt-auto text-gray-400 hover:text-white hover:bg-white/10 p-2.5 rounded-lg transition-colors"
-            >
+            <Button variant="ghost" size="icon" onClick={() => setIsCompareMode(false)} className="mt-4 md:mt-auto">
               <X size={18} />
-            </button>
+            </Button>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Single Profile View */}
       {!isCompareMode && selectedPlayer && (
@@ -401,14 +391,17 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
         <div className="animate-slideUp space-y-6">
           {/* Tale of the Tape */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="glass-panel p-6 rounded-xl border-t-4 border-cyber-cyan flex flex-col items-center">
-              <img src={selectedPlayer.avatar} className="w-20 h-20 rounded-full border-2 border-cyber-cyan shadow-neon-cyan mb-3 object-cover" />
+            <Card className="p-6 border-t-4 border-cyber-cyan flex flex-col items-center">
+              <Avatar className="w-20 h-20 border-2 border-cyber-cyan shadow-neon-cyan mb-3">
+                <AvatarImage src={thumbUrl(selectedPlayer.avatar, 80)} className="object-cover" />
+                <AvatarFallback>{selectedPlayer.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
               <h3 className="text-xl font-bold text-white mb-1">{selectedPlayer.name}</h3>
               <div className="text-cyber-cyan font-mono text-2xl font-bold">{selectedPlayer.eloSingles}</div>
               <div className="text-xs text-gray-500 uppercase mt-1">Singles Elo</div>
-            </div>
+            </Card>
 
-            <div className="glass-panel p-6 rounded-xl flex flex-col justify-center items-center">
+            <Card className="p-6 flex flex-col justify-center items-center">
               <div className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-4">Head to Head</div>
               <div className="flex items-center gap-6 mb-2">
                 <div className="text-4xl font-mono font-bold text-cyber-cyan">{compareData.winsA}</div>
@@ -418,24 +411,27 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
               <div className="text-sm text-gray-400 font-mono">
                 {compareData.h2hMatches.length} Total Matches
               </div>
-            </div>
+            </Card>
 
-            <div className="glass-panel p-6 rounded-xl border-t-4 border-cyber-pink flex flex-col items-center">
-              <img src={secondaryPlayer.avatar} className="w-20 h-20 rounded-full border-2 border-cyber-pink shadow-neon-pink mb-3 object-cover" />
+            <Card className="p-6 border-t-4 border-cyber-pink flex flex-col items-center">
+              <Avatar className="w-20 h-20 border-2 border-cyber-pink shadow-neon-pink mb-3">
+                <AvatarImage src={thumbUrl(secondaryPlayer.avatar, 80)} className="object-cover" />
+                <AvatarFallback>{secondaryPlayer.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
               <h3 className="text-xl font-bold text-white mb-1">{secondaryPlayer.name}</h3>
               <div className="text-cyber-pink font-mono text-2xl font-bold">{secondaryPlayer.eloSingles}</div>
               <div className="text-xs text-gray-500 uppercase mt-1">Singles Elo</div>
-            </div>
+            </Card>
           </div>
 
           {/* Comparison Table */}
-          <div className="glass-panel rounded-xl overflow-hidden">
+          <Card className="rounded-xl overflow-hidden">
             <table className="w-full text-center">
               <thead className="bg-white/5 text-gray-400 text-xs uppercase tracking-widest">
                 <tr>
-                  <th className="p-3 w-1/3 text-left pl-6">{selectedPlayer.name}</th>
+                  <th className="p-3 w-1/3 text-left pl-6">{shortName(selectedPlayer.name)}</th>
                   <th className="p-3 w-1/3 text-center">Metric</th>
-                  <th className="p-3 w-1/3 text-right pr-6">{secondaryPlayer.name}</th>
+                  <th className="p-3 w-1/3 text-right pr-6">{shortName(secondaryPlayer.name)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 font-mono text-sm">
@@ -470,10 +466,10 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                 />
               </tbody>
             </table>
-          </div>
+          </Card>
 
           {/* Comparison Chart */}
-          <div className="glass-panel p-6 rounded-xl h-[300px] md:h-[400px]">
+          <Card className="p-6 h-[300px] md:h-[400px]">
             <h3 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest">
               <TrendingUp size={16} /> Elo Progression Comparison
             </h3>
@@ -488,7 +484,7 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                 />
                 <Legend />
                 <Line
-                  name={selectedPlayer.name}
+                  name={shortName(selectedPlayer.name)}
                   type="stepAfter"
                   dataKey="eloA"
                   stroke="#00f3ff"
@@ -496,7 +492,7 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                   dot={false}
                 />
                 <Line
-                  name={secondaryPlayer.name}
+                  name={shortName(secondaryPlayer.name)}
                   type="stepAfter"
                   dataKey="eloB"
                   stroke="#ff00ff"
@@ -505,7 +501,7 @@ const PlayersHub: React.FC<PlayersHubProps> = ({
                 />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </Card>
         </div>
       )}
 

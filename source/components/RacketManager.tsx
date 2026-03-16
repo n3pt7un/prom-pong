@@ -7,6 +7,8 @@ import {
   Plus, Trash2, ChevronDown, ChevronUp, Pencil, X, Info
 } from 'lucide-react';
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from 'recharts';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
 
 interface RacketManagerProps {
   rackets: Racket[];
@@ -132,7 +134,7 @@ const RacketManager: React.FC<RacketManagerProps> = ({ rackets, onCreateRacket, 
   const SelectedIconComponent = RACKET_ICONS[selectedIcon] || Zap;
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fade-in">
       <div className="flex items-center gap-3">
         <Sword className="text-cyber-yellow w-8 h-8" />
         <h2 className="text-2xl font-display font-bold text-white">THE <span className="text-cyber-yellow">ARMORY</span></h2>
@@ -148,7 +150,7 @@ const RacketManager: React.FC<RacketManagerProps> = ({ rackets, onCreateRacket, 
             setShowBuilder(!showBuilder);
           }
         }}
-        className="w-full glass-panel p-4 rounded-xl border border-white/10 hover:border-cyber-yellow/50 transition-all flex items-center justify-between group"
+        className="w-full p-4 rounded-xl border border-white/10 hover:border-cyber-yellow/50 transition-all flex items-center justify-between group"
       >
         <div className="flex items-center gap-3">
           {isEditMode ? <Pencil size={20} className="text-cyber-yellow" /> : <Plus size={20} className="text-cyber-yellow" />}
@@ -159,7 +161,7 @@ const RacketManager: React.FC<RacketManagerProps> = ({ rackets, onCreateRacket, 
 
       {/* Builder Panel */}
       {showBuilder && (
-        <div className="glass-panel p-6 rounded-xl border border-cyber-yellow/20 space-y-6 animate-slideUp">
+        <Card className="p-6 border-cyber-yellow/20 space-y-6 animate-slideUp">
 
           {/* Edit mode banner */}
           {isEditMode && (
@@ -167,12 +169,9 @@ const RacketManager: React.FC<RacketManagerProps> = ({ rackets, onCreateRacket, 
               <span className="text-xs font-bold text-cyber-yellow uppercase tracking-widest flex items-center gap-2">
                 <Pencil size={14} /> Editing Racket
               </span>
-              <button
-                onClick={handleCancelEdit}
-                className="text-gray-400 hover:text-white text-xs font-bold flex items-center gap-1 transition-colors"
-              >
+              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white" onClick={handleCancelEdit}>
                 <X size={14} /> Cancel
-              </button>
+              </Button>
             </div>
           )}
 
@@ -339,30 +338,29 @@ const RacketManager: React.FC<RacketManagerProps> = ({ rackets, onCreateRacket, 
           {/* Submit */}
           {isEditMode ? (
             <div className="flex gap-3">
-              <button
+              <Button
+                className="flex-1 bg-cyber-yellow text-black hover:bg-white"
+                size="lg"
                 onClick={handleUpdate}
                 disabled={!newName.trim() || remaining < 0}
-                className="flex-1 bg-cyber-yellow text-black font-bold px-6 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg"
               >
                 <Pencil size={20} /> UPDATE RACKET
-              </button>
-              <button
-                onClick={handleCancelEdit}
-                className="bg-white/5 text-gray-400 hover:text-white font-bold px-6 py-3 rounded-lg flex items-center justify-center gap-2 border border-white/10 hover:border-white/30 transition-colors"
-              >
+              </Button>
+              <Button variant="outline" size="lg" onClick={handleCancelEdit}>
                 <X size={20} /> CANCEL
-              </button>
+              </Button>
             </div>
           ) : (
-            <button
+            <Button
+              className="w-full bg-cyber-yellow text-black hover:bg-white"
+              size="lg"
               onClick={handleCreate}
               disabled={!newName.trim() || remaining < 0}
-              className="w-full bg-cyber-yellow text-black font-bold px-6 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg"
             >
               <Plus size={20} /> FABRICATE RACKET
-            </button>
+            </Button>
           )}
-        </div>
+        </Card>
       )}
 
       {/* Racket Grid */}
@@ -371,7 +369,7 @@ const RacketManager: React.FC<RacketManagerProps> = ({ rackets, onCreateRacket, 
           const Icon = RACKET_ICONS[racket.icon] || Zap;
           const displayStats = typeof racket.stats === 'string' ? racket.stats : formatRacketStats(racket.stats);
           return (
-            <div key={racket.id} className="relative glass-panel p-4 rounded-xl border border-white/5 flex items-center gap-4 hover:border-white/20 transition-colors group">
+            <div key={racket.id} className="relative p-4 rounded-xl border border-white/5 flex items-center gap-4 hover:border-white/20 transition-colors group">
               <div
                 className="w-16 h-16 rounded-lg flex items-center justify-center bg-black/40 border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform"
                 style={{ color: racket.color, boxShadow: `0 0 10px ${racket.color}40` }}
@@ -387,23 +385,27 @@ const RacketManager: React.FC<RacketManagerProps> = ({ rackets, onCreateRacket, 
               <div className="absolute top-2 right-2 flex gap-1">
                 {/* Edit Button */}
                 {onUpdateRacket && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-gray-400 bg-black/50 hover:text-cyber-yellow hover:bg-cyber-yellow/20"
                     onClick={(e) => { e.stopPropagation(); handleEdit(racket); }}
-                    className="p-1.5 text-gray-400 bg-black/50 hover:text-cyber-yellow hover:bg-cyber-yellow/20 rounded-full transition-colors"
                     title="Edit Racket"
                   >
                     <Pencil size={16} />
-                  </button>
+                  </Button>
                 )}
                 {/* Delete Button - Admin only */}
                 {onDeleteRacket && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-gray-400 bg-black/50 hover:text-red-500 hover:bg-red-500/20"
                     onClick={(e) => { e.stopPropagation(); handleDelete(racket.id, racket.name); }}
-                    className="p-1.5 text-gray-400 bg-black/50 hover:text-red-500 hover:bg-red-500/20 rounded-full transition-colors"
                     title="Delete Racket"
                   >
                     <Trash2 size={16} />
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -417,7 +419,7 @@ const RacketManager: React.FC<RacketManagerProps> = ({ rackets, onCreateRacket, 
       </div>
 
       {/* Stats Info Guide */}
-      <div className="glass-panel rounded-xl border border-white/5 overflow-hidden">
+      <Card className="overflow-hidden">
         <button
           onClick={() => setShowInfo(!showInfo)}
           className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
@@ -485,7 +487,7 @@ const RacketManager: React.FC<RacketManagerProps> = ({ rackets, onCreateRacket, 
             </div>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

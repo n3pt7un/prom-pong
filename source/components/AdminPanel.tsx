@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Shield, Users, Trophy, Calendar, Database,
   Settings, TrendingUp, AlertCircle, Edit2, Trash2,
-  Plus, X, Check, Search, Filter, RefreshCw
+  Plus, X, Check, Search, Filter, RefreshCw, Zap
 } from 'lucide-react';
 import { Player, Season, League, Match, AdminStats } from '../types';
 import { getIdToken } from '../services/authService';
@@ -12,12 +12,15 @@ import { LeaguesTab } from './admin/LeaguesTab';
 import { SeasonsTab } from './admin/SeasonsTab';
 import { AdminsTab } from './admin/AdminsTab';
 import { EloConfigTab } from './admin/EloConfigTab';
+import { ChallengeSettingsTab } from './admin/ChallengeSettingsTab';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
 
 interface AdminPanelProps {
   onClose: () => void;
 }
 
-type TabType = 'overview' | 'users' | 'matches' | 'leagues' | 'seasons' | 'admins' | 'elo';
+type TabType = 'overview' | 'users' | 'matches' | 'leagues' | 'seasons' | 'admins' | 'elo' | 'challenges';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -80,6 +83,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     { id: 'seasons', label: 'Seasons', icon: Calendar },
     { id: 'admins', label: 'Admins', icon: Shield },
     { id: 'elo', label: 'ELO Config', icon: Settings },
+    { id: 'challenges', label: 'Auto Challenges', icon: Zap },
   ];
 
   return (
@@ -97,12 +101,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <p className="text-xs text-gray-400 font-mono">System Management & Configuration</p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
+            <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="text-gray-400" size={24} />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -144,6 +145,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               {activeTab === 'seasons' && <SeasonsTab seasons={seasons} onRefresh={loadData} />}
               {activeTab === 'admins' && <AdminsTab admins={admins} users={users} onRefresh={loadData} />}
               {activeTab === 'elo' && <EloConfigTab />}
+              {activeTab === 'challenges' && <ChallengeSettingsTab />}
             </>
           )}
         </div>
@@ -200,7 +202,7 @@ const OverviewTab: React.FC<{ stats: AdminStats | null }> = ({ stats }) => {
         {statCards.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="glass-panel p-6 rounded-xl border border-white/10 hover:border-white/20 transition-all">
+            <Card key={idx} className="p-6 border-white/10 hover:border-white/20 transition-all">
               <div className="flex items-center justify-between mb-3">
                 <Icon className={`text-${card.color}`} size={24} />
                 <span className={`text-3xl font-display font-bold text-${card.color}`}>
@@ -208,13 +210,13 @@ const OverviewTab: React.FC<{ stats: AdminStats | null }> = ({ stats }) => {
                 </span>
               </div>
               <p className="text-xs text-gray-400 font-mono uppercase tracking-wider">{card.label}</p>
-            </div>
+            </Card>
           );
         })}
       </div>
 
       {/* Danger Zone */}
-      <div className="glass-panel rounded-xl border border-red-500/20 p-6 space-y-4">
+      <Card className="p-6 border-red-500/20 space-y-4">
         <h3 className="text-sm font-display font-bold text-red-400 uppercase tracking-widest flex items-center gap-2">
           <AlertCircle size={16} /> Danger Zone
         </h3>
@@ -229,30 +231,34 @@ const OverviewTab: React.FC<{ stats: AdminStats | null }> = ({ stats }) => {
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             {!confirming ? (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setConfirming(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/40 text-red-400 rounded-lg text-sm font-bold transition-all"
+                className="border-red-500/40 text-red-400 hover:bg-red-500/20 hover:text-red-300"
               >
                 <RefreshCw size={14} />
                 Recalculate ELO
-              </button>
+              </Button>
             ) : (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-red-400 font-mono">Are you sure?</span>
-                <button
+                <Button
+                  size="sm"
                   onClick={handleRecalculate}
                   disabled={recalculating}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                  className="bg-red-500 hover:bg-red-600 text-white"
                 >
                   {recalculating ? <RefreshCw size={12} className="animate-spin" /> : <Check size={12} />}
                   {recalculating ? 'Recalculating...' : 'Confirm'}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setConfirming(false)}
-                  className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg text-xs font-bold transition-all"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -268,7 +274,7 @@ const OverviewTab: React.FC<{ stats: AdminStats | null }> = ({ stats }) => {
             Error: {recalcError}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

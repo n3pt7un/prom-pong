@@ -6,7 +6,6 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
 import type { Player, Match, EloHistoryEntry, PendingMatch, Season, Challenge, Tournament, Racket, League } from '../types';
 
 // Realtime change event types
@@ -47,7 +46,7 @@ export interface RealtimeStateUpdaters {
  * Returns subscription status and error state
  */
 export function useRealtime(enabled: boolean, updaters: RealtimeStateUpdaters) {
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<any>(null);
   const subscriptionsRef = useRef<TableSubscription[]>([
     { table: 'players', event: '*' },
     { table: 'matches', event: '*' },
@@ -142,38 +141,43 @@ export function useRealtime(enabled: boolean, updaters: RealtimeStateUpdaters) {
   );
 
   useEffect(() => {
-    if (!enabled || !supabase) {
-      return;
-    }
+    if (!enabled) return;
+    let cancelled = false;
 
-    // Create a single channel for all subscriptions
-    const channel = supabase.channel('league-changes');
-    channelRef.current = channel;
+    import('../lib/supabase').then(({ supabase }) => {
+      if (cancelled || !supabase) return;
 
-    // Subscribe to each table
-    subscriptionsRef.current.forEach(({ table, event, schema = 'public' }) => {
-      channel.on(
-        'postgres_changes' as const,
-        { event, schema, table },
-        handleChange
-      );
+      // Create a single channel for all subscriptions
+      const channel = supabase.channel('league-changes');
+      channelRef.current = channel;
+
+      // Subscribe to each table
+      subscriptionsRef.current.forEach(({ table, event, schema = 'public' }) => {
+        channel.on(
+          'postgres_changes' as const,
+          { event, schema, table },
+          handleChange
+        );
+      });
+
+      // Subscribe to the channel
+      channel.subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Supabase Realtime connected');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Supabase Realtime connection error');
+        } else if (status === 'CLOSED') {
+          console.log('🔌 Supabase Realtime disconnected');
+        }
+      });
     });
 
-    // Subscribe to the channel
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Supabase Realtime connected');
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error('❌ Supabase Realtime connection error');
-      } else if (status === 'CLOSED') {
-        console.log('🔌 Supabase Realtime disconnected');
-      }
-    });
-
-    // Cleanup on unmount
     return () => {
-      channel.unsubscribe();
-      channelRef.current = null;
+      cancelled = true;
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        channelRef.current = null;
+      }
     };
   }, [enabled, handleChange]);
 

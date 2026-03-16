@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Player, GameType, League, MatchFormat } from '../types';
 import { validateMatchScore } from '../utils/matchValidation';
+import { shortName } from '../utils/playerRanking';
+import { thumbUrl } from '../utils/imageUtils';
 import { Swords, AlertCircle, Loader2, Globe, Search, ChevronLeft } from 'lucide-react';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Card } from './ui/card';
+import { cn } from '../lib/utils';
 
 interface MatchLoggerProps {
   players: Player[];
@@ -129,7 +135,7 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
   ];
 
   return (
-    <div className="glass-panel p-6 md:p-8 rounded-xl max-w-2xl mx-auto shadow-neon-pink animate-fadeIn">
+    <Card className="p-6 md:p-8 max-w-2xl mx-auto shadow-neon-pink animate-fade-in border-cyber-pink/20">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         {step > 1 && (
@@ -254,12 +260,12 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
                   })}
                   {team1.length === 0 && <span className="text-gray-600 text-sm italic self-center">Select players below</span>}
                 </div>
-                <input
+                <Input
                   type="number"
                   placeholder="Score"
                   value={score1}
                   onChange={(e) => setScore1(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 text-white p-3 rounded text-center font-mono text-xl focus:border-cyber-cyan outline-none transition-colors"
+                  className="text-center text-3xl font-mono h-16 border-cyber-cyan/30 focus:border-cyber-cyan"
                 />
               </div>
 
@@ -277,12 +283,12 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
                   })}
                   {team2.length === 0 && <span className="text-gray-600 text-sm italic self-center">Select players below</span>}
                 </div>
-                <input
+                <Input
                   type="number"
                   placeholder="Score"
                   value={score2}
                   onChange={(e) => setScore2(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 text-white p-3 rounded text-center font-mono text-xl focus:border-cyber-pink outline-none transition-colors"
+                  className="text-center text-3xl font-mono h-16 border-cyber-pink/30 focus:border-cyber-pink focus:ring-cyber-pink"
                 />
               </div>
             </div>
@@ -310,13 +316,13 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
               </div>
 
               <div className="relative mb-3">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                <Input
                   type="text"
                   placeholder="Search players..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/30 border border-white/10 text-white text-sm pl-8 pr-3 py-2 rounded-lg font-mono focus:border-cyber-cyan outline-none"
+                  className="pl-8"
                 />
               </div>
 
@@ -339,8 +345,8 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
                           : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/30 text-gray-300'
                       }`}
                     >
-                      <img src={player.avatar} className="w-6 h-6 rounded-full" />
-                      <span className="truncate">{player.name}</span>
+                      <img src={thumbUrl(player.avatar, 48)} className="w-6 h-6 rounded-full" loading="lazy" />
+                      <span className="truncate">{shortName(player.name)}</span>
                       {crossLeague && playerLeague && (
                         <span className="text-[8px] font-mono text-cyber-purple bg-cyber-purple/10 px-1 py-0.5 rounded-full ml-auto flex-shrink-0">
                           {playerLeague.name}
@@ -357,23 +363,22 @@ const MatchLogger: React.FC<MatchLoggerProps> = ({ players, onSubmit, prefill, o
               </div>
             </div>
 
-            <button
+            <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-4 bg-gradient-to-r from-cyber-cyan to-cyber-pink text-black font-display font-bold text-xl rounded-lg shadow-neon-cyan hover:brightness-110 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+              size="xl"
+              className="w-full bg-gradient-to-r from-cyber-cyan to-cyber-pink text-black font-display font-bold text-xl shadow-neon-cyan hover:brightness-110"
             >
               {isSubmitting ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" /> SUBMITTING...
-                </>
+                <><Loader2 size={20} className="animate-spin" /> SUBMITTING...</>
               ) : (
                 'SUBMIT MATCH'
               )}
-            </button>
+            </Button>
           </form>
         </>
       )}
-    </div>
+    </Card>
   );
 };
 

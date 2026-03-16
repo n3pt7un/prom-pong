@@ -1,5 +1,12 @@
 import { Player, GameType } from '../types';
 
+/** Returns "First L." for multi-word names, unchanged for single-word names. */
+export function shortName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[1][0].toUpperCase()}.`;
+}
+
 /**
  * Determines if a player is unranked for a specific game type.
  * A player is unranked if they have an ELO of 1200 and have played zero games.

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Player, GameType } from '../types';
 import { Clock, CheckCircle, AlertTriangle, Shield, XCircle, Users, User } from 'lucide-react';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
 
 interface PendingMatch {
   id: string;
@@ -102,7 +104,7 @@ const PendingMatches: React.FC<PendingMatchesProps> = ({
   };
 
   return (
-    <div className="space-y-4 animate-fadeIn">
+    <div className="space-y-4 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -136,9 +138,9 @@ const PendingMatches: React.FC<PendingMatchesProps> = ({
             userInvolved;
 
           return (
-            <div
+            <Card
               key={match.id}
-              className={`glass-panel p-4 rounded-lg border-l-2 transition-all ${
+              className={`p-4 border-l-2 transition-all ${
                 isDisputed
                   ? 'border-l-red-500'
                   : match.status === 'confirmed'
@@ -234,13 +236,14 @@ const PendingMatches: React.FC<PendingMatchesProps> = ({
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Confirm */}
                 {showConfirmBtn && (
-                  <button
+                  <Button
+                    size="sm"
                     onClick={() => onConfirm(match.id)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/40 rounded-lg text-xs font-bold transition-all hover:shadow-[0_0_12px_rgba(34,197,94,0.3)]"
+                    className="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/40 hover:shadow-[0_0_12px_rgba(34,197,94,0.3)]"
                   >
                     <CheckCircle size={14} />
                     Confirm
-                  </button>
+                  </Button>
                 )}
 
                 {/* Already confirmed badge */}
@@ -256,40 +259,45 @@ const PendingMatches: React.FC<PendingMatchesProps> = ({
                   match.status === 'pending' &&
                   userInvolved &&
                   match.loggedBy !== currentUserUid && (
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => onDispute(match.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 rounded-lg text-xs font-bold transition-all"
+                      className="text-red-400/70 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30"
                     >
                       <AlertTriangle size={14} />
                       Dispute
-                    </button>
+                    </Button>
                   )}
 
                 {/* Admin Actions */}
                 {isAdmin && (
                   <div className="flex items-center gap-2 ml-auto">
                     {onForceConfirm && match.status !== 'confirmed' && (
-                      <button
+                      <Button
+                        size="sm"
                         onClick={() => onForceConfirm(match.id)}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-cyber-purple/20 hover:bg-cyber-purple/30 text-cyber-purple border border-cyber-purple/40 rounded-lg text-xs font-bold transition-all"
+                        className="bg-cyber-purple/20 hover:bg-cyber-purple/30 text-cyber-purple border border-cyber-purple/40"
                       >
                         <Shield size={14} />
                         Force Confirm
-                      </button>
+                      </Button>
                     )}
                     {onReject && match.status !== 'confirmed' && (
-                      <button
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => onReject(match.id)}
-                        className="flex items-center gap-1.5 px-3 py-2 text-red-400 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 rounded-lg text-xs font-bold transition-all"
+                        className="text-red-400 hover:bg-red-500/10 hover:border-red-500/30"
                       >
                         <XCircle size={14} />
                         Reject
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
           );
         })}
 

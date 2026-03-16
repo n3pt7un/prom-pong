@@ -94,4 +94,14 @@ router.post('/seasons/end', authMiddleware, adminMiddleware, async (req, res) =>
   }
 });
 
+router.get('/seasons/:id/matches', authMiddleware, async (req, res) => {
+  try {
+    const matches = await dbOps.getArchivedMatches(req.params.id);
+    res.json(matches);
+  } catch (err) {
+    console.error('Error in GET /api/seasons/:id/matches:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

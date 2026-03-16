@@ -3,6 +3,9 @@ import { Player, Match, EloHistoryEntry, Racket } from '../types';
 import PlayerProfile from './PlayerProfile';
 import { Users, Swords, ArrowRightLeft, TrendingUp, Trophy, Search, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { thumbUrl } from '../utils/imageUtils';
 
 interface StatsDashboardProps {
   players: Player[];
@@ -134,7 +137,7 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ players, matches, histo
     <div className="space-y-6">
 
       {/* Top Bar Controls */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between glass-panel p-4 rounded-xl">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 rounded-xl">
         <div className="flex items-center gap-4 w-full md:w-auto">
             <div className="flex flex-col gap-1 w-full md:w-auto">
                 <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Primary Agent</label>
@@ -142,29 +145,33 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ players, matches, histo
             </div>
 
             {!isCompareMode && (
-                 <button
-                 onClick={() => { setIsCompareMode(true); if(!secondaryId) setSecondaryId(players.find(p => p.id !== primaryId)?.id || ''); }}
-                 className="mt-4 md:mt-auto bg-white/5 hover:bg-cyber-cyan/20 text-cyber-cyan border border-cyber-cyan/30 p-2.5 rounded-lg transition-all"
+                 <Button
+                 variant="ghost"
+                 size="icon"
+                 className="mt-4 md:mt-auto text-cyber-cyan border border-cyber-cyan/30 hover:bg-cyber-cyan/20"
                  title="Compare Players"
+                 onClick={() => { setIsCompareMode(true); if(!secondaryId) setSecondaryId(players.find(p => p.id !== primaryId)?.id || ''); }}
                >
                  <ArrowRightLeft size={18} />
-               </button>
+               </Button>
             )}
         </div>
 
         {isCompareMode && (
-             <div className="flex items-center gap-4 w-full md:w-auto animate-fadeIn">
+             <div className="flex items-center gap-4 w-full md:w-auto animate-fade-in">
                 <div className="hidden md:flex items-center text-gray-500 font-display font-bold text-xl italic px-2">VS</div>
                 <div className="flex flex-col gap-1 w-full md:w-auto">
                     <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Opponent</label>
                     {renderPlayerSelect(secondaryId, setSecondaryId, primaryId, "Select Opponent...")}
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mt-4 md:mt-auto"
                   onClick={() => setIsCompareMode(false)}
-                  className="mt-4 md:mt-auto text-gray-400 hover:text-white hover:bg-white/10 p-2.5 rounded-lg transition-colors"
                 >
                     <X size={18} />
-                </button>
+                </Button>
             </div>
         )}
       </div>
@@ -188,44 +195,38 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ players, matches, histo
         <div className="animate-slideUp space-y-6">
 
             {/* Game Type Toggle */}
-            <div className="glass-panel rounded-xl border border-white/5 p-4">
+            <Card className="p-4">
               <div className="flex items-center justify-center gap-2">
-                <button
+                <Button
+                  size="sm"
+                  variant={compareGameType === 'singles' ? 'cyber' : 'ghost'}
                   onClick={() => setCompareGameType('singles')}
-                  className={`px-6 py-2 rounded-lg font-bold text-xs tracking-wider transition-all ${
-                    compareGameType === 'singles'
-                      ? 'bg-cyber-cyan text-black shadow-neon-cyan'
-                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                  }`}
                 >
                   SINGLES
-                </button>
-                <button
+                </Button>
+                <Button
+                  size="sm"
+                  variant={compareGameType === 'doubles' ? 'cyber-pink' : 'ghost'}
                   onClick={() => setCompareGameType('doubles')}
-                  className={`px-6 py-2 rounded-lg font-bold text-xs tracking-wider transition-all ${
-                    compareGameType === 'doubles'
-                      ? 'bg-cyber-pink text-black shadow-neon-pink'
-                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                  }`}
                 >
                   DOUBLES
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
 
             {/* Tale of the Tape */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                 {/* Player A Card */}
-                <div className="glass-panel p-6 rounded-xl border-t-4 border-cyber-cyan flex flex-col items-center">
-                    <img src={primaryPlayer.avatar} className="w-20 h-20 rounded-full border-2 border-cyber-cyan shadow-neon-cyan mb-3 object-cover" />
+                <Card className="p-6 border-t-4 border-cyber-cyan flex flex-col items-center">
+                    <img src={thumbUrl(primaryPlayer.avatar, 80)} className="w-20 h-20 rounded-full border-2 border-cyber-cyan shadow-neon-cyan mb-3 object-cover" />
                     <h3 className="text-xl font-bold text-white mb-1">{primaryPlayer.name}</h3>
                     <div className="text-cyber-cyan font-mono text-2xl font-bold">{getPrimaryElo()}</div>
                     <div className="text-xs text-gray-500 uppercase mt-1">{compareGameType} Elo</div>
-                </div>
+                </Card>
 
                 {/* VS Stats */}
-                <div className="glass-panel p-6 rounded-xl flex flex-col justify-center items-center">
+                <Card className="p-6 flex flex-col justify-center items-center">
                     <div className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-4">Head to Head ({compareGameType})</div>
                     <div className="flex items-center gap-6 mb-2">
                         <div className="text-4xl font-mono font-bold text-cyber-cyan">{compareData.winsA}</div>
@@ -235,19 +236,19 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ players, matches, histo
                     <div className="text-sm text-gray-400 font-mono">
                         {compareData.h2hMatches.length} Total Matches
                     </div>
-                </div>
+                </Card>
 
                 {/* Player B Card */}
-                <div className="glass-panel p-6 rounded-xl border-t-4 border-cyber-pink flex flex-col items-center">
-                    <img src={secondaryPlayer.avatar} className="w-20 h-20 rounded-full border-2 border-cyber-pink shadow-neon-pink mb-3 object-cover" />
+                <Card className="p-6 border-t-4 border-cyber-pink flex flex-col items-center">
+                    <img src={thumbUrl(secondaryPlayer.avatar, 80)} className="w-20 h-20 rounded-full border-2 border-cyber-pink shadow-neon-pink mb-3 object-cover" />
                     <h3 className="text-xl font-bold text-white mb-1">{secondaryPlayer.name}</h3>
                     <div className="text-cyber-pink font-mono text-2xl font-bold">{getSecondaryElo()}</div>
                     <div className="text-xs text-gray-500 uppercase mt-1">{compareGameType} Elo</div>
-                </div>
+                </Card>
             </div>
 
             {/* Comparison Table */}
-            <div className="glass-panel rounded-xl overflow-hidden">
+            <Card className="overflow-hidden">
                 <table className="w-full text-center">
                     <thead className="bg-white/5 text-gray-400 text-xs uppercase tracking-widest">
                         <tr>
@@ -280,10 +281,10 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ players, matches, histo
                         />
                     </tbody>
                 </table>
-            </div>
+            </Card>
 
             {/* Comparison Chart */}
-            <div className="glass-panel p-6 rounded-xl h-[300px] md:h-[400px]">
+            <Card className="p-6 h-[300px] md:h-[400px]">
                 <h3 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest">
                     <TrendingUp size={16} /> {compareGameType} Elo Progression Comparison
                 </h3>
@@ -315,7 +316,7 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ players, matches, histo
                         />
                     </LineChart>
                 </ResponsiveContainer>
-            </div>
+            </Card>
 
         </div>
       )}

@@ -4,6 +4,10 @@ import {
   Trophy, Crown, Swords, Plus, Trash2, Check, X,
   ChevronDown, ChevronUp, Search, Users, Filter,
 } from 'lucide-react';
+import { Card } from './ui/card';
+import { shortName } from '../utils/playerRanking';
+import { thumbUrl } from '../utils/imageUtils';
+import { Button } from './ui/button';
 
 // --- Local types ---
 interface TournamentMatchup {
@@ -202,7 +206,7 @@ const PlayerCard: React.FC<{
       }`}
     >
       <div className="relative">
-        <img src={player.avatar} alt={player.name} className="w-8 h-8 rounded-full bg-white/10 object-cover flex-shrink-0" referrerPolicy="no-referrer" />
+        <img src={thumbUrl(player.avatar, 64)} alt={player.name} className="w-8 h-8 rounded-full bg-white/10 object-cover flex-shrink-0" referrerPolicy="no-referrer" loading="lazy" />
         {selected && (
           <div className="absolute -top-1 -right-1 w-4 h-4 bg-cyber-cyan rounded-full flex items-center justify-center">
             <Check size={10} className="text-black" />
@@ -210,7 +214,7 @@ const PlayerCard: React.FC<{
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-white text-sm font-medium truncate">{player.name}</div>
+        <div className="text-white text-sm font-medium truncate">{shortName(player.name)}</div>
         <div className="text-gray-500 text-[10px] font-mono">ELO {player.eloSingles}</div>
       </div>
     </button>
@@ -235,16 +239,16 @@ const ScoreInput: React.FC<{
   };
 
   return (
-    <div className="bg-black/80 border border-cyber-cyan/30 rounded-lg p-3 space-y-3 animate-fadeIn">
+    <div className="bg-black/80 border border-cyber-cyan/30 rounded-lg p-3 space-y-3 animate-fade-in">
       <div className="grid grid-cols-3 gap-2 items-center text-center">
         <div className="text-xs text-white font-medium">
-          {p1?.avatar && <img src={p1.avatar} alt={p1.name} className="w-8 h-8 rounded-full object-cover mx-auto" referrerPolicy="no-referrer" />}
-          <div className="truncate mt-0.5">{p1?.name}</div>
+          {p1?.avatar && <img src={thumbUrl(p1.avatar, 64)} alt={p1.name} className="w-8 h-8 rounded-full object-cover mx-auto" referrerPolicy="no-referrer" loading="lazy" />}
+          <div className="truncate mt-0.5">{p1 && shortName(p1.name)}</div>
         </div>
         <div className="text-gray-600 text-xs font-display">VS</div>
         <div className="text-xs text-white font-medium">
-          {p2?.avatar && <img src={p2.avatar} alt={p2.name} className="w-8 h-8 rounded-full object-cover mx-auto" referrerPolicy="no-referrer" />}
-          <div className="truncate mt-0.5">{p2?.name}</div>
+          {p2?.avatar && <img src={thumbUrl(p2.avatar, 64)} alt={p2.name} className="w-8 h-8 rounded-full object-cover mx-auto" referrerPolicy="no-referrer" loading="lazy" />}
+          <div className="truncate mt-0.5">{p2 && shortName(p2.name)}</div>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 items-center">
@@ -267,19 +271,23 @@ const ScoreInput: React.FC<{
         />
       </div>
       <div className="flex gap-2">
-        <button
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 border-green-500/30 text-green-400 hover:bg-green-600/40 hover:text-green-400 hover:border-green-500/50 disabled:opacity-30"
           onClick={handleSubmit}
           disabled={s1 === s2}
-          className="flex-1 flex items-center justify-center gap-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-500/30 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-30"
         >
           <Check size={14} /> Confirm
-        </button>
-        <button
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-red-500/30 text-red-400 hover:bg-red-600/40 hover:text-red-400 hover:border-red-500/50"
           onClick={onCancel}
-          className="flex items-center justify-center gap-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
         >
           <X size={14} />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -339,7 +347,7 @@ const SingleEliminationView: React.FC<{
                   <div
                     key={mu.id}
                     onClick={() => canScore && setScoringMatchupId(mu.id)}
-                    className={`glass-panel rounded-lg overflow-hidden transition-all ${
+                    className={`rounded-lg overflow-hidden transition-all ${
                       canScore ? 'cursor-pointer hover:border-cyber-cyan/40' : ''
                     } ${isBye && !hasResult ? 'opacity-40 border-dashed' : ''}`}
                   >
@@ -353,9 +361,9 @@ const SingleEliminationView: React.FC<{
                     >
                       {p1 ? (
                         <>
-                          <img src={p1.avatar} alt={p1.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" />
+                          <img src={thumbUrl(p1.avatar, 48)} alt={p1.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" loading="lazy" />
                           <span className="text-xs text-white font-medium truncate flex-1">
-                            {p1.name}
+                            {shortName(p1.name)}
                           </span>
                           {mu.scorePlayer1 !== undefined && (
                             <span className="text-xs font-mono text-gray-400">{mu.scorePlayer1}</span>
@@ -380,9 +388,9 @@ const SingleEliminationView: React.FC<{
                     >
                       {p2 ? (
                         <>
-                          <img src={p2.avatar} alt={p2.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" />
+                          <img src={thumbUrl(p2.avatar, 48)} alt={p2.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" loading="lazy" />
                           <span className="text-xs text-white font-medium truncate flex-1">
-                            {p2.name}
+                            {shortName(p2.name)}
                           </span>
                           {mu.scorePlayer2 !== undefined && (
                             <span className="text-xs font-mono text-gray-400">{mu.scorePlayer2}</span>
@@ -409,9 +417,9 @@ const SingleEliminationView: React.FC<{
           <div className="flex flex-col items-center justify-center gap-2 min-w-[140px]">
             <Crown size={32} className="text-cyber-yellow" />
             <div className="text-center">
-              {getPlayer(players, tournament.winnerId)?.avatar && <img src={getPlayer(players, tournament.winnerId)!.avatar} alt="Champion" className="w-12 h-12 rounded-full object-cover border-2 border-cyber-yellow mx-auto" referrerPolicy="no-referrer" />}
+              {getPlayer(players, tournament.winnerId)?.avatar && <img src={thumbUrl(getPlayer(players, tournament.winnerId)!.avatar, 96)} alt="Champion" className="w-12 h-12 rounded-full object-cover border-2 border-cyber-yellow mx-auto" referrerPolicy="no-referrer" loading="lazy" />}
               <div className="text-white font-display font-bold text-sm mt-1">
-                {getPlayer(players, tournament.winnerId)?.name}
+                {getPlayer(players, tournament.winnerId)?.name && shortName(getPlayer(players, tournament.winnerId)!.name)}
               </div>
               <div className="text-cyber-yellow text-[10px] font-mono mt-0.5">CHAMPION</div>
             </div>
@@ -473,7 +481,7 @@ const RoundRobinView: React.FC<{
         <h4 className="text-xs font-display font-bold text-gray-400 tracking-widest uppercase mb-3">
           Standings
         </h4>
-        <div className="glass-panel rounded-xl overflow-hidden">
+        <div className="rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10 text-gray-500 text-xs font-mono">
@@ -505,8 +513,8 @@ const RoundRobinView: React.FC<{
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        {p?.avatar && <img src={p.avatar} alt={p.name} className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />}
-                        <span className="text-white font-medium">{p?.name}</span>
+                        {p?.avatar && <img src={thumbUrl(p.avatar, 48)} alt={p.name} className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" loading="lazy" />}
+                        <span className="text-white font-medium">{p && shortName(p.name)}</span>
                       </div>
                     </td>
                     <td className="px-3 py-2 text-center text-green-400 font-mono">{s.wins}</td>
@@ -565,13 +573,13 @@ const RoundRobinView: React.FC<{
                     <div
                       key={mu.id}
                       onClick={() => canScore && setScoringMatchupId(mu.id)}
-                      className={`glass-panel rounded-lg p-3 flex items-center gap-2 ${
+                      className={`rounded-lg p-3 flex items-center gap-2 ${
                         canScore ? 'cursor-pointer hover:border-cyber-cyan/40' : ''
                       } ${hasResult ? 'opacity-90' : ''}`}
                     >
                       <div className={`flex items-center gap-1.5 flex-1 min-w-0 ${hasResult && mu.winnerId === mu.player1Id ? 'text-white' : 'text-gray-400'}`}>
-                        {p1?.avatar && <img src={p1.avatar} alt={p1.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" />}
-                        <span className="text-xs font-medium truncate">{p1?.name}</span>
+                        {p1?.avatar && <img src={thumbUrl(p1.avatar, 40)} alt={p1.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" loading="lazy" />}
+                        <span className="text-xs font-medium truncate">{p1 && shortName(p1.name)}</span>
                       </div>
                       {hasResult ? (
                         <div className="text-xs font-mono text-gray-400 flex-shrink-0">
@@ -585,8 +593,8 @@ const RoundRobinView: React.FC<{
                         </div>
                       )}
                       <div className={`flex items-center gap-1.5 flex-1 min-w-0 justify-end ${hasResult && mu.winnerId === mu.player2Id ? 'text-white' : 'text-gray-400'}`}>
-                        <span className="text-xs font-medium truncate">{p2?.name}</span>
-                        {p2?.avatar && <img src={p2.avatar} alt={p2.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" />}
+                        <span className="text-xs font-medium truncate">{p2 && shortName(p2.name)}</span>
+                        {p2?.avatar && <img src={thumbUrl(p2.avatar, 40)} alt={p2.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" loading="lazy" />}
                       </div>
                     </div>
                   );
@@ -660,14 +668,14 @@ const CreateTournamentForm: React.FC<{
   }, [selectedIds.size, format, minPlayers]);
 
   return (
-    <div className="glass-panel rounded-xl p-5 space-y-5 animate-fadeIn">
+    <Card className="p-5 space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-display font-bold text-gray-400 tracking-widest uppercase">
           New Tournament
         </h3>
-        <button onClick={onCancel} className="text-gray-500 hover:text-white transition-colors">
+        <Button variant="ghost" size="icon-sm" className="text-gray-500 hover:text-white" onClick={onCancel}>
           <X size={18} />
-        </button>
+        </Button>
       </div>
 
       {/* Name */}
@@ -686,26 +694,22 @@ const CreateTournamentForm: React.FC<{
       <div>
         <label className="block text-xs text-gray-500 mb-1 font-mono">Format</label>
         <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
-          <button
+          <Button
+            size="sm"
+            className={format === 'single_elimination' ? '' : 'bg-transparent text-gray-400 hover:text-white shadow-none'}
+            variant={format === 'single_elimination' ? 'default' : 'ghost'}
             onClick={() => setFormat('single_elimination')}
-            className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all ${
-              format === 'single_elimination'
-                ? 'bg-cyber-cyan text-black shadow-neon-cyan'
-                : 'text-gray-400 hover:text-white'
-            }`}
           >
             Single Elimination
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            className={format === 'round_robin' ? '' : 'bg-transparent text-gray-400 hover:text-white shadow-none'}
+            variant={format === 'round_robin' ? 'default' : 'ghost'}
             onClick={() => setFormat('round_robin')}
-            className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all ${
-              format === 'round_robin'
-                ? 'bg-cyber-cyan text-black shadow-neon-cyan'
-                : 'text-gray-400 hover:text-white'
-            }`}
           >
             Round Robin
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -713,26 +717,22 @@ const CreateTournamentForm: React.FC<{
       <div>
         <label className="block text-xs text-gray-500 mb-1 font-mono">Game Type</label>
         <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
-          <button
+          <Button
+            size="sm"
+            className={gameType === 'singles' ? 'bg-cyber-pink text-white shadow-neon-pink' : 'bg-transparent text-gray-400 hover:text-white shadow-none'}
+            variant="ghost"
             onClick={() => setGameType('singles')}
-            className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all ${
-              gameType === 'singles'
-                ? 'bg-cyber-pink text-white shadow-neon-pink'
-                : 'text-gray-400 hover:text-white'
-            }`}
           >
             Singles
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            className={gameType === 'doubles' ? 'bg-cyber-pink text-white shadow-neon-pink' : 'bg-transparent text-gray-400 hover:text-white shadow-none'}
+            variant="ghost"
             onClick={() => setGameType('doubles')}
-            className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all ${
-              gameType === 'doubles'
-                ? 'bg-cyber-pink text-white shadow-neon-pink'
-                : 'text-gray-400 hover:text-white'
-            }`}
           >
             Doubles
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -761,19 +761,9 @@ const CreateTournamentForm: React.FC<{
 
         {/* Select all / Deselect all */}
         <div className="flex gap-2 mb-2">
-          <button
-            onClick={selectAll}
-            className="text-[10px] font-mono text-cyber-cyan hover:underline"
-          >
-            Select All
-          </button>
+          <Button variant="ghost" size="sm" className="text-cyber-cyan hover:underline p-0" onClick={selectAll}>Select All</Button>
           <span className="text-gray-700">|</span>
-          <button
-            onClick={deselectAll}
-            className="text-[10px] font-mono text-gray-500 hover:underline"
-          >
-            Deselect All
-          </button>
+          <Button variant="ghost" size="sm" className="text-gray-500 hover:underline p-0" onClick={deselectAll}>Deselect All</Button>
         </div>
 
         {/* Player grid */}
@@ -804,15 +794,16 @@ const CreateTournamentForm: React.FC<{
       )}
 
       {/* Create button */}
-      <button
+      <Button
+        className="w-full bg-gradient-to-r from-cyber-cyan to-cyber-purple text-white hover:shadow-neon-cyan disabled:opacity-30"
+        size="lg"
         onClick={handleCreate}
         disabled={!canCreate}
-        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyber-cyan to-cyber-purple text-white font-display font-bold py-3 rounded-lg transition-all hover:shadow-neon-cyan disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:shadow-none"
       >
         <Trophy size={18} />
         CREATE TOURNAMENT
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 };
 
@@ -869,7 +860,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
@@ -879,12 +870,9 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
           </h2>
         </div>
         {isAdmin && !showCreate && (
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 bg-cyber-cyan/10 hover:bg-cyber-cyan/20 text-cyber-cyan border border-cyber-cyan/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-          >
+          <Button variant="cyber" size="sm" onClick={() => setShowCreate(true)}>
             <Plus size={14} /> New Tournament
-          </button>
+          </Button>
         )}
       </div>
 
@@ -913,7 +901,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
         const winner = t.winnerId ? getPlayer(players, t.winnerId) : undefined;
 
         return (
-          <div key={t.id} className="glass-panel rounded-xl overflow-hidden">
+          <Card key={t.id} className="overflow-hidden">
             {/* Tournament header */}
             <button
               onClick={() => setExpandedId(isExpanded ? null : t.id)}
@@ -932,7 +920,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   {t.playerIds.length} players
                   {winner && (
                     <span className="ml-2 text-cyber-yellow inline-flex items-center gap-1">
-                      🏆 <img src={winner.avatar} alt={winner.name} className="w-4 h-4 rounded-full object-cover inline" referrerPolicy="no-referrer" /> {winner.name}
+                      🏆 <img src={thumbUrl(winner.avatar, 32)} alt={winner.name} className="w-4 h-4 rounded-full object-cover inline" referrerPolicy="no-referrer" loading="lazy" /> {shortName(winner.name)}
                     </span>
                   )}
                 </div>
@@ -970,21 +958,23 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                 {/* Delete button */}
                 {isAdmin && onDeleteTournament && (
                   <div className="mt-4 pt-4 border-t border-white/5 flex justify-end">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500/60 hover:text-red-400"
                       onClick={() => {
                         if (window.confirm(`Delete tournament "${t.name}"?`)) {
                           onDeleteTournament(t.id);
                         }
                       }}
-                      className="flex items-center gap-1 text-red-500/60 hover:text-red-400 text-xs font-mono transition-colors"
                     >
                       <Trash2 size={12} /> Delete Tournament
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </Card>
         );
       })}
     </div>
