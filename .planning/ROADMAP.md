@@ -85,7 +85,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security Guardrails and Boundary Validation | 0/3 | Not started | - |
+| 1. Security Guardrails and Boundary Validation | 1/3 | In Progress|  |
 | 2. Formula Trust-Boundary and Persistence Contracts | 0/TBD | Not started | - |
 | 3. Frontend Orchestration Decomposition | 0/TBD | Not started | - |
 | 4. Backend Read-Path and Recompute Isolation | 0/TBD | Not started | - |
