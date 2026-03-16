@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 01-01-PLAN.md (runtime guardrails and staged CSP hardening)
-last_updated: "2026-03-16T11:07:52.859Z"
+stopped_at: Completed 01-02-PLAN.md (centralized payload validation and strict unknown-key rejection)
+last_updated: "2026-03-16T11:15:36.024Z"
 last_activity: 2026-03-16 - Roadmap created from v1 requirements and research context
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0%
 - Last 5 plans: -
 - Trend: Stable
 | Phase 01-security-guardrails-and-boundary-validation P01 | 8min | 3 tasks | 8 files |
+| Phase 01-security-guardrails-and-boundary-validation P02 | 5min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ Recent decisions affecting current work:
 - Coverage policy set to 100% one-to-one requirement-to-phase mapping for v1.
 - [Phase 01-01]: Env parameter injection used for guard functions instead of module-level const for pure testability
 - [Phase 01-01]: HARDENED_CSP=true env flag chosen for staged CSP hardening to allow production toggle without code deploys
+- [Phase 01-02]: Semantic validation (422) uses enum checks + domain rule functions — separates shape/type from domain concerns
+- [Phase 01-02]: Ad-hoc shape checks removed where schema fully supersedes them; score domain-logic checks kept in route handlers
 
 ### Pending Todos
 
@@ -73,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T11:07:52.857Z
-Stopped at: Completed 01-01-PLAN.md (runtime guardrails and staged CSP hardening)
+Last session: 2026-03-16T11:15:36.022Z
+Stopped at: Completed 01-02-PLAN.md (centralized payload validation and strict unknown-key rejection)
 Resume file: None
