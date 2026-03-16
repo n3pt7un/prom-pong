@@ -45,7 +45,10 @@ Plans:
   2. Existing valid Elo configurations continue producing expected outcomes verified by compatibility tests.
   3. Supabase import successfully includes players, matches, history, and rackets with behavior parity to local mode.
   4. Persistence adapters expose and satisfy equivalent contracts for state retrieval and mutation behavior.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 02-01-PLAN.md - Add formula error logging, admin UI trust note, and auth boundary + compatibility tests (SECU-01, SECU-02).
+- [ ] 02-02-PLAN.md - Fix Supabase import parity bug and create persistence adapter contract tests (DATA-01, DATA-03).
 
 ### Phase 3: Frontend Orchestration Decomposition
 **Goal**: The frontend retains existing behavior while orchestration and mutation flows are split into maintainable, focused modules.
@@ -86,7 +89,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Security Guardrails and Boundary Validation | 3/3 | Complete   | 2026-03-16 |
-| 2. Formula Trust-Boundary and Persistence Contracts | 0/TBD | Not started | - |
+| 2. Formula Trust-Boundary and Persistence Contracts | 0/2 | Not started | - |
 | 3. Frontend Orchestration Decomposition | 0/TBD | Not started | - |
 | 4. Backend Read-Path and Recompute Isolation | 0/TBD | Not started | - |
 | 5. Parity and Regression Closure | 0/TBD | Not started | - |
