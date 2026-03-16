@@ -13,7 +13,7 @@ This roadmap delivers stabilization in a risk-first sequence: establish security
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Security Guardrails and Boundary Validation** - Lock auth/validation/CSP/dev-mode safety rails and release gates for safe remediation.
-- [ ] **Phase 2: Formula Safety and Persistence Contracts** - Remove dynamic formula execution risk and restore consistent import behavior with explicit adapter contracts.
+- [ ] **Phase 2: Formula Trust-Boundary and Persistence Contracts** - Preserve admin-maintainer formula flexibility while hardening trust boundaries and restoring consistent import behavior with explicit adapter contracts.
 - [ ] **Phase 3: Frontend Orchestration Decomposition** - Split monolithic frontend orchestration into focused containers and domain handler modules.
 - [ ] **Phase 4: Backend Read-Path and Recompute Isolation** - Remove mutation side effects from reads and make heavy maintenance flows safe at scale.
 - [ ] **Phase 5: Parity and Regression Closure** - Prove dual-backend parity and ranking/history correctness with risk-focused regression coverage.
@@ -30,14 +30,18 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. CSP hardening is active in staged form without breaking required auth popup/login flows used by operators.
   4. Backend tests demonstrate auth middleware and admin-route protection boundaries for expected allow/deny scenarios.
   5. CI/release checks block promotion when stabilization-critical security and regression gates fail.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 01-01-PLAN.md - Implement runtime guardrails for safe local-dev auth bypass and staged CSP profile wiring.
+- [ ] 01-02-PLAN.md - Add centralized strict validation on high-risk admin and mutation routes with unified 4xx contract.
+- [ ] 01-03-PLAN.md - Add backend security boundary tests and a blocking deploy pre-gate for phase-critical suites.
 
-### Phase 2: Formula Safety and Persistence Contracts
-**Goal**: Admin Elo formula behavior remains supported without dynamic code execution, and import/state semantics are explicitly contract-aligned across persistence adapters.
+### Phase 2: Formula Trust-Boundary and Persistence Contracts
+**Goal**: Admin Elo formula behavior remains supported under an explicit admin-maintainer trust boundary, and import/state semantics are explicitly contract-aligned across persistence adapters.
 **Depends on**: Phase 1
 **Requirements**: SECU-01, SECU-02, DATA-01, DATA-03
 **Success Criteria** (what must be TRUE):
-  1. Admin-provided formulas run through constrained, allowlisted evaluation instead of dynamic code execution.
+  1. Admin-provided formulas remain available to authenticated admins under documented trust-boundary controls and coverage guardrails.
   2. Existing valid Elo configurations continue producing expected outcomes verified by compatibility tests.
   3. Supabase import successfully includes players, matches, history, and rackets with behavior parity to local mode.
   4. Persistence adapters expose and satisfy equivalent contracts for state retrieval and mutation behavior.
@@ -81,8 +85,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security Guardrails and Boundary Validation | 0/TBD | Not started | - |
-| 2. Formula Safety and Persistence Contracts | 0/TBD | Not started | - |
+| 1. Security Guardrails and Boundary Validation | 0/3 | Not started | - |
+| 2. Formula Trust-Boundary and Persistence Contracts | 0/TBD | Not started | - |
 | 3. Frontend Orchestration Decomposition | 0/TBD | Not started | - |
 | 4. Backend Read-Path and Recompute Isolation | 0/TBD | Not started | - |
 | 5. Parity and Regression Closure | 0/TBD | Not started | - |

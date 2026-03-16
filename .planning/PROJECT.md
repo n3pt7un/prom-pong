@@ -24,7 +24,7 @@ The existing app remains feature-equivalent while critical maintenance risk and 
 - [ ] Split useLeagueHandlers into domain modules with shared mutation/error helper to remove repeated async boilerplate
 - [ ] Fix Supabase import parity so players, matches/history, and rackets all import consistently
 - [ ] Remove or archive dead legacy settings code from active runtime tree
-- [ ] Address highest-risk security/runtime concerns (dynamic formula execution, unsafe CSP, dev auth bypass hardening)
+- [ ] Address highest-risk security/runtime concerns (validated boundaries, unsafe CSP, dev auth bypass hardening; formula execution treated as accepted admin-only risk)
 - [ ] Move expensive mutation side effects out of request read paths and reduce synchronous full-file persistence pressure
 - [ ] Add backend regression coverage around auth boundaries, import/export parity, and recompute/reconciliation paths
 

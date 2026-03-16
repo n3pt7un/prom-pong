@@ -9,7 +9,7 @@ Requirements for this stabilization milestone. Each maps to exactly one roadmap 
 
 ### Security Hardening
 
-- [ ] **SECU-01**: Server no longer executes admin-provided formulas through dynamic code evaluation; formula evaluation uses a constrained, allowlisted execution model.
+- [ ] **SECU-01**: Dynamic admin-provided formula execution is an accepted trust-boundary risk for this milestone; execution remains admin-only and is documented/guarded rather than replaced.
 - [ ] **SECU-02**: Formula migration preserves existing valid Elo formula behavior through compatibility tests for known admin configurations.
 - [ ] **SECU-03**: API mutating and admin routes enforce centralized schema validation with consistent 4xx responses for invalid payloads.
 - [ ] **SECU-04**: Development auth bypass is only possible when both NODE_ENV=development and explicit local-dev flags are present; unsafe combinations fail fast at startup.
@@ -98,4 +98,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after roadmap mapping*
+*Last updated: 2026-03-16 after accepted-risk security decision (SECU-01)*

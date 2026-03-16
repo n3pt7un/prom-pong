@@ -2,3 +2,21 @@
 /HANDOFF.md
 
 .env
+# Editor and OS
+.DS_Store
+.vscode/
+
+# Build and output
+.vite/
+.playwright-mcp/
+supabase/.temp/
+
+# Node
+node_modules/
+
+# Test and coverage
+coverage/
+
+# Misc
+letest-report.json
+
