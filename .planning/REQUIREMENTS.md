@@ -36,10 +36,10 @@ Requirements for this stabilization milestone. Each maps to exactly one roadmap 
 
 ### Testing and Operational Safety
 
-- [ ] **TEST-01**: Backend automated tests cover auth middleware boundaries, admin route protections, and malformed payload handling.
+- [x] **TEST-01**: Backend automated tests cover auth middleware boundaries, admin route protections, and malformed payload handling.
 - [ ] **TEST-02**: Backend automated tests cover import/export flows and verify parity-critical behavior between local and Supabase modes.
 - [ ] **TEST-03**: Regression tests verify pending-match expiry/reconciliation and recompute workflows do not corrupt rankings/history data.
-- [ ] **TEST-04**: Release checks include risk-focused CI gates for stabilization-critical paths before deployment.
+- [x] **TEST-04**: Release checks include risk-focused CI gates for stabilization-critical paths before deployment.
 
 ## v2 Requirements
 
@@ -86,10 +86,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-01 | Phase 4 | Pending |
 | PERF-02 | Phase 4 | Pending |
 | PERF-03 | Phase 4 | Pending |
-| TEST-01 | Phase 1 | Pending |
+| TEST-01 | Phase 1 | Complete |
 | TEST-02 | Phase 5 | Pending |
 | TEST-03 | Phase 5 | Pending |
-| TEST-04 | Phase 1 | Pending |
+| TEST-04 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 19 total

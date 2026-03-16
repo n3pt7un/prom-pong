@@ -12,7 +12,7 @@ This roadmap delivers stabilization in a risk-first sequence: establish security
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Security Guardrails and Boundary Validation** - Lock auth/validation/CSP/dev-mode safety rails and release gates for safe remediation.
+- [x] **Phase 1: Security Guardrails and Boundary Validation** - Lock auth/validation/CSP/dev-mode safety rails and release gates for safe remediation. (completed 2026-03-16)
 - [ ] **Phase 2: Formula Trust-Boundary and Persistence Contracts** - Preserve admin-maintainer formula flexibility while hardening trust boundaries and restoring consistent import behavior with explicit adapter contracts.
 - [ ] **Phase 3: Frontend Orchestration Decomposition** - Split monolithic frontend orchestration into focused containers and domain handler modules.
 - [ ] **Phase 4: Backend Read-Path and Recompute Isolation** - Remove mutation side effects from reads and make heavy maintenance flows safe at scale.
@@ -85,7 +85,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security Guardrails and Boundary Validation | 2/3 | In Progress|  |
+| 1. Security Guardrails and Boundary Validation | 3/3 | Complete   | 2026-03-16 |
 | 2. Formula Trust-Boundary and Persistence Contracts | 0/TBD | Not started | - |
 | 3. Frontend Orchestration Decomposition | 0/TBD | Not started | - |
 | 4. Backend Read-Path and Recompute Isolation | 0/TBD | Not started | - |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 01-02-PLAN.md (centralized payload validation and strict unknown-key rejection)
-last_updated: "2026-03-16T11:15:36.024Z"
+stopped_at: Completed 01-03-PLAN.md (security regression tests and blocking deploy gate)
+last_updated: "2026-03-16T11:21:16.905Z"
 last_activity: 2026-03-16 - Roadmap created from v1 requirements and research context
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: Stable
 | Phase 01-security-guardrails-and-boundary-validation P01 | 8min | 3 tasks | 8 files |
 | Phase 01-security-guardrails-and-boundary-validation P02 | 5min | 3 tasks | 8 files |
+| Phase 01-security-guardrails-and-boundary-validation P03 | 2min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Recent decisions affecting current work:
 - [Phase 01-01]: HARDENED_CSP=true env flag chosen for staged CSP hardening to allow production toggle without code deploys
 - [Phase 01-02]: Semantic validation (422) uses enum checks + domain rule functions — separates shape/type from domain concerns
 - [Phase 01-02]: Ad-hoc shape checks removed where schema fully supersedes them; score domain-logic checks kept in route handlers
+- [Phase 01-03]: Used .mjs extension for server tests — jest server project only matches .cjs/.mjs, no TypeScript transform configured
+- [Phase 01-03]: Inline auth/admin boundary logic in tests — firebase-admin requires real credentials to initialize, preventing direct middleware import in unit tests
 
 ### Pending Todos
 
@@ -76,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T11:15:36.022Z
-Stopped at: Completed 01-02-PLAN.md (centralized payload validation and strict unknown-key rejection)
+Last session: 2026-03-16T11:21:16.903Z
+Stopped at: Completed 01-03-PLAN.md (security regression tests and blocking deploy gate)
 Resume file: None
