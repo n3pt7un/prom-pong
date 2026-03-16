@@ -11,6 +11,7 @@ import { isSupabaseEnabled } from '../lib/supabase.js';
 import { PORT, GCS_BUCKET, ADMIN_EMAILS } from './config.js';
 import { loadDB } from './db/persistence.js';
 import { validateRuntimeGuardrails } from './security/runtime-guards.js';
+import { buildCspDirectives } from './security/csp-profile.js';
 
 import stateRoutes from './routes/state.js';
 import meRoutes from './routes/me.js';
@@ -46,15 +47,9 @@ app.use(helmet({
   // link, so the popup can't postMessage the auth result back → popup-closed-by-user.
   crossOriginOpenerPolicy: false,
   contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://apis.google.com', 'https://*.firebaseapp.com'],
-      frameSrc: ["'self'", 'https://accounts.google.com', 'https://*.firebaseapp.com'],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'", 'https:'],
-    },
+    // CSP directives are managed via the shared staged-hardening profile.
+    // Set HARDENED_CSP=true to enable the tighter profile (removes unsafe-eval).
+    directives: buildCspDirectives({ hardenedProfile: process.env.HARDENED_CSP === 'true' }),
   },
 }));
 app.use(compression());
