@@ -19,31 +19,17 @@ Welcome to **Cyberpong** – the ultimate platform for managing your arcade leag
 
 ## 📸 Screenshots
 
-*(Please add the following 4 screenshots to the `docs/assets/` folder to complete this section)*
-
 1. **Main Dashboard / Matchups Hub**
-   *(We need a screenshot showing the core game interface/overview)*
-   ```markdown
    ![Main Dashboard](docs/assets/screenshot-dashboard.png)
-   ```
 
 2. **Leaderboard & Ranks**
-   *(We need a screenshot showing the Hall of Fame or Leaderboard rankings)*
-   ```markdown
    ![Leaderboard](docs/assets/screenshot-leaderboard.png)
-   ```
 
 3. **Player Profile & Stats**
-   *(We need a screenshot showing detailed insights/performance for a player)*
-   ```markdown
    ![Player Profile](docs/assets/screenshot-profile.png)
-   ```
 
 4. **Admin Panel / Match Logger**
-   *(We need a screenshot showing the admin panel or how matches are logged)*
-   ```markdown
    ![Admin Panel](docs/assets/screenshot-admin.png)
-   ```
 
 ---
 
