@@ -1,10 +1,11 @@
 import admin from 'firebase-admin';
 import { dbOps } from '../db/operations.js';
-import { ADMIN_EMAILS, GCS_BUCKET } from '../config.js';
+import { ADMIN_EMAILS } from '../config.js';
+import { canUseLocalDevBypass } from '../security/runtime-guards.js';
 
 export const authMiddleware = async (req, res, next) => {
-  // LOCAL_DEV bypass: only active when LOCAL_DEV=true and no GCS_BUCKET (local dev only)
-  if (process.env.LOCAL_DEV === 'true' && !GCS_BUCKET) {
+  // LOCAL_DEV bypass: gate through shared guard helper — only allowed in safe local-dev context
+  if (canUseLocalDevBypass()) {
     const devUid = process.env.DEV_USER_UID || 'dev-user-001';
     req.user = { uid: devUid, email: 'dev@local.test', name: 'Dev User', picture: '' };
     return next();

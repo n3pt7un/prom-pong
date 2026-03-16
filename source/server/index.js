@@ -10,6 +10,7 @@ import admin from 'firebase-admin';
 import { isSupabaseEnabled } from '../lib/supabase.js';
 import { PORT, GCS_BUCKET, ADMIN_EMAILS } from './config.js';
 import { loadDB } from './db/persistence.js';
+import { validateRuntimeGuardrails } from './security/runtime-guards.js';
 
 import stateRoutes from './routes/state.js';
 import meRoutes from './routes/me.js';
@@ -147,14 +148,28 @@ app.get('*', (req, res) => {
 });
 
 const startServer = async () => {
+  // Fail-fast: validate runtime guardrails before loading DB or listening
+  const guard = validateRuntimeGuardrails();
+  if (!guard.ok) {
+    console.error('[SECURITY] Unsafe environment configuration detected. Server will not start.');
+    console.error(`[SECURITY] Reason: ${guard.reason}`);
+    console.error('[SECURITY] Resolved env values:', JSON.stringify(guard.values));
+    process.exit(1);
+  }
+  if (guard.bypass) {
+    console.warn('[SECURITY] WARNING: Local-dev auth bypass is ACTIVE.');
+    console.warn('[SECURITY] Bypass context:', JSON.stringify(guard.values));
+    console.warn('[SECURITY] All API requests will be authenticated as dev@local.test — do not use in production.');
+  }
+
   if (!isSupabaseEnabled()) {
     await loadDB();
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
     if (ADMIN_EMAILS.length > 0) {
-      console.log(`👑 Admin emails: ${ADMIN_EMAILS.join(', ')}`);
+      console.log(`Admin emails: ${ADMIN_EMAILS.join(', ')}`);
     }
   });
 };
