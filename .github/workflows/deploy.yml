@@ -1,0 +1,193 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.vscode/**'
+      - '.kiro/**'
+  workflow_dispatch:
+
+env:
+  REGISTRY: europe-west1-docker.pkg.dev
+  IMAGE_NAME: ${{ secrets.GCP_PROJECT_ID }}/cloud-run-source-deploy/cyber-pong-arcade-league
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Verify GCP authentication
+        if: failure() && steps.auth.outcome == 'failure'
+        run: |
+          echo "❌ GCP Authentication failed"
+          echo "Troubleshooting steps:"
+          echo "1. Verify GCP_SERVICE_ACCOUNT_KEY secret is set correctly"
+          echo "2. Ensure the service account key is valid and not expired"
+          echo "3. Check that the service account has required permissions"
+          exit 1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: source/package-lock.json
+
+      - name: Install dependencies for backend tests
+        working-directory: ./source
+        run: npm ci --ignore-scripts
+
+      - name: Run phase-critical backend security and validation tests
+        id: backend-tests
+        working-directory: ./source
+        run: |
+          NODE_OPTIONS='--experimental-vm-modules' npm test -- --runInBand \
+            server/__tests__/security-guardrails.test.mjs \
+            server/__tests__/validation-boundaries.test.mjs
+
+      - name: Diagnose backend test failure
+        if: failure() && steps.backend-tests.outcome == 'failure'
+        run: |
+          echo "Backend security/validation tests failed — deployment blocked"
+          echo "Fix the failing tests before this workflow will proceed to build or deploy."
+          echo "Suites checked:"
+          echo "  - source/server/__tests__/security-guardrails.test.mjs"
+          echo "  - source/server/__tests__/validation-boundaries.test.mjs"
+          exit 1
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./source
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Diagnose build failure
+        if: failure() && steps.build.outcome == 'failure'
+        run: |
+          echo "❌ Docker build failed"
+          echo "Troubleshooting steps:"
+          echo "1. Check the build logs above for compilation errors"
+          echo "2. Verify Dockerfile syntax in ./source directory"
+          echo "3. Ensure all dependencies are correctly specified"
+          echo "4. Check that source code compiles locally"
+          echo ""
+          echo "Build context: ./source"
+          echo "Commit SHA: ${{ github.sha }}"
+          exit 1
+
+      - name: Clean up old images
+        id: cleanup
+        continue-on-error: true
+        run: |
+          echo "🧹 Cleaning up old images from Artifact Registry..."
+          # Get all image digests except the one we just pushed
+          gcloud artifacts docker images list \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+            --format="get(digest)" \
+            --filter="NOT tags:${{ github.sha }}" \
+            --limit=1000 | \
+          while read digest; do
+            if [ ! -z "$digest" ]; then
+              echo "Deleting image: $digest"
+              gcloud artifacts docker images delete \
+                "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$digest" \
+                --quiet
+            fi
+          done
+          echo "✅ Cleanup completed"
+
+      - name: Warn on cleanup failure
+        if: steps.cleanup.outcome == 'failure'
+        run: |
+          echo "⚠️ Warning: Image cleanup failed"
+          echo "This will not prevent deployment, but may cause storage to accumulate"
+          echo "Manual cleanup may be required to stay within free tier limits"
+          echo "Run: gcloud artifacts docker images list ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ secrets.GCP_SERVICE_NAME }}
+          region: ${{ secrets.GCP_REGION }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          flags: |
+            --port=8080
+            --memory=512Mi
+            --cpu=1
+            --min-instances=0
+            --max-instances=1
+            --allow-unauthenticated
+            --timeout=300
+            --set-env-vars=SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Diagnose deployment failure
+        if: failure() && steps.deploy.outcome == 'failure'
+        run: |
+          echo "❌ Cloud Run deployment failed"
+          echo "Troubleshooting steps:"
+          echo "1. Check Cloud Run logs: gcloud run services logs read ${{ secrets.GCP_SERVICE_NAME }} --region=${{ secrets.GCP_REGION }}"
+          echo "2. Verify service account has 'run.admin' and 'iam.serviceAccountUser' roles"
+          echo "3. Check that the service exists: gcloud run services describe ${{ secrets.GCP_SERVICE_NAME }} --region=${{ secrets.GCP_REGION }}"
+          echo "4. Verify environment variables are set correctly"
+          echo "5. Ensure resource limits are within quotas"
+          echo ""
+          echo "Deployment details:"
+          echo "  Service: ${{ secrets.GCP_SERVICE_NAME }}"
+          echo "  Region: ${{ secrets.GCP_REGION }}"
+          echo "  Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          exit 1
+
+      - name: Display deployment URL
+        if: success()
+        run: |
+          echo "🚀 Deployment successful!"
+          echo "Service URL: ${{ steps.deploy.outputs.url }}"
+          echo "Access your application at: ${{ steps.deploy.outputs.url }}"
+
+      - name: Workflow summary
+        if: always()
+        run: |
+          echo "📊 Workflow Execution Summary"
+          echo "=============================="
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Workflow: ${{ github.workflow }}"
+          echo ""
+          echo "Step Status:"
+          echo "  Authentication: ${{ steps.auth.outcome }}"
+          echo "  Build: ${{ steps.build.outcome }}"
+          echo "  Cleanup: ${{ steps.cleanup.outcome }}"
+          echo "  Deploy: ${{ steps.deploy.outcome }}"
+          echo ""
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Overall Status: SUCCESS"
+          else
+            echo "❌ Overall Status: FAILED"
+            echo ""
+            echo "Check the logs above for detailed error messages and troubleshooting steps"
+          fi
