@@ -28,6 +28,7 @@ const AdminPanel = lazy(() => import('./components/AdminPanel'));
 import { ToastProvider, useToast } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LeagueProvider, useLeague } from './context/LeagueContext';
+import { HapticProvider } from './context/HapticContext';
 import { useLeagueHandlers } from './hooks/useLeagueHandlers';
 import { useChallengeToasts } from './hooks/useChallengeToasts';
 import { GameType, MatchFormat, Challenge } from './types';
@@ -725,13 +726,15 @@ const [matchPrefill, setMatchPrefill] = useState<{ type: GameType; team1: string
 
 function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <LeagueProvider>
-          <AppContent />
-        </LeagueProvider>
-      </AuthProvider>
-    </ToastProvider>
+    <HapticProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <LeagueProvider>
+            <AppContent />
+          </LeagueProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </HapticProvider>
   );
 }
 

@@ -8,6 +8,7 @@ import { AppUser, League } from '../types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { thumbUrl } from '../utils/imageUtils';
 import { cn } from '../lib/utils';
+import { useHaptic } from '../context/HapticContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -89,6 +90,7 @@ const Layout: React.FC<LayoutProps> = ({
   activeLeagueId,
   onLeagueChange,
 }) => {
+  const { trigger: hapticTrigger } = useHaptic();
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebar-collapsed') === 'true'; } catch { return false; }
   });
@@ -111,6 +113,7 @@ const Layout: React.FC<LayoutProps> = ({
   }, [moreOpen]);
 
   const handleNav = (tab: string) => {
+    hapticTrigger('nudge');
     if (tab === '_more') { setMoreOpen(true); return; }
     onTabChange(tab);
     setMoreOpen(false);

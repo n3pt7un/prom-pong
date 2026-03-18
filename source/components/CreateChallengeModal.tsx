@@ -4,6 +4,7 @@ import { Zap, Flame, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { useHaptic } from '../context/HapticContext';
 
 interface CreateChallengeModalProps {
   players: Player[];
@@ -34,6 +35,7 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
   onCreateChallenge,
   onClose,
 }) => {
+  const { trigger: hapticTrigger } = useHaptic();
   const [selectedOpponent, setSelectedOpponent] = useState('');
   const [wager, setWager] = useState(0);
   const [message, setMessage] = useState('');
@@ -60,6 +62,7 @@ const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
 
   const handleSend = () => {
     if (!selectedOpponent) return;
+    hapticTrigger('success');
     onCreateChallenge(selectedOpponent, wager, message.trim() || undefined);
     onClose();
   };

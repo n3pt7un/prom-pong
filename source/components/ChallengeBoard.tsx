@@ -7,6 +7,7 @@ import {
 import { Button } from './ui/button';
 import { shortName } from '../utils/playerRanking';
 import { thumbUrl } from '../utils/imageUtils';
+import { useHaptic } from '../context/HapticContext';
 
 // --- Props ---
 interface ChallengeBoardProps {
@@ -159,6 +160,7 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
   onCancelChallenge,
   onCompleteChallenge,
 }) => {
+  const { trigger: hapticTrigger } = useHaptic();
   const [showHistory, setShowHistory] = useState(false);
 
   const currentPlayer = useMemo(
@@ -270,7 +272,7 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
                       size="sm"
                       variant="outline"
                       className="border-green-500/30 text-green-400 hover:bg-green-600/40 hover:text-green-400 hover:border-green-500/50"
-                      onClick={() => onRespondChallenge(c.id, true)}
+                      onClick={() => { hapticTrigger('success'); onRespondChallenge(c.id, true); }}
                     >
                       <Check size={14} /> Accept
                     </Button>
@@ -278,7 +280,7 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
                       size="sm"
                       variant="outline"
                       className="border-red-500/30 text-red-400 hover:bg-red-600/40 hover:text-red-400 hover:border-red-500/50"
-                      onClick={() => onRespondChallenge(c.id, false)}
+                      onClick={() => { hapticTrigger('error'); onRespondChallenge(c.id, false); }}
                     >
                       <X size={14} /> Decline
                     </Button>
@@ -334,7 +336,7 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
                       size="sm"
                       variant="outline"
                       className="border-green-500/30 text-green-400 hover:bg-green-600/40 hover:text-green-400 hover:border-green-500/50"
-                      onClick={() => onRespondChallenge(c.id, true)}
+                      onClick={() => { hapticTrigger('success'); onRespondChallenge(c.id, true); }}
                     >
                       <Check size={14} /> Accept
                     </Button>
@@ -342,7 +344,7 @@ const ChallengeBoard: React.FC<ChallengeBoardProps> = ({
                       size="sm"
                       variant="outline"
                       className="border-red-500/30 text-red-400 hover:bg-red-600/40 hover:text-red-400 hover:border-red-500/50"
-                      onClick={() => onRespondChallenge(c.id, false)}
+                      onClick={() => { hapticTrigger('error'); onRespondChallenge(c.id, false); }}
                     >
                       <X size={14} /> Decline
                     </Button>

@@ -7,6 +7,7 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import MatchDetailModal from './MatchDetailModal';
+import { useHaptic } from '../context/HapticContext';
 
 const timeAgo = (dateStr: string) => {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -41,6 +42,7 @@ interface RecentMatchesProps {
 const PAGE_SIZE = 15;
 
 const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, history, isAdmin, currentUserUid, currentPlayerIds, onDeleteMatch, onEditMatch, onRequestCorrection }) => {
+  const { trigger: hapticTrigger } = useHaptic();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editScore1, setEditScore1] = useState('');
@@ -74,6 +76,7 @@ const RecentMatches: React.FC<RecentMatchesProps> = ({ matches, players, history
 
   const handleDelete = (matchId: string) => {
     if (onDeleteMatch && window.confirm('Delete this match and reverse ELO changes?')) {
+      hapticTrigger('buzz');
       onDeleteMatch(matchId);
     }
   };

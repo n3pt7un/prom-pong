@@ -37,18 +37,21 @@ import { LeagueState } from '../services/storageService';
 import { useAuth } from '../context/AuthContext';
 import { useLeague } from '../context/LeagueContext';
 import { useToast } from '../context/ToastContext';
+import { useHaptic } from '../context/HapticContext';
 import { GameType, MatchFormat, RacketStats, Tournament } from '../types';
 
 export function useLeagueHandlers() {
   const { currentUser, isAdmin } = useAuth();
   const { refreshData, activeLeagueId, setActiveLeagueId } = useLeague();
   const { showToast } = useToast();
+  const { trigger: hapticTrigger } = useHaptic();
 
   const handleMatchSubmit = useCallback(
     async (type: GameType, winners: string[], losers: string[], scoreW: number, scoreL: number, isFriendly = false, leagueId?: string, matchFormat?: MatchFormat) => {
       try {
         const result = await recordMatch(type, winners, losers, scoreW, scoreL, isFriendly, leagueId || (activeLeagueId ?? undefined), matchFormat);
         await refreshData();
+        hapticTrigger('success');
         showToast('Match logged!', 'success', {
           label: 'UNDO',
           onClick: async () => {
@@ -66,7 +69,7 @@ export function useLeagueHandlers() {
         showToast(err.message || 'Failed to log match', 'error');
       }
     },
-    [activeLeagueId, refreshData, showToast]
+    [activeLeagueId, hapticTrigger, refreshData, showToast]
   );
 
   const handleDeleteMatch = useCallback(async (matchId: string) => {

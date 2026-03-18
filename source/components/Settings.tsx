@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Upload, Camera, Check, X, User } from 'lucide-react';
+import { Download, Upload, Camera, Check, X, User, Vibrate } from 'lucide-react';
 import { AppUser } from '../types';
 import { AVATARS } from '../constants';
 import { resizeImage, thumbUrl } from '../utils/imageUtils';
@@ -7,6 +7,8 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { useHaptic } from '../context/HapticContext';
+import { WebHaptics } from 'web-haptics';
 
 interface SettingsProps {
   currentUser: AppUser | null;
@@ -15,6 +17,7 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProfile }) => {
+  const { enabled: hapticsEnabled, setEnabled: setHapticsEnabled } = useHaptic();
   const [editingProfile, setEditingProfile] = useState(false);
   const [editName, setEditName] = useState(currentUser?.player?.name || '');
   const [editBio, setEditBio] = useState(currentUser?.player?.bio || '');
@@ -223,6 +226,33 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
           </Button>
         </div>
       </Card>
+
+      {/* Haptic Feedback */}
+      {WebHaptics.isSupported && (
+        <Card className="p-6 border-l-4 border-l-cyber-pink">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Vibrate className="text-cyber-pink" size={20} />
+                Haptic Feedback
+              </h3>
+              <p className="text-gray-400 mt-1 text-sm">
+                Vibration on key actions
+              </p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={hapticsEnabled}
+              onClick={() => setHapticsEnabled(!hapticsEnabled)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-cyber-pink focus:ring-offset-2 focus:ring-offset-black ${hapticsEnabled ? 'bg-cyber-pink' : 'bg-white/10'}`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${hapticsEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+              />
+            </button>
+          </div>
+        </Card>
+      )}
 
       {/* Info Note */}
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
