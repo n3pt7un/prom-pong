@@ -1,13 +1,17 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
 import { useWebHaptics } from 'web-haptics/react';
-import { WebHaptics } from 'web-haptics';
 import type { HapticInput } from 'web-haptics';
+
+// True on any touch device (iOS or Android). The web-haptics library handles
+// platform differences internally: navigator.vibrate on Android, and the
+// <input type="checkbox" switch> click trick on iOS Safari.
+const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
 
 interface HapticContextValue {
   enabled: boolean;
   setEnabled: (v: boolean) => void;
   trigger: (pattern: HapticInput) => void;
-  isSupported: boolean;
+  isTouchDevice: boolean;
 }
 
 const HapticContext = createContext<HapticContextValue | null>(null);
@@ -26,12 +30,12 @@ export function HapticProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const trigger = useCallback((pattern: HapticInput) => {
-    if (!enabled || !WebHaptics.isSupported) return;
-    rawTrigger(pattern);
+    if (!enabled) return;
+    rawTrigger(pattern); // library handles Android (vibrate) and iOS (checkbox trick)
   }, [enabled, rawTrigger]);
 
   return (
-    <HapticContext.Provider value={{ enabled, setEnabled, trigger, isSupported: WebHaptics.isSupported }}>
+    <HapticContext.Provider value={{ enabled, setEnabled, trigger, isTouchDevice }}>
       {children}
     </HapticContext.Provider>
   );

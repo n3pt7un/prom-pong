@@ -8,7 +8,6 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useHaptic } from '../context/HapticContext';
-import { WebHaptics } from 'web-haptics';
 
 interface SettingsProps {
   currentUser: AppUser | null;
@@ -17,7 +16,7 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProfile }) => {
-  const { enabled: hapticsEnabled, setEnabled: setHapticsEnabled } = useHaptic();
+  const { enabled: hapticsEnabled, setEnabled: setHapticsEnabled, isTouchDevice } = useHaptic();
   const [editingProfile, setEditingProfile] = useState(false);
   const [editName, setEditName] = useState(currentUser?.player?.name || '');
   const [editBio, setEditBio] = useState(currentUser?.player?.bio || '');
@@ -228,7 +227,7 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
       </Card>
 
       {/* Haptic Feedback */}
-      {WebHaptics.isSupported && (
+      {isTouchDevice && (
         <Card className="p-6 border-l-4 border-l-cyber-pink">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -244,10 +243,10 @@ const Settings: React.FC<SettingsProps> = ({ currentUser, onExport, onUpdateProf
               role="switch"
               aria-checked={hapticsEnabled}
               onClick={() => setHapticsEnabled(!hapticsEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-cyber-pink focus:ring-offset-2 focus:ring-offset-black ${hapticsEnabled ? 'bg-cyber-pink' : 'bg-white/10'}`}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-cyber-pink focus:ring-offset-2 focus:ring-offset-black ${hapticsEnabled ? 'bg-cyber-pink border-cyber-pink' : 'bg-transparent border-gray-500'}`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${hapticsEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                className={`inline-block h-4 w-4 transform rounded-full shadow transition-transform ${hapticsEnabled ? 'bg-white translate-x-5' : 'bg-gray-500 translate-x-0'}`}
               />
             </button>
           </div>
