@@ -20,3 +20,4 @@ coverage/
 # Misc
 letest-report.json
 
+.worktrees/
