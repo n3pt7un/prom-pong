@@ -69,7 +69,12 @@ Plans:
   1. GET /state returns data without triggering mutation side effects in the request path.
   2. Local persistence hot-path mutations no longer depend on synchronous full-file writes and use safe async batching/debouncing semantics.
   3. ELO recompute and related maintenance flows can run in chunked, idempotent form on larger datasets without corrupting state.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 04-01-PLAN.md — Create failing test scaffolds for PERF-01, PERF-02, and PERF-03 (Wave 1).
+- [ ] 04-02-PLAN.md — Extract expiry loop into reconciliation service with concurrency guard; rewrite GET /state as pure read (PERF-01).
+- [ ] 04-03-PLAN.md — Replace fs.writeFileSync with debounced async fs.promises.writeFile in saveDB() local path (PERF-02).
+- [ ] 04-04-PLAN.md — Chunk recalculateElo() with setImmediate yields; add runRecompute() wrapper and 409 guard on admin route (PERF-03).
 
 ### Phase 5: Parity and Regression Closure
 **Goal**: The system has reliable automated proof that dual-backend behavior and ranking/history correctness remain stable after remediation.
@@ -91,5 +96,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. Security Guardrails and Boundary Validation | 3/3 | Complete   | 2026-03-16 |
 | 2. Formula Trust-Boundary and Persistence Contracts | 0/2 | Not started | - |
 | 3. Frontend Orchestration Decomposition | 0/TBD | Not started | - |
-| 4. Backend Read-Path and Recompute Isolation | 0/TBD | Not started | - |
+| 4. Backend Read-Path and Recompute Isolation | 0/4 | Not started | - |
 | 5. Parity and Regression Closure | 0/TBD | Not started | - |
